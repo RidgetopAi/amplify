@@ -2,7 +2,7 @@
 # Install this checkout's plugin/ into omarchy-shell as the third-party
 # service plugin "ridgetopai.amplify" (primary path; see docs/spike/REPORT.md).
 #
-#   tools/install-plugin.sh            # link, wait until listed, enable
+#   tools/install-plugin.sh            # link, wait out the reload, wait until listed, enable
 #   tools/install-plugin.sh --remove   # disable and unlink
 #
 # `omarchy plugin add <url>` expects manifest.json at the repo root, which this
@@ -23,7 +23,38 @@ listed() { omarchy plugin list --json 2>/dev/null | jq -e --arg id "$ID" 'any(.[
 # watcher did not, give it longer, and let the plugin list poll decide.
 rescan() {
   OMARCHY_SHELL_IPC_TIMEOUT=10s omarchy-shell shell rescanPlugins ||
-    echo "install-plugin: rescanPlugins did not answer; waiting for the plugin list anyway" >&2
+    echo "install-plugin: rescanPlugins did not answer; the scan may still run" >&2
+}
+
+# After a link change the watcher waits 150 ms, then reloads every plugin,
+# freezing IPC for about 2 s; until the reload ends the list still shows the
+# old entry and an enable can be lost or time out. Ping until a slow reply (the
+# freeze) is followed by a quick one, or until 2 s of quick replies show no
+# reload is coming; give up after 15 s.
+ms() { echo $(( ${EPOCHREALTIME/./} / 1000 )); }
+settle() {
+  local start t slow=
+  start=$(ms)
+  sleep 0.2
+  while (( $(ms) - start < 15000 )); do
+    t=$(ms)
+    OMARCHY_SHELL_IPC_TIMEOUT=10s omarchy-shell shell ping >/dev/null 2>&1 || true
+    if (( $(ms) - t >= 500 )); then slow=1
+    elif [[ -n $slow ]] || (( $(ms) - start >= 2000 )); then return 0
+    fi
+    sleep 0.1
+  done
+  echo "install-plugin: omarchy-shell still busy 15 s after the link changed; enabling anyway" >&2
+}
+
+# A 10 s IPC timeout outlasts a reload still finishing. "not responding" means
+# the call may not have run, so retry it once.
+enable() {
+  local out
+  if out=$(OMARCHY_SHELL_IPC_TIMEOUT=10s omarchy plugin enable "$ID" 2>&1); then echo "$out"; return 0; fi
+  [[ $out == *"not responding"* ]] || { echo "$out" >&2; return 1; }
+  echo "install-plugin: enable did not answer; retrying once" >&2
+  OMARCHY_SHELL_IPC_TIMEOUT=10s omarchy plugin enable "$ID"
 }
 
 if [[ ${1:-} == --remove ]]; then
@@ -40,6 +71,7 @@ mkdir -p "$(dirname "$DEST")"
 rescanned=
 if [[ $(readlink "$DEST") != "$ROOT/plugin" ]]; then
   ln -sfn "$ROOT/plugin" "$DEST"  # the watcher reloads; rescan only if it does not
+  settle
 elif ! listed; then
   rescan; rescanned=1
 fi
@@ -54,5 +86,5 @@ until listed; do
   if [[ -z $rescanned ]] && (( tries <= half )); then rescan; rescanned=1; fi
   sleep 0.2
 done
-omarchy plugin enable "$ID"
+enable
 echo "install-plugin: enabled $ID; logs: journalctl --user -t omarchy-shell or ~/.local/state/quickshell"
