@@ -17,6 +17,13 @@ test("live by heartbeat: 180 s is fresh, 181 s is not", () => {
     assert.equal(live({ last_heartbeat_at: ago(181), last_activity_at: ago(31 * 60) }), "dormant");
 });
 
+test("heartbeat boundary alone: write 31 min ago, so only the 180 s heartbeat rule decides", () => {
+    // Decision b38fc01a: a fresh heartbeat with no write for >= 10 min is quiet;
+    // no fresh heartbeat and no write under 30 min is dormant.
+    assert.equal(live({ last_heartbeat_at: ago(180), last_activity_at: ago(31 * 60) }), "quiet");
+    assert.equal(live({ last_heartbeat_at: ago(181), last_activity_at: ago(31 * 60) }), "dormant");
+});
+
 test("live by write: under 30 min is live, 30 min is dormant", () => {
     assert.equal(live({ last_activity_at: ago(30 * 60 - 1) }), "live");
     assert.equal(live({ last_activity_at: ago(30 * 60) }), "dormant");

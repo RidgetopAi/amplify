@@ -111,6 +111,16 @@ test("details from /api/sessions/:id override list rows", () => {
     assert.equal(scene.orbs[0].taskId, "beefbeef");
 });
 
+test("a lost session appears in needsYou with reason lost heartbeat", () => {
+    const id = "eeeeeeee-0000-0000-0000-000000000000";
+    const hb = new Date(CAPTURED - 601 * 1000).toISOString();
+    const scene = M.buildScene({ sessions: [{ id, title: "gone · worker", creation_reason: "resume", context_count: 2,
+        last_heartbeat_at: hb, last_explicit_heartbeat_at: hb, last_activity_at: hb }] }, { now: CAPTURED });
+    assert.equal(scene.sessions[0].liveness, "lost");
+    assert.deepEqual(scene.needsYou.map((n) => [n.kind, n.id, n.reason, n.since]), [["session", id, "lost heartbeat", hb]]);
+    assert.equal(scene.counts.needsYou, 1);
+});
+
 test("projectId filter drops other projects' sessions", () => {
     const scene = M.buildScene({ sessions: [{ id: "1", project_id: "p1" }, { id: "2", project_id: "p2" }] }, { now: CAPTURED, projectId: "p1" });
     assert.deepEqual(scene.sessions.map((s) => s.id), ["1"]);
