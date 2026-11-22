@@ -4,7 +4,8 @@ import QtQuick
 import "mandrel.js" as Mandrel   // symlink to data/mandrel.js: Quickshell blackholes imports outside the config folder
 import "river.js" as R
 
-// One replay clock for every screen's river. Plays a fixture through the data
+// A river's replay clock (each River owns one unless its host sets `feed`, so
+// every screen runs its own copy of the same fixture). Plays a fixture through the data
 // layer (data/mandrel.js buildScene) and reports lane changes between
 // successive scenes, which River.qml draws as critic PASS rings and REJECT eddies.
 // Live mode (SSE + refetch) will set `scene` the same way; replay is the

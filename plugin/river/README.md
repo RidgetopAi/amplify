@@ -10,7 +10,7 @@ The punch lifecycle as a river (direction c755578f, lane mapping c1f75776). `Ser
 | verifying or evidence → an earlier lane | REJECT: an eddy where it lands and an arc back upstream |
 | `claimActor`, `claimExpiresAt` vs. the scene clock | Tether from the holder's mooring; lit length = lease left; slack and dashed once expired, even if `claimLive` is still true |
 | `eddy` (blocked) / `needsYou` | Slow swirl around the hull; warm hull (the only warm colour here) |
-| Tasks updated in the last 15 min / live sessions | Water flow speed and wake length / water light; still water when nothing moves |
+| Tasks updated in the last 15 min / live sessions | Water flow speed (`flowSpeed`, 0 at flow 0) and wake length / water light. With no task updated in 15 min the water stands still and the frame clock stops |
 
 `river.js` holds the layout as pure functions (`layout`, `lease`, `transitions`, `placeMoorings`, `replaySceneAt`), tested by `node --test plugin/river/test/`. `shaders/river.frag` is the water; it compiles to `plugin/shaders/river.frag.qsb`.
 
@@ -22,4 +22,4 @@ Quickshell resolves imports and URLs outside the config folder to `qrc:/qs-black
 - `AMPLIFY_RIVER_FIXTURE=<path>` replays another fixture. `test/busy-frames.json` comes from `node plugin/river/test/make-busy.mjs`: it is the real snapshot's records, staged with 9 claims (one expired), a blocked task, a PASS, and a REJECT.
 - `AMPLIFY_RIVER_AT=<ISO>` freezes the replay clock at that time, one step after the previous scene, so that step's lane changes show.
 - `AMPLIFY_STILL=1` freezes motion.
-- `HEADLESS_MESA=… plugin/river/test/shot.sh` writes `docs/shots/river-{default,busy,in-service}.png` and checks the logged lanes, tethers, and verdicts.
+- `HEADLESS_MESA=… plugin/river/test/shot.sh` writes `docs/shots/river-{default,busy,in-service}.png` and checks the logged lanes, tethers, verdicts and drawn verdict effects, and that an idle (flow 0) river renders identically 3 s apart while a flowing one moves.

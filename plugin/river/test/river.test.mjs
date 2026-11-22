@@ -123,3 +123,41 @@ test("moorings sit centred on their vessels, not pushed to one side", () => {
     // Against the right edge: shifted left as one block.
     assert.deepEqual(R.placeMoorings([1900, 1900], W), [1718, 1850]);
 });
+
+test("water speed is zero without recent task updates and rises with flow", () => {
+    assert.equal(R.flowSpeed(0), 0);
+    assert.ok(R.flowSpeed(0.125) > 0);
+    assert.ok(R.flowSpeed(0.5) > R.flowSpeed(0.125));
+    assert.ok(R.flowSpeed(1) > R.flowSpeed(0.5));
+    // Idle replay (no task touched in the 15 min before 04:30Z): flow 0, still water.
+    const idle = at("2026-11-22T04:30:00Z");
+    const lay = R.layout(R.replaySceneAt(M, snapshot, idle), idle, W);
+    assert.equal(lay.flow, 0);
+    assert.equal(R.flowSpeed(lay.flow), 0);
+});
+
+test("the upstream row sits half a column off the centre row", () => {
+    const lay = R.layout(R.replaySceneAt(M, snapshot, captured), captured, W);
+    const draft = lay.vessels.filter((v) => v.lane === "draft");
+    const centre = draft.filter((v) => v.row === 0).map((v) => v.x);
+    const up = draft.filter((v) => v.row === -1).map((v) => v.x);
+    assert.ok(centre.length >= 2 && up.length >= 1, `rows ${centre.length}/${up.length}`);
+    for (const x of up) {
+        const d = Math.min(...centre.map((c) => Math.abs(c - x)));
+        assert.ok(Math.abs(d - 92 / 2) < 1e-9, `upstream hull ${x} is ${d} from the centre row`);
+    }
+});
+
+test("a released claim leaves no tether; a lapsed one in the claimed lane stays slack", () => {
+    const now = at("2026-11-22T04:00:00Z");
+    const scene = { tasks: [
+        { id: "aaaaaaaa-1", id8: "aaaaaaaa", lane: "ready", claimActor: "brian/x", claimLive: false,
+          claimExpiresAt: "2026-11-22T04:30:00Z", updatedAt: "2026-11-22T03:00:00Z" },
+        { id: "bbbbbbbb-1", id8: "bbbbbbbb", lane: "claimed", claimActor: "brian/y", claimLive: false,
+          claimExpiresAt: "2026-11-22T03:30:00Z", updatedAt: "2026-11-22T03:00:00Z" },
+        { id: "cccccccc-1", id8: "cccccccc", lane: "verifying", claimActor: "brian/z", claimLive: true,
+          claimExpiresAt: "2026-11-22T04:30:00Z", updatedAt: "2026-11-22T03:00:00Z" },
+    ], sessions: [] };
+    const lay = R.layout(scene, now, W);
+    assert.deepEqual(lay.tethers.map((t) => [t.id8, t.expired]), [["bbbbbbbb", true], ["cccccccc", false]]);
+});

@@ -199,6 +199,13 @@ function layout(scene, nowMs, W) {
              recent: recent, live: live };
 }
 
+// Water speed in design px per second for a layout's flow (0..1). Zero at zero
+// flow: with no recent task updates the water stands still and River.qml stops
+// its frame clock, so an idle desktop does not re-render the river.
+function flowSpeed(flow) {
+    return flow > 0 ? 90 * Math.min(1, flow) : 0;
+}
+
 // ---------------------------------------------------------------- replay
 
 // Scene at virtual time ms from a snapshot (fixtures/amplify-snapshot.json) or

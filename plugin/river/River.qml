@@ -70,14 +70,14 @@ Item {
                vx: vx[t.id].x, voff: vx[t.id].off }
     }))
   }
-  // Once per scene (every step when still, every minute when animating).
+  // Once per scene (every step when still or frozen, every minute when playing).
   function logScene() {
-    if (!lay || feed.serial === loggedSerial || (animate && feed.serial % 60 !== 1)) return
+    if (!lay || feed.serial === loggedSerial || (animate && !feed.freezeAt && feed.serial % 60 !== 1)) return
     loggedSerial = feed.serial
     console.log("amplify: river lanes " + lay.gates.map(function (g) { return g.label + "=" + g.count }).join(" ")
         + " vessels=" + lay.vessels.length + " tethers=" + lay.tethers.length
         + " expired=" + lay.tethers.filter(function (t) { return t.expired }).map(function (t) { return t.id8 }).join(",")
-        + " flow=" + lay.flow.toFixed(2) + " at=" + new Date(feed.nowMs).toISOString())
+        + " flow=" + lay.flow.toFixed(2) + " speed=" + speed.toFixed(1) + " at=" + new Date(feed.nowMs).toISOString())
   }
 
   function spawn(events) {
@@ -88,6 +88,7 @@ Item {
       var to = lay.vessels.filter(function (v) { return v.id === e.taskId })[0]
       var from = prev ? prev.vessels.filter(function (v) { return v.id === e.taskId })[0] : null
       if (!to) return
+      console.log("amplify: river fx " + e.kind + " " + e.id8 + " → " + e.to)
       effects.append({ uid: e.taskId + "@" + feed.serial, kind: e.kind, id8: e.id8, to: e.to,
                        px: to.x, off: to.off, fromX: from ? from.x : to.x, fromOff: from ? from.off : to.off })
     })
@@ -106,10 +107,12 @@ Item {
   }
   Component.onCompleted: { refresh(); logScene(); if (feed) spawn(feed.events) }
 
-  // The current advances only as fast as the work does.
+  // The current advances only as fast as the work does; with no recent task
+  // updates the speed is 0 and the frame clock stops, so idle water is still.
+  readonly property real speed: R.flowSpeed(lay ? lay.flow : 0)
   FrameAnimation {
-    running: river.animate && river.visible
-    onTriggered: river.phase += (6 + 90 * (river.lay ? river.lay.flow : 0)) * frameTime
+    running: river.animate && river.visible && river.speed > 0
+    onTriggered: river.phase += river.speed * frameTime
   }
 
   Item {

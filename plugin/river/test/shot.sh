@@ -8,6 +8,8 @@
 #   default: fixtures/amplify-snapshot.json frozen at its capture time (04:00:17Z);
 #   busy:    plugin/river/test/busy-frames.json (staged from the same records),
 #            frozen 90 s in, the step right after a critic PASS and a REJECT;
+#   idle:    animated at 04:30Z (flow 0): two grabs 3 s apart must be identical;
+#   flowing: animated at 04:00:17Z (flow 1): the same grabs must differ (control);
 #   service: the whole plugin (quickshell -p plugin/), to prove the mount.
 # Exit status is the number of failed checks.
 #
@@ -66,6 +68,29 @@ L="$RUN/busy.log"
 grep "amplify: river events" "$L" | grep "pass 379c80c6 verifying→evidence" | grep -q "reject 6bbaf7d0 verifying→ready" \
   && pass "busy: critic PASS and REJECT from the lane change" || fail "busy: verdict transitions missing"
 grep -q "tethers=9 expired=523461dd " "$L" && pass "busy: 9 tethers, the lapsed lease slack" || fail "busy: tethers differ"
+grep -q "amplify: river fx pass 379c80c6 → evidence" "$L" && grep -q "amplify: river fx reject 6bbaf7d0 → ready" "$L" \
+  && pass "busy: drew the PASS ring on 379c80c6 and the REJECT eddy on 6bbaf7d0" || fail "busy: verdict effects not drawn"
+
+# motion <name> <ISO time>: animated (not AMPLIFY_STILL), clock frozen, two grabs 3 s apart.
+# Prints the number of differing pixels.
+motion() {
+  local name=$1 at=$2
+  env AMPLIFY_RIVER_AT="$at" quickshell -p "$ROOT/plugin/river" > "$RUN/$name.log" 2>&1 & local pid=$!
+  for _ in $(seq 150); do grep -q "amplify: river lanes" "$RUN/$name.log" && break; sleep 0.1; done
+  sleep 2
+  grim "$RUN/$name-a.png"; sleep 3; grim "$RUN/$name-b.png"
+  cp "$RUN/$name.log" /tmp/river-$name.log; kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  grep -h "amplify:" "$RUN/$name.log" | sed "s/^/  [$name] /" >&2
+  magick compare -metric AE "$RUN/$name-a.png" "$RUN/$name-b.png" null: 2>&1 | cut -d' ' -f1
+}
+# Idle: 04:30Z, no task touched in the 15 min before, so flow 0 and nothing may move.
+d=$(motion idle 2026-11-22T04:30:00Z)
+grep -q "flow=0.00 speed=0.0 " "$RUN/idle.log" && [[ $d == 0 ]] \
+  && pass "idle: flow 0, two grabs 3 s apart identical" || fail "idle: water moves without data ($d px differ)"
+# Control: at capture the work is flowing, so the same check must see the water move.
+d=$(motion flowing 2026-11-22T04:00:17Z)
+grep -q "flow=1.00 speed=90.0 " "$RUN/flowing.log" && [[ $d =~ ^[0-9.e+]+$ ]] && [[ $d != 0 ]] \
+  && pass "flowing: flow 1, the water moved ($d px)" || fail "flowing: no motion seen ($d)"
 
 shot in-service "$ROOT/plugin" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z \
   AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme"
