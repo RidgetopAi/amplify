@@ -1,0 +1,7 @@
+# Fixture palette (Tokyo Night style) read by the plugin through Process in
+# tools/headless-shot.sh, standing in for ~/.local/state/omarchy/current/theme.
+mode = "dark"
+accent = "#7aa2f7"
+background = "#1a1b26"
+foreground = "#c0caf5"
+yellow = "#e0af68"

@@ -1,0 +1,16 @@
+# Fallback host: run plugin/ as its own Quickshell instance instead of inside
+# omarchy-shell. Installed by tools/fallback/install.sh (which fills in
+# AMPLIFY_PLUGIN_DIR). Not needed while the plugin path works.
+[Unit]
+Description=Amplify desktop layer (standalone Quickshell)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/quickshell -p @AMPLIFY_PLUGIN_DIR@
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
