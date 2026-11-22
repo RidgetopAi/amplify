@@ -26,7 +26,8 @@ mkdir -p "$WORK/bin"
 # time has come decides what the list shows), reload "start end" of the latest
 # reload, dir.sig the plugins/ mtime the watcher last saw, result one line per
 # enable/disable. Knobs: DELAY (rescan lands after DELAY s; never: not at all),
-# WATCHER (on|off), RELOAD (s), RESCAN (ok|timeout: rescan never answers).
+# WATCHER (on|off), RELOAD (s), RESCAN (ok|timeout: rescan never answers),
+# ENABLE (ok|timeout-once: the first enable is not answered|error: enable fails).
 cat > "$WORK/stub.sh" <<'EOF'
 now() { date +%s.%N; }
 calc() { awk "BEGIN { printf \"%.3f\", $1 }"; }
@@ -84,6 +85,16 @@ case "$1 $2" in
       jq -r '.[] | .id' <<<"$json" | while read -r id; do printf '%-32s %-9s\n' "$id" disabled; done
     fi ;;
   "plugin enable"|"plugin disable")  # enablePlugin / setPluginEnabled
+    if [[ $2 == enable && $ENABLE == timeout-once ]]; then
+      # The first enable is not answered; later ones answer only within 10 s or more.
+      t=${OMARCHY_SHELL_IPC_TIMEOUT:-2s}
+      if [[ ! -e $STUB/enable.once ]] || ! ge "${t%s}" 10; then
+        touch "$STUB/enable.once"; echo "timeout" >> "$STUB/result"
+        echo "omarchy-shell is not responding" >&2; exit 1
+      fi
+    elif [[ $2 == enable && $ENABLE == error ]]; then
+      echo "error" >> "$STUB/result"; echo "omarchy-plugin-enable: manifest rejected" >&2; exit 1
+    fi
     sent=$(now)
     ipc || { echo "timeout" >> "$STUB/result"; exit 1; }
     if ! visible; then
@@ -113,7 +124,7 @@ run() {
   [[ -d $STUB/tree/tools ]] || cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$STUB/tree/"
   : > "$STUB/calls"; rm -f "$STUB/result"
   out=$(STUB="$STUB" STUBLIB="$WORK/stub.sh" DELAY="$2" WATCHER="${WATCHER:-off}" RELOAD="${RELOAD:-2}" \
-    RESCAN="${RESCAN:-ok}" HOME="$STUB/home" PATH="$WORK/bin:$PATH" QSB="$WORK/bin/qsb" \
+    RESCAN="${RESCAN:-ok}" ENABLE="${ENABLE:-ok}" HOME="$STUB/home" PATH="$WORK/bin:$PATH" QSB="$WORK/bin/qsb" \
     AMPLIFY_RESCAN_TIMEOUT="${3:-10}" "$STUB/tree/tools/install-plugin.sh" ${ARG:+"$ARG"} 2>&1); rc=$?
 }
 count() { grep -c -- "$1" "$STUB/calls"; }
@@ -157,18 +168,47 @@ WATCHER=on RESCAN=timeout run reload never
 # 4b. Retarget: the link points at another checkout whose plugin is loaded, so
 #     the old entry stays listed through the 150 ms debounce and the reload.
 #     Install waits the reload out and enables once, after it.
-STUB="$WORK/retarget"; P="$STUB/home/.config/omarchy/plugins"; mkdir -p "$P" "$STUB/old/plugin"
-ln -s "$STUB/old/plugin" "$P/ridgetopai.amplify"
-stat -c %.9Y "$P" > "$STUB/dir.sig"; echo "0 1" > "$STUB/list"
+retarget_setup() {
+  STUB="$WORK/$1"; P="$STUB/home/.config/omarchy/plugins"; mkdir -p "$P" "$STUB/old/plugin"
+  ln -s "$STUB/old/plugin" "$P/ridgetopai.amplify"
+  stat -c %.9Y "$P" > "$STUB/dir.sig"; echo "0 1" > "$STUB/list"
+}
+retarget_check() {
+  [[ $rc == 0 ]] && pass "$1: install exits 0" || fail "$1: install exited $rc: $out"
+  [[ $(readlink "$P/ridgetopai.amplify") == "$STUB/tree/plugin" ]] && pass "$1: link points at this checkout" \
+    || fail "$1: link points at $(readlink "$P/ridgetopai.amplify")"
+  [[ "$(results)" == "enabled " && $(count 'plugin enable') == 1 ]] \
+    && pass "$1: enable called once, after the reload" \
+    || fail "$1: enable results were [$(results)] (want: enabled)"
+  [[ $(rescans) == 0 && $out != *"not responding"* ]] && pass "$1: no rescan, nothing timed out" \
+    || fail "$1: $(rescans) rescan(s); output: $out"
+}
+retarget_setup retarget
 WATCHER=on RESCAN=timeout run retarget never
-[[ $rc == 0 ]] && pass "retarget: install exits 0" || fail "retarget: install exited $rc: $out"
-[[ $(readlink "$P/ridgetopai.amplify") == "$STUB/tree/plugin" ]] && pass "retarget: link points at this checkout" \
-  || fail "retarget: link points at $(readlink "$P/ridgetopai.amplify")"
-[[ "$(results)" == "enabled " && $(count 'plugin enable') == 1 ]] \
-  && pass "retarget: enable called once, after the reload" \
-  || fail "retarget: enable results were [$(results)] (want: enabled)"
-[[ $(rescans) == 0 && $out != *"not responding"* ]] && pass "retarget: no rescan, nothing timed out" \
-  || fail "retarget: $(rescans) rescan(s); output: $out"
+retarget_check retarget
+
+# 4c. Comma-decimal locale: bash prints EPOCHREALTIME as "1795325007,733322"
+#     there. ms() must still give milliseconds, so a microsecond part such as
+#     089322 is no octal error; checked directly, then end to end on a retarget
+#     under a comma locale (generated with localedef if none is installed).
+ms_src=$(grep '^ms()' "$ROOT/tools/install-plugin.sh")
+v=$(bash -c "unset EPOCHREALTIME; EPOCHREALTIME=1795325007,089322; $ms_src; ms" 2>&1)
+[[ $v == 1795325007089 ]] && pass "locale: ms() reads a comma-decimal EPOCHREALTIME" \
+  || fail "locale: ms() on 1795325007,089322 gave: $v (want 1795325007089)"
+comma() { [[ $(LC_ALL=$1 LOCPATH=$2 bash -c 'echo "$EPOCHREALTIME"' 2>/dev/null) == *,* ]]; }
+cl=; lp=
+for l in de_DE.UTF-8 de_DE.utf8 fr_FR.UTF-8 fr_FR.utf8; do comma "$l" "" && { cl=$l; break; }; done
+if [[ -z $cl ]]; then
+  mkdir -p "$WORK/locale"; localedef -i de_DE -f UTF-8 "$WORK/locale/de_DE.UTF-8" >/dev/null 2>&1
+  comma de_DE.UTF-8 "$WORK/locale" && { cl=de_DE.UTF-8; lp="$WORK/locale"; }
+fi
+if [[ -n $cl ]]; then
+  retarget_setup retarget-comma
+  LOCPATH=$lp LC_ALL=$cl WATCHER=on RESCAN=timeout run retarget-comma never
+  retarget_check "retarget under $cl"
+else
+  echo "SKIP retarget under a comma-decimal locale: none installed and localedef -i de_DE -f UTF-8 failed (ms() checked directly above)"
+fi
 
 # 5. Link in place but the shell does not list the plugin, and rescanPlugins
 #    times out although its scan lands: rescan once (10 s timeout), then the
@@ -196,6 +236,19 @@ L="$STUB/home/.config/omarchy/plugins/ridgetopai.amplify"
   || fail "remove: rescan calls: $(grep rescan "$STUB/calls" | tr '\n' ';') output: $out"
 ARG=--remove WATCHER=on RESCAN=timeout run reload never
 [[ $rc == 0 ]] && pass "remove again: exits 0 with no link" || fail "remove again: exited $rc: $out"
+
+# 6b. The first enable is not answered (the shell only answers within a 10 s
+#     IPC timeout): install retries once with 10 s and exits 0.
+ENABLE=timeout-once run enable-retry 1
+[[ $rc == 0 ]] && pass "enable retry: install exits 0" || fail "enable retry: install exited $rc: $out"
+[[ $(count 'plugin enable') == 2 && $(count 'plugin enable ridgetopai.amplify timeout=10s') == 2 && "$(results)" == "timeout enabled " ]] \
+  && pass "enable retry: enable ran twice with a 10 s IPC timeout, then enabled" \
+  || fail "enable retry: calls: $(grep 'plugin enable' "$STUB/calls" | tr '\n' ';') results [$(results)]"
+
+# 6c. Enable fails for another reason: no retry, install fails.
+ENABLE=error run enable-error 1
+[[ $rc != 0 && $(count 'plugin enable') == 1 ]] && pass "enable error: not retried, install exits non-zero ($rc)" \
+  || fail "enable error: exit $rc, $(count 'plugin enable') enable call(s)"
 
 # 7. The stub's plain `plugin list` is a table, as Omarchy's is; only --json is JSON.
 plain=$(STUB="$STUB" STUBLIB="$WORK/stub.sh" DELAY=1 WATCHER=off HOME="$STUB/home" "$WORK/bin/omarchy" plugin list)

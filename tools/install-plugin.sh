@@ -31,7 +31,9 @@ rescan() {
 # old entry and an enable can be lost or time out. Ping until a slow reply (the
 # freeze) is followed by a quick one, or until 2 s of quick replies show no
 # reload is coming; give up after 15 s.
-ms() { echo $(( ${EPOCHREALTIME/./} / 1000 )); }
+# EPOCHREALTIME uses the locale's decimal point ("1795325007,733322" in
+# de_DE), so keep only the digits and read them as base 10.
+ms() { local t=${EPOCHREALTIME//[!0-9]/}; echo $(( 10#$t / 1000 )); }
 settle() {
   local start t slow=
   start=$(ms)
