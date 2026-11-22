@@ -78,7 +78,9 @@ read -r r g b <<< "$(pixel "$((FX - S / 8))" "$((CY - S / 8))")"
 echo "focus orb pixel: $r $g $b"
 (( b > 120 && b > r )) && pass "uncovered orb renders (accent-lit)" || fail "uncovered orb not rendered"
 
-read -r r g b <<< "$(pixel "$RX" "$((CY - 60))")"
+# Sample the ambient orb's core (its body radius is ~0.035H), just above the
+# window's centred label, so a Top-layer orb reads blue-white, far from beige.
+read -r r g b <<< "$(pixel "$RX" "$((CY - H * 30 / 720))")"
 echo "covered orb pixel: $r $g $b (app window is 232 227 216)"
 (( r > 220 && g > 215 && b > 205 && b < 225 )) && pass "app window covers the orb (layer below windows)" \
   || fail "orb drawn over the app window"

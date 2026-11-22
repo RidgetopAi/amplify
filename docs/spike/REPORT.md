@@ -56,7 +56,8 @@ misbehaves on real hardware.
 | `plugin/shaders/orb.frag.qsb` | Compiled by `tools/build-shaders.sh` (qsb → GLSL 100es/120/150/300es, HLSL 50, MSL 12). Committed because `omarchy plugin add` runs no build step |
 | `tools/headless-shot.sh` | Headless render + 6 checks (below); writes `docs/spike/headless.png`, `docs/spike/orb.png` |
 | `tools/harness/` | Stand-in desktop: wallpaper on `WlrLayer.Background` that logs clicks, an app window over the right half, a fixture palette |
-| `tools/install-plugin.sh` | Primary install into omarchy-shell (link, rescan, enable; `--remove`) |
+| `tools/install-plugin.sh` | Primary install into omarchy-shell (link, rescan, wait until listed, enable; `--remove`) |
+| `tools/test-install-plugin.sh` | Installer test against stub `omarchy`/`omarchy-shell` with a delayed rescan |
 | `tools/fallback/` | systemd user unit, theme-set hook, installer (`--remove`) |
 
 ## Headless proof (this orb)
@@ -88,9 +89,18 @@ Mutations, each run on a copy of the tree:
 | Mutation | Result |
 | --- | --- |
 | Drop the `.qsb` build step from `headless-shot.sh` | RED, 2 checks: shader not compiled, orb not rendered |
-| `WlrLayer.Bottom` → `WlrLayer.Top` in `Service.qml` | RED, 2 checks: log says top, and the orb is drawn over the app window (`mutation-layer-top.png`) |
+| `WlrLayer.Bottom` → `WlrLayer.Top` in `Service.qml` | RED, 2 checks: log says top, and the orb is drawn over the app window (`mutation-layer-top.png`; the ambient orb's core reads 150 199 255 against the 220 red threshold) |
 | Remove the `mask: Region` | RED, 1 check: the empty-desktop click is swallowed |
 | Unmutated control | GREEN, exit 0 |
+
+Install race (attempt 2): on real Omarchy, `omarchy-shell shell rescanPlugins`
+returns as soon as the scan starts, so an immediate `omarchy plugin enable` answered
+"not known". `tools/install-plugin.sh` now polls `omarchy plugin list --json` for the
+id every 0.2 s, for up to 10 s, and exits non-zero with a message on timeout before it
+enables. `tools/test-install-plugin.sh` runs the installer against stub `omarchy`,
+`omarchy-shell` and `qsb` commands where the id appears 1 s after the rescan (or
+never). It exits 0 with 6/6 PASS on the fixed script. On the old script it fails
+4 checks with the same "not known" error Brian saw.
 
 Extra runtime probe (scratch, not committed): `XMLHttpRequest` GET returned
 `status=200`; editing the theme's `colors.toml` re-ran the `Process` and changed the
@@ -106,9 +116,12 @@ Brian's check below confirms it.
 
 ```bash
 git clone -b foreman/a15523ac-shell https://github.com/RidgetopAi/amplify ~/src/amplify && cd ~/src/amplify
-tools/install-plugin.sh        # builds .qsb (needs qt6-shadertools: sudo pacman -S qt6-shadertools), validates, links, rescans, enables
+tools/install-plugin.sh        # builds .qsb (needs qt6-shadertools: sudo pacman -S qt6-shadertools), validates, links, rescans, waits for the shell to list it, enables
 omarchy plugin list | grep amplify && journalctl --user -b | grep -i amplify | tail
 ```
+
+Already installed from the first attempt (plugin listed but disabled)? Pick up the fix with
+`cd ~/src/amplify && git pull && tools/install-plugin.sh`.
 
 Expected: two orbs on every monitor, above the wallpaper and below every window.
 Clicking an orb's centre logs `amplify: orb click meridian`. Double-clicking empty

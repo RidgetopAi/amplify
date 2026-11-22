@@ -27,5 +27,15 @@ mkdir -p "$(dirname "$DEST")"
 [[ -e $DEST && ! -L $DEST ]] && { echo "install-plugin: $DEST exists and is not a link" >&2; exit 1; }
 ln -sfn "$ROOT/plugin" "$DEST"
 omarchy-shell shell rescanPlugins
+
+# rescanPlugins returns once the scan has started, not when it ends, and an
+# enable before the scan lands answers "unknown". Wait until the shell lists
+# the plugin.
+# env-read: AMPLIFY_RESCAN_TIMEOUT overrides the 10 s wait (in 0.2 s steps).
+tries=$(( ${AMPLIFY_RESCAN_TIMEOUT:-10} * 5 ))
+until omarchy plugin list --json 2>/dev/null | jq -e --arg id "$ID" 'any(.[]; .id == $id)' >/dev/null; do
+  (( --tries > 0 )) || { echo "install-plugin: omarchy-shell did not list $ID within ${AMPLIFY_RESCAN_TIMEOUT:-10} s after rescanPlugins; check: journalctl --user -b | grep -i plugin" >&2; exit 1; }
+  sleep 0.2
+done
 omarchy plugin enable "$ID"
 echo "install-plugin: enabled $ID; logs: journalctl --user -t omarchy-shell or ~/.local/state/quickshell"
