@@ -6,8 +6,10 @@ import QtQuick
 // screen on WlrLayer.Bottom whose input mask is only the orbs' hit circles, so
 // clicks anywhere else fall through to the windows below (other Amplify
 // layers, the wallpaper). Service.qml mounts this with one line.
+// The id must not be `layer`: inside OrbField that name resolves to Item's
+// built-in `layer` grouped property, and the bindings below go undefined.
 Item {
-  id: layer
+  id: orbsLayer
   property color accent: "#89b4fa"
   property color foreground: "#cdd6f4"
   property bool animate: true
@@ -30,9 +32,9 @@ Item {
       OrbField {
         id: field
         anchors.fill: parent
-        accent: layer.accent
-        foreground: layer.foreground
-        animate: layer.animate
+        accent: orbsLayer.accent
+        foreground: orbsLayer.foreground
+        animate: orbsLayer.animate
       }
     }
   }

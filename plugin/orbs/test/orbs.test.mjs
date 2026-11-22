@@ -114,6 +114,64 @@ test("untitled and never-heartbeat sessions are designed, not blank", () => {
   assert.ok(r);
 });
 
+// Critic defect 11cd84cc (D2): need, form, energy and fuse.
+const CRITIC_INSTALL = "f4fe1f7e-0a72-423b-aa3e-c50c5389658e"; // connect, zero writes, started 04:50:56.926Z
+
+test("the warm needs-you ring is only for lost sessions, not for every claim holder", () => {
+  // b38fc01a: needsYou holds lost sessions (plus human-blocked tasks and open decisions).
+  // At fetch, orbs holds the live claim on a40d7440 and is live, so it does not need you.
+  const f = O.frame(sceneAtFetch(), FETCH, 1920, 1080, M.tickScene);
+  assert.equal(f.orbs[ORBS].liveness, "live");
+  assert.equal(f.orbs[ORBS].task.held, true);
+  assert.equal(f.orbs[ORBS].need, 0);
+  for (const id of f.ids) if (f.orbs[id].liveness !== "lost") assert.equal(f.orbs[id].need, 0, id);
+});
+
+test("a forming session fills with age and is whole by the 10 min quiet threshold", () => {
+  // b38fc01a: forming = alive + creation_reason connect + zero writes.
+  const scene = sceneAtFetch();
+  const a = O.frame(scene, FETCH, 1920, 1080, M.tickScene).orbs[CRITIC_INSTALL];
+  assert.equal(a.liveness, "forming");                 // 283 s old at fetch
+  assert.ok(a.form > 0 && a.form < 1, `form ${a.form}`);
+  const b = O.frame(scene, FETCH + 3 * MIN, 1920, 1080, M.tickScene).orbs[CRITIC_INSTALL];
+  assert.equal(b.liveness, "forming");
+  assert.ok(b.form > a.form && b.form < 1, `form ${a.form} -> ${b.form}`);
+  // 04:50:56.926 + 10 min = 05:00:56.926: fully formed after it.
+  const c = O.frame(scene, Date.parse("2026-11-22T05:01:10Z"), 1920, 1080, M.tickScene).orbs[CRITIC_INSTALL];
+  assert.equal(c.form, 1);
+  // A session that is not forming is whole.
+  assert.equal(O.frame(scene, FETCH, 1920, 1080, M.tickScene).orbs[COORD].form, 1);
+});
+
+test("write energy decays with write age on the client clock", () => {
+  const scene = sceneAtFetch();
+  // amplify-coord last wrote 04:51:11.875Z (268 s before fetch); orbs at 04:48:11.872Z (448 s).
+  const f0 = O.frame(scene, FETCH, 1920, 1080, M.tickScene);
+  assert.equal(f0.orbs[COORD].liveness, "live");
+  assert.ok(f0.orbs[COORD].energy > f0.orbs[ORBS].energy, "the fresher write glows brighter");
+  const f1 = O.frame(scene, FETCH + 8 * MIN, 1920, 1080, M.tickScene);
+  assert.equal(f1.orbs[COORD].liveness, "live");        // write < 30 min
+  assert.ok(f1.orbs[COORD].energy < f0.orbs[COORD].energy && f1.orbs[COORD].energy > 0,
+            `energy ${f0.orbs[COORD].energy} -> ${f1.orbs[COORD].energy}`);
+});
+
+test("the heartbeat fuse burns from the explicit heartbeat only", () => {
+  // 22d73eeb: lost = explicit heartbeat older than 10 min, so the fuse (time left
+  // before lost) counts from last_explicit_heartbeat_at, never from other heartbeats.
+  const r = snap.responses;
+  const rows = r["/api/sessions"].map((s) => s.id === NEEDS
+    ? { ...s, last_heartbeat_at: new Date(FETCH - 10e3).toISOString(), last_explicit_heartbeat_at: null }
+    : s.id === ORBS
+      ? { ...s, last_heartbeat_at: new Date(FETCH - 10e3).toISOString(), last_explicit_heartbeat_at: new Date(FETCH - 300e3).toISOString() }
+      : s);
+  const scene = M.buildScene({ sessions: rows, tasks: r["/api/tasks"], contexts: [], decisions: [], projects: r["/api/projects"] },
+                             { now: FETCH, baseUrl: snap.meta.base_url, mode: "replay" });
+  const f = O.frame(scene, FETCH, 1920, 1080, M.tickScene);
+  assert.equal(f.orbs[NEEDS].fuse, -1);                 // no explicit heartbeat: no fuse
+  assert.equal(f.orbs[NEEDS].neverHeartbeat, false);
+  assert.ok(Math.abs(f.orbs[ORBS].fuse - 0.5) < 1e-9);  // 300 s of the 600 s left
+});
+
 test("roles map to their own programs; ended sessions leave after 15 min", () => {
   const scene = sceneAtFetch();
   const f = O.frame(scene, FETCH, 1920, 1080, M.tickScene);

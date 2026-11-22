@@ -86,8 +86,9 @@ Item {
       property real wPx: width
       property real hPx: height
       property real tether: vessel.tetherPx
-      property color liquid: view.orb && view.orb.task ? view.orb.task.color : "#919ef7"
-      property color glass: view.hue
+      // Mono (silhouette proof): neutral liquid and glass, so only shape carries the role.
+      property color liquid: view.mono ? "#b4b4b4" : view.orb && view.orb.task ? view.orb.task.color : "#919ef7"
+      property color glass: view.mono ? "#d0d0d0" : view.hue
       Behavior on level { enabled: view.animate; NumberAnimation { duration: 900 } }
     }
 
