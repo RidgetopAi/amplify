@@ -16,6 +16,7 @@ const NOW = Date.parse("2026-11-22T05:00:00Z");
 const ago = (min) => new Date(NOW - min * 60000).toISOString();
 const W = "brian/amp-worker-t-01a20190-0000-7000-8000-000000000001";
 const W2 = "brian/amp-worker-t-01a20190-0000-7000-8000-000000000002";
+const W3 = "brian/amp-worker-t-01a20190-0000-7000-8000-000000000003";
 
 // Ages are chosen so oldest-first would give a different order than urgency.
 function scene() {
@@ -27,6 +28,9 @@ function scene() {
               started_at: ago(300), last_activity_at: ago(50), last_explicit_heartbeat_at: ago(45) },
             { id: "5e550003-0000-4000-8000-000000000003", title: "ended · worker", actor: "brian/amp-critic-x",
               started_at: ago(300), ended_at: ago(100) },
+            // Decision 23973614: an expired claim keeps claim_actor but is not live, so it never lights the basin.
+            { id: "5e550004-0000-4000-8000-000000000004", title: "lost-expired · worker", actor: W3, liveness: "lost",
+              started_at: ago(300), last_activity_at: ago(70), last_explicit_heartbeat_at: ago(65) },
         ],
         tasks: [
             { id: "7a5c0001-0000-4000-8000-000000000001", title: "Blocked on Brian", status: "blocked", blocked_on: "human", updated_at: ago(400) },
@@ -36,6 +40,9 @@ function scene() {
             { id: "7a5c0005-0000-4000-8000-000000000005", title: "Blocked on agent", status: "blocked", blocked_on: "agent", updated_at: ago(500) },
             { id: "7a5c0006-0000-4000-8000-000000000006", title: "Merged already", status: "completed", stage: "merged", updated_at: ago(10) },
             { id: "7a5c0007-0000-4000-8000-000000000007", title: "Cancelled block", status: "cancelled", blocked_on: "human", updated_at: ago(600) },
+            { id: "7a5c0008-0000-4000-8000-000000000008", title: "Expired claim", status: "in_progress", claim_live: false, claim_actor: W3, updated_at: ago(80) },
+            { id: "7a5c0009-0000-4000-8000-000000000009", title: "Completed at evidence", status: "completed", stage: "evidence", updated_at: ago(95) },
+            { id: "7a5c0010-0000-4000-8000-000000000010", title: "Blocked, no time", status: "blocked", blocked_on: "human" },
         ],
         decisions: [
             { id: "dec00001-0000-4000-8000-000000000001", title: "Pick a direction", answer_status: "open", created_at: ago(300) },
@@ -74,24 +81,28 @@ test("basin orders by urgency, then longest-waiting, and every row opens its exa
         [5, "lost", `${BASE}/r/5e550001`],                       // lost, holds 7a5c0003
         [6, "decision", `${BASE}/r/dec00001`],
         [7, "blocked", `${BASE}/r/7a5c0001`],                    // oldest of all, least urgent
+        [8, "blocked", `${BASE}/r/7a5c0010`],                    // no time sorts last in its tier
     ]);
     assert.equal(rows[0].label, "Amp thread · awaiting approval");
     assert.equal(rows[0].title, "river is waiting: approve a tool call");
     assert.equal(rows[1].title, "amplify-coord is waiting for your answer");
     assert.equal(rows[4].title, "lost-holder stopped heartbeating, still holds 7a5c0003");
     assert.equal(rows[2].waited, "1h 30m");
-    assert.equal(B.headline(rows), "7 things need you");
+    assert.equal(rows[4].waited, "30m", "a lost row waits since its last explicit heartbeat, not its start");
+    assert.equal(rows[7].waited, null);
+    assert.equal(B.headline(rows), "8 things need you");
 });
 
-test("left out: lost without a claim, ended, agent blocks, settled, cancelled, and non-waiting threads", () => {
+test("left out: lost without a live claim, completed evidence, ended, agent blocks, settled, cancelled, and non-waiting threads", () => {
     const rows = B.buildBasin(scene(), amp([thread(T1, "teleporting", 3), thread(T2, "error", 3), thread("T-01a20190-8edf-777f-86cb-98cb293c2f69", "idle", 3)]), { now: NOW });
     const keys = rows.map((r) => r.key);
     for (const k of ["lost:5e550002-0000-4000-8000-000000000002", "lost:5e550003-0000-4000-8000-000000000003",
         "blocked:7a5c0005-0000-4000-8000-000000000005", "decision:dec00002-0000-4000-8000-000000000002",
-        "blocked:7a5c0007-0000-4000-8000-000000000007", "merge:7a5c0006-0000-4000-8000-000000000006"])
+        "blocked:7a5c0007-0000-4000-8000-000000000007", "merge:7a5c0006-0000-4000-8000-000000000006",
+        "lost:5e550004-0000-4000-8000-000000000004", "merge:7a5c0009-0000-4000-8000-000000000009"])
         assert.ok(!keys.includes(k), k);
     assert.ok(!rows.some((r) => r.kind === "thread"), "unknown, error, and idle threads never enter the basin");
-    assert.equal(rows.length, 5);
+    assert.equal(rows.length, 6);
 });
 
 test("empty and missing inputs are calm", () => {
