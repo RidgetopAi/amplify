@@ -1,0 +1,2995 @@
+{
+ "meta": {
+  "kind": "replay-frames",
+  "label": "amplify load fixture (staged from the 04:00Z snapshot)",
+  "notice": "STAGED LOAD FIXTURE. Real amplify task and session records from fixtures/amplify-snapshot.json; stages, claims, leases and session liveness are rewritten by plugin/river/test/make-busy.mjs to exercise 8+ claims, an expired lease, a blocked eddy, a critic PASS and a REJECT. Not a capture of real state.",
+  "source": "mcp:brian.mandrel.ridgetopai.net project amplify",
+  "captured_by": "data-core (thread T-01a20161-d86d-7337-9b81-bbc70d3b28e9)",
+  "captured_at": "2026-11-22T04:03:17.000Z",
+  "replay_from": "2026-11-22T03:59:17.000Z",
+  "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+  "base_url": "https://brian.mandrel.ridgetopai.net",
+  "gaps": [
+   "MCP session list does not expose last_heartbeat_at, last_explicit_heartbeat_at, total_tokens, latest_activity, punch_activity or inbound/outbound_link_activity; they are null except the capturing orb's own heartbeat.",
+   "/api/sessions/:id bodies are derived from the records above by session_id, not fetched."
+  ]
+ },
+ "frames": [
+  {
+   "at": "2026-11-22T03:59:17.000Z",
+   "responses": {
+    "/api/projects": {
+     "projects": [
+      {
+       "id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "name": "amplify",
+       "description": "Mandrel-Amp Omarchy Theme Plugin",
+       "status": "active",
+       "context_count": 13,
+       "created_at": "2026-11-21T21:05:46.776Z",
+       "updated_at": "2026-11-21T21:05:57.990Z"
+      }
+     ]
+    },
+    "/api/sessions": [
+     {
+      "id": "4f96630e-4366-4dfa-8720-0433bc0edf6b",
+      "actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "shell-spike · worker",
+      "goal": "P0 plugin+shader spike punch a15523ac; thread T-01a20161-df74-71bf-9646-86f33e70c359",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T03:52:23.923Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "4af6ff22-9c34-45e6-b32e-5083bf4ed157",
+      "actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "data-core · worker",
+      "goal": "P0 data layer punch 0edf3b35; thread T-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T03:52:16.939Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": "2026-11-22T04:00:17.000Z",
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": "43163",
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "amplify-coord · coord",
+      "goal": "Coordinate Amplify: live Mandrel-driven Omarchy theme for Amp (plan, 3 directions, punches, build); thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T01:52:28.951Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 8,
+      "task_count": 16,
+      "decision_count": 4,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+      "actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "orb-lab · worker",
+      "goal": "Focused orb and Puck concepts; thread T-01a20118-13e1-733e-8177-fd282b86240d",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:47.491Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 2,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+      "actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-canopy · worker",
+      "goal": "Direction B Canopy mock; thread T-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:40.944Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+      "actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-orrery · worker",
+      "goal": "Direction A Orrery mock; thread T-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:40.771Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+      "actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-current · worker",
+      "goal": "Direction C Current mock; thread T-01a20118-0be7-714c-9dff-c4a11e076022",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:44.965Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": null,
+      "goal": null,
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T00:28:21.321Z",
+      "last_activity_at": "2026-11-22T00:28:21.321Z",
+      "ended_at": "2026-11-22T01:02:11.572Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": null,
+      "goal": null,
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T00:27:40.496Z",
+      "last_activity_at": "2026-11-22T00:27:55.455Z",
+      "ended_at": "2026-11-22T00:27:55.455Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7a59c252-17d2-422a-9f64-a28678c793f8",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-coord · coord",
+      "goal": "Role-token smoke test coordinator; thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:36:21.252Z",
+      "last_activity_at": "2026-11-21T21:41:48.118Z",
+      "ended_at": "2026-11-21T21:41:54.907Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 1,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7d26fa7f-182e-44b8-8b8b-1be22bada6af",
+      "actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-critic · critic",
+      "goal": "Role-token smoke critic; thread T-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:40:17.035Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "cda05272-ec7c-42ce-b622-4a97c732f465",
+      "actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-worker · worker",
+      "goal": "Role-token smoke builder; thread T-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:37:48.444Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     }
+    ],
+    "/api/tasks": [
+     {
+      "id": "45de8d89-5c5a-449d-8e5d-881dbf42e34f",
+      "title": "P3 · Installer, config, demo mode and docs",
+      "type": "feature",
+      "status": "todo",
+      "stage": "draft",
+      "priority": "high",
+      "assigned_to": "install",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:s",
+       "proof:test"
+      ],
+      "dependencies": [
+       "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+       "63e691ec-afa6-462c-85cb-31b3f38e1d82",
+       "85ff482a-0a02-4094-b913-c2feaa01797d",
+       "bc45ee1d-f717-42dd-8d85-88ca0f80202d",
+       "23a62966-c206-4de3-bc54-d817f5987a17",
+       "523461dd-765a-4050-9aa1-a88fc431ddf3"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:24.122Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "523461dd-765a-4050-9aa1-a88fc431ddf3",
+      "title": "P3 · Ambient music field and performance budget",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "ambient",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [
+       "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:23.290Z",
+      "updated_at": "2026-11-22T03:48:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "claim_expires_at": "2026-11-22T03:57:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "23a62966-c206-4de3-bc54-d817f5987a17",
+      "title": "P2 · Puck orb",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "puck",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:s",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:22.501Z",
+      "updated_at": "2026-11-22T03:47:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "claim_expires_at": "2026-11-22T04:02:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "bc45ee1d-f717-42dd-8d85-88ca0f80202d",
+      "title": "P2 · Panes: live stats, latest records, project switcher, quick links",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "panes",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:21.950Z",
+      "updated_at": "2026-11-22T03:46:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "claim_expires_at": "2026-11-22T04:06:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "85ff482a-0a02-4094-b913-c2feaa01797d",
+      "title": "P2 · Meridian focused orb",
+      "type": "feature",
+      "status": "blocked",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "meridian",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:l",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:21.399Z",
+      "updated_at": "2026-11-22T03:45:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": "human",
+      "claim_actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "claim_expires_at": "2026-11-22T04:11:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "63e691ec-afa6-462c-85cb-31b3f38e1d82",
+      "title": "P1 · Needs-you basin and Amp live state",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "needs-you",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:20.849Z",
+      "updated_at": "2026-11-22T03:44:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "claim_expires_at": "2026-11-22T04:18:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+      "title": "P1 · Desktop orbs: roles, five liveness states, lease cue",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "orbs",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:20.297Z",
+      "updated_at": "2026-11-22T03:43:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "claim_expires_at": "2026-11-22T04:24:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+      "title": "P1 · Current river scene",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "river",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:l",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:19.728Z",
+      "updated_at": "2026-11-22T03:42:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "claim_expires_at": "2026-11-22T04:30:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "a15523ac-9b32-4a74-86f4-80f962d54465",
+      "title": "P0 · Plugin skeleton and shader pipeline spike",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:19.167Z",
+      "updated_at": "2026-11-22T03:40:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "claim_expires_at": "2026-11-22T04:44:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+      "title": "P0 · Data layer: viewer-contract client, liveness clock, replay",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:18.579Z",
+      "updated_at": "2026-11-22T03:41:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "claim_expires_at": "2026-11-22T04:37:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "80af28cb-b345-4e05-9e59-9fbaea22de2b",
+      "title": "Amplify build: Current river + Meridian focus",
+      "type": "feature",
+      "status": "todo",
+      "stage": "ready",
+      "priority": "high",
+      "assigned_to": "amplify-coord",
+      "tags": [
+       "amplify",
+       "phase:build"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:17.753Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "b5a51e99-40f5-47b6-9ddc-b74eebe304e6",
+      "title": "Focused orb craft: 3 focused-orb variants + Puck orb",
+      "type": "feature",
+      "status": "completed",
+      "stage": "merged",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:36.267Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:32:13.068Z",
+      "completed_at": "2026-11-22T03:50:16.307Z",
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "b416eb7d-abf8-4120-9d36-8644b2c8115d",
+      "title": "Direction C mock: Current (punch lanes as a flowing current, operator view)",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "evidence",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:35.821Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:32:09.192Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "6bbaf7d0-0ae8-4643-8922-75fed624dc2e",
+      "title": "Direction B mock: Canopy (TreeWalker-first: the work as a growing tree)",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "verifying",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:35.368Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:32:00.456Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "379c80c6-db40-4b73-8c5b-c0a2b6efd13e",
+      "title": "Direction A mock: Orrery (projects as star systems, orbs in orbit)",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "verifying",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:34.916Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:31:59.167Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "e953b166-5c12-4b81-94aa-65b49cb9ce2e",
+      "title": "Amplify plan: research, 3 directions with mocks, punch breakdown",
+      "type": "feature",
+      "status": "completed",
+      "stage": "merged",
+      "priority": "high",
+      "assigned_to": "amplify-coord",
+      "tags": [
+       "amplify",
+       "phase:plan"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:21:34.404Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": "2026-11-22T03:50:34.971Z",
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "f5dc63e9-2f3e-4301-a73b-4d948b2adb47",
+      "title": "Smoke: role-token punch split (test:smoke)",
+      "type": "test",
+      "status": "cancelled",
+      "stage": null,
+      "priority": "low",
+      "assigned_to": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "tags": [
+       "test:smoke"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-21T21:37:01.929Z",
+      "updated_at": "2026-11-22T00:27:48.478Z",
+      "started_at": "2026-11-21T21:38:25.425Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     }
+    ],
+    "/api/contexts": {
+     "contexts": [
+      {
+       "id": "53163e57-4ce0-4907-af33-d511f2053861",
+       "context_type": "handoff",
+       "content": "MODE: build\nWHERE WE ARE: Brian chose direction C (Current) with the Meridian focused orb (c755578f). The plan spine e953b166 and its four design tasks are completed. The build spine is 80af28cb on branch amp-amplify-build, with 10 punches ",
+       "tags": [
+        "amplify",
+        "ref:resume"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:50:36.270Z",
+       "trust": {
+        "band": "unproven"
+       }
+      },
+      {
+       "id": "cae2c3da-41cd-4672-be6d-d0d2387856ff",
+       "context_type": "handoff",
+       "content": "MODE: facilitate (waiting on Brian's direction pick)\nWHERE WE ARE: Plan step for Amplify. Research is done (4c92dda1), the viewer contract is recorded (22d73eeb), and the render host is Quickshell QML (25eced40). Three direction mocks are d",
+       "tags": [
+        "amplify",
+        "ref:resume"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:39:45.131Z",
+       "trust": {
+        "band": "superseded"
+       }
+      },
+      {
+       "id": "8593dade-e850-4de1-bbf7-cf9e9b8dfb5d",
+       "context_type": "discussion",
+       "content": "Coordinator review of orb-lab (01e8ede7, decision 49f5d444). Claim released and verified (b5a51e99 claimLive false). I agree with Meridian (the time globe) as the focus object: it fills the screen height, and its mapping is the most data-ho",
+       "tags": [
+        "amplify",
+        "review",
+        "orb-lab"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:38:54.272Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "01e8ede7-c2b9-4ff8-93eb-053d8cf4c822",
+       "context_type": "completion",
+       "content": "orb-lab completion: focused-orb concepts + Puck ready. Artifact \"Amplify Orb Lab\": https://ampcode.com/artifacts/visuals/amplify-orb-lab-e1e9eb1a-50d9-49d4-9f57-ae9a38263813\nWHAT: one self-contained WebGL1 page (GLSL ES 1.0, uniforms + text",
+       "tags": [
+        "amplify",
+        "orb-lab",
+        "focused-orb"
+       ],
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T03:37:32.642Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "b1f250f1-5293-49ee-8f64-f0a2c983ed2a",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction B \"Canopy\" (398f585b). Claim released and verified (6bbaf7d0 claimLive false). Strengths: the most distinctive of the three and the only one that shows the work's story (decided → built → next) and TreeWalker",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-b"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:03:36.748Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "0cf5437c-9453-4e97-afe9-ba238b819ff9",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction A \"Orrery\" (89d7e652, grammar decision f59ac7e4). Claim released and verified (379c80c6 claimLive false). Strengths: the antique-instrument look is calm and clearly distinct from pulse; the coord stands apart",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-a"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:02:39.177Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "398f585b-97db-4843-a8b0-9049edc23519",
+       "context_type": "completion",
+       "content": "design-canopy: Direction B \"Canopy\" mock ready.\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-b-canopy-477e3f13-4e25-47d5-a864-f82c3a0ce531 (one self-contained HTML, Canvas 2D + 2 WebGL fragment shaders, no libs or netwo",
+       "tags": [
+        "amplify",
+        "design",
+        "direction-b"
+       ],
+       "session_id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+       "created_at": "2026-11-22T03:02:16.683Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "89d7e652-757d-450e-9eb4-2e3d887afe71",
+       "context_type": "completion",
+       "content": "design-orrery: Direction A (Orrery) mock ready.\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-a-orrery-1592f5e5-f6a1-480c-ba9a-721ed67da175 (one self-contained HTML file: WebGL GLSL for the nebula, orbs, and star; Canvas",
+       "tags": [
+        "amplify",
+        "design",
+        "direction-a"
+       ],
+       "session_id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "created_at": "2026-11-22T03:01:22.138Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "f4137a51-6397-400e-a468-d99ff19b77e7",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction C \"Current\" (64b3a720). Claim released and verified (b416eb7d claimLive false). Strengths: the warm hue is used only for needs-you items, so the needs-you basin reads instantly; the pipeline state is visible;",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-c"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:01:18.224Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "64b3a720-a29f-4eb5-8398-2ed998442a30",
+       "context_type": "completion",
+       "content": "Direction C \"Current\" mock ready (design-current).\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-c-current-4c10c08f-57e3-478c-88ab-ca5c8dc53dbf (Amp visual artifact, folder visuals; thread T-01a20118-0be7-714c-9dff-c4a11",
+       "tags": [
+        "amplify",
+        "direction-c",
+        "design",
+        "mock"
+       ],
+       "session_id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "created_at": "2026-11-22T02:59:41.243Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "96fdac2e-2b94-4af6-b235-787a7f11cfcb",
+       "context_type": "error",
+       "content": "orb-lab error (fixed in v2/v3): two shader bugs worth remembering for the Quickshell build.\n1) Mercury v1 looked up its reflection map with atan(r.y,r.x) around the view axis. That mapping is singular at the centre of the sphere (r ≈ (0,0,-",
+       "tags": [
+        "amplify",
+        "orb-lab",
+        "shader"
+       ],
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T02:57:08.872Z",
+       "trust": {
+        "band": "superseded"
+       }
+      },
+      {
+       "id": "22d73eeb-a316-4c10-b02c-5675f36f109a",
+       "context_type": "planning",
+       "content": "Amplify viewer contract, from Brian's mandrel-viewer-data.md (DRAFT v0). Governs every design and build orb.\nRULES: viewer is read-only; every action is \"open in Mandrel\" (<base>/r/<id8> works for sessions, contexts, tasks, decisions, proje",
+       "tags": [
+        "amplify",
+        "viewer-contract",
+        "ref:amplify-viewer-contract"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:33:32.574Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "4c92dda1-ccac-448b-ad0f-01da62971076",
+       "context_type": "planning",
+       "content": "Amplify research findings (2026-11-22).\nOMARCHY: Current Omarchy (4.0 alpha, branch quattro) runs desktop+wallpaper in Quickshell (shell/plugins/background/Background.qml uses WlrLayer.Background + Bottom MouseArea). Themes are colors.toml ",
+       "tags": [
+        "amplify",
+        "research",
+        "ref:amplify-research"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:13.788Z",
+       "trust": {
+        "band": "trusted"
+       }
+      }
+     ]
+    },
+    "/api/decisions": {
+     "decisions": [
+      {
+       "id": "25eced40-adc4-4d4f-97ad-6f70b5a349eb",
+       "title": "Amplify: render host is an Omarchy shell plugin in Quickshell QML (spike first)",
+       "decision_type": "architecture",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:15.108Z"
+      },
+      {
+       "id": "c755578f-63c0-4eeb-aea9-517b1cbe7f38",
+       "title": "Amplify: which direction to build",
+       "decision_type": "ui_ux",
+       "impact_level": "critical",
+       "status": "active",
+       "answer_status": "open",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:38:54.722Z"
+      },
+      {
+       "id": "f74dcdfc-6af0-44ea-bc03-d6048bf59f44",
+       "title": "Amplify: how the desktop theme authenticates to Mandrel (read path)",
+       "decision_type": "security",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "open",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:14.311Z"
+      },
+      {
+       "id": "c1f75776-d2c5-40ca-a669-bdb03305f34f",
+       "title": "Amplify Current: how tasks map to river lanes",
+       "decision_type": "ui_ux",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:50:16.891Z"
+      },
+      {
+       "id": "f59ac7e4-167d-476d-a84e-5547e2771781",
+       "title": "Orrery (Direction A): visual grammar a builder must keep",
+       "decision_type": "architecture",
+       "impact_level": "medium",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "created_at": "2026-11-22T02:39:38.322Z"
+      },
+      {
+       "id": "23973614-bc62-4ddc-9a31-4b9bfca7901f",
+       "title": "Direction C (Current): warm hue reserved for 'needs you'; one shader program per orb role; liveness on client clock",
+       "decision_type": "ui_ux",
+       "impact_level": "medium",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "created_at": "2026-11-22T02:58:44.566Z"
+      },
+      {
+       "id": "49f5d444-ff7c-4131-af33-8f448be3cf80",
+       "title": "Focused orb: Meridian time globe (longitude = time, latitude = record lane, lease = lit future, loupe for reading)",
+       "decision_type": "ui_ux",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T03:36:50.069Z"
+      }
+     ]
+    },
+    "/api/sessions/:id": {
+     "4f96630e-4366-4dfa-8720-0433bc0edf6b": {
+      "session": {
+       "id": "4f96630e-4366-4dfa-8720-0433bc0edf6b",
+       "actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "shell-spike · worker",
+       "goal": "P0 plugin+shader spike punch a15523ac; thread T-01a20161-df74-71bf-9646-86f33e70c359",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T03:52:23.923Z",
+       "last_activity_at": "2026-11-22T03:52:49.826Z",
+       "ended_at": null,
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "a15523ac-9b32-4a74-86f4-80f962d54465",
+        "title": "P0 · Plugin skeleton and shader pipeline spike",
+        "status": "in_progress"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "4af6ff22-9c34-45e6-b32e-5083bf4ed157": {
+      "session": {
+       "id": "4af6ff22-9c34-45e6-b32e-5083bf4ed157",
+       "actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "data-core · worker",
+       "goal": "P0 data layer punch 0edf3b35; thread T-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T03:52:16.939Z",
+       "last_activity_at": "2026-11-22T03:52:45.547Z",
+       "ended_at": null,
+       "last_heartbeat_at": "2026-11-22T04:00:17.000Z",
+       "last_explicit_heartbeat_at": "2026-11-22T04:00:17.000Z",
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": "43163",
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+        "title": "P0 · Data layer: viewer-contract client, liveness clock, replay",
+        "status": "in_progress"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "de463c37-c3d0-42ac-b3a3-e63d4e64f814": {
+      "session": {
+       "id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "amplify-coord · coord",
+       "goal": "Coordinate Amplify: live Mandrel-driven Omarchy theme for Amp (plan, 3 directions, punches, build); thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T01:52:28.951Z",
+       "last_activity_at": "2026-11-22T03:50:41.824Z",
+       "ended_at": null,
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 8,
+       "task_count": 16,
+       "decision_count": 4,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "53163e57-4ce0-4907-af33-d511f2053861",
+        "context_type": "handoff",
+        "created_at": "2026-11-22T03:50:36.270Z"
+       },
+       {
+        "id": "cae2c3da-41cd-4672-be6d-d0d2387856ff",
+        "context_type": "handoff",
+        "created_at": "2026-11-22T03:39:45.131Z"
+       },
+       {
+        "id": "8593dade-e850-4de1-bbf7-cf9e9b8dfb5d",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:38:54.272Z"
+       },
+       {
+        "id": "b1f250f1-5293-49ee-8f64-f0a2c983ed2a",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:03:36.748Z"
+       },
+       {
+        "id": "0cf5437c-9453-4e97-afe9-ba238b819ff9",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:02:39.177Z"
+       },
+       {
+        "id": "f4137a51-6397-400e-a468-d99ff19b77e7",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:01:18.224Z"
+       },
+       {
+        "id": "22d73eeb-a316-4c10-b02c-5675f36f109a",
+        "context_type": "planning",
+        "created_at": "2026-11-22T02:33:32.574Z"
+       },
+       {
+        "id": "4c92dda1-ccac-448b-ad0f-01da62971076",
+        "context_type": "planning",
+        "created_at": "2026-11-22T02:29:13.788Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "25eced40-adc4-4d4f-97ad-6f70b5a349eb",
+        "title": "Amplify: render host is an Omarchy shell plugin in Quickshell QML (spike first)",
+        "created_at": "2026-11-22T02:29:15.108Z"
+       },
+       {
+        "id": "c755578f-63c0-4eeb-aea9-517b1cbe7f38",
+        "title": "Amplify: which direction to build",
+        "created_at": "2026-11-22T03:38:54.722Z"
+       },
+       {
+        "id": "f74dcdfc-6af0-44ea-bc03-d6048bf59f44",
+        "title": "Amplify: how the desktop theme authenticates to Mandrel (read path)",
+        "created_at": "2026-11-22T02:29:14.311Z"
+       },
+       {
+        "id": "c1f75776-d2c5-40ca-a669-bdb03305f34f",
+        "title": "Amplify Current: how tasks map to river lanes",
+        "created_at": "2026-11-22T03:50:16.891Z"
+       }
+      ],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d": {
+      "session": {
+       "id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "orb-lab · worker",
+       "goal": "Focused orb and Puck concepts; thread T-01a20118-13e1-733e-8177-fd282b86240d",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:47.491Z",
+       "last_activity_at": "2026-11-22T03:37:39.071Z",
+       "ended_at": "2026-11-22T03:37:39.071Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 2,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "01e8ede7-c2b9-4ff8-93eb-053d8cf4c822",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:37:32.642Z"
+       },
+       {
+        "id": "96fdac2e-2b94-4af6-b235-787a7f11cfcb",
+        "context_type": "error",
+        "created_at": "2026-11-22T02:57:08.872Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "49f5d444-ff7c-4131-af33-8f448be3cf80",
+        "title": "Focused orb: Meridian time globe (longitude = time, latitude = record lane, lease = lit future, loupe for reading)",
+        "created_at": "2026-11-22T03:36:50.069Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "b5a51e99-40f5-47b6-9ddc-b74eebe304e6",
+        "title": "Focused orb craft: 3 focused-orb variants + Puck orb",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "80c16aeb-c641-4690-ba33-b7aec7f2fd60": {
+      "session": {
+       "id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+       "actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-canopy · worker",
+       "goal": "Direction B Canopy mock; thread T-01a20118-0473-722d-97f0-f8c8fff9b771",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:40.944Z",
+       "last_activity_at": "2026-11-22T03:02:31.126Z",
+       "ended_at": "2026-11-22T03:02:31.125Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "398f585b-97db-4843-a8b0-9049edc23519",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:02:16.683Z"
+       }
+      ],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "6bbaf7d0-0ae8-4643-8922-75fed624dc2e",
+        "title": "Direction B mock: Canopy (TreeWalker-first: the work as a growing tree)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "b324f5cc-15c4-4634-8fba-31c9d7213642": {
+      "session": {
+       "id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-orrery · worker",
+       "goal": "Direction A Orrery mock; thread T-01a20117-fac3-71fb-9bef-c7c744e3d050",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:40.771Z",
+       "last_activity_at": "2026-11-22T03:01:34.677Z",
+       "ended_at": "2026-11-22T03:01:34.677Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "89d7e652-757d-450e-9eb4-2e3d887afe71",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:01:22.138Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "f59ac7e4-167d-476d-a84e-5547e2771781",
+        "title": "Orrery (Direction A): visual grammar a builder must keep",
+        "created_at": "2026-11-22T02:39:38.322Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "379c80c6-db40-4b73-8c5b-c0a2b6efd13e",
+        "title": "Direction A mock: Orrery (projects as star systems, orbs in orbit)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "4ac9c312-be78-43b0-98a7-1978fa2e9361": {
+      "session": {
+       "id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-current · worker",
+       "goal": "Direction C Current mock; thread T-01a20118-0be7-714c-9dff-c4a11e076022",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:44.965Z",
+       "last_activity_at": "2026-11-22T02:59:47.864Z",
+       "ended_at": "2026-11-22T02:59:54.061Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "64b3a720-a29f-4eb5-8398-2ed998442a30",
+        "context_type": "completion",
+        "created_at": "2026-11-22T02:59:41.243Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "23973614-bc62-4ddc-9a31-4b9bfca7901f",
+        "title": "Direction C (Current): warm hue reserved for 'needs you'; one shader program per orb role; liveness on client clock",
+        "created_at": "2026-11-22T02:58:44.566Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "b416eb7d-abf8-4120-9d36-8644b2c8115d",
+        "title": "Direction C mock: Current (punch lanes as a flowing current, operator view)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9": {
+      "session": {
+       "id": "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": null,
+       "goal": null,
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T00:28:21.321Z",
+       "last_activity_at": "2026-11-22T00:28:21.321Z",
+       "ended_at": "2026-11-22T01:02:11.572Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f": {
+      "session": {
+       "id": "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": null,
+       "goal": null,
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T00:27:40.496Z",
+       "last_activity_at": "2026-11-22T00:27:55.455Z",
+       "ended_at": "2026-11-22T00:27:55.455Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7a59c252-17d2-422a-9f64-a28678c793f8": {
+      "session": {
+       "id": "7a59c252-17d2-422a-9f64-a28678c793f8",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-coord · coord",
+       "goal": "Role-token smoke test coordinator; thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:36:21.252Z",
+       "last_activity_at": "2026-11-21T21:41:48.118Z",
+       "ended_at": "2026-11-21T21:41:54.907Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 1,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7d26fa7f-182e-44b8-8b8b-1be22bada6af": {
+      "session": {
+       "id": "7d26fa7f-182e-44b8-8b8b-1be22bada6af",
+       "actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-critic · critic",
+       "goal": "Role-token smoke critic; thread T-01a2000d-3588-7028-8a99-2878d80bbeb1",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:40:17.035Z",
+       "last_activity_at": "2026-11-21T21:41:14.384Z",
+       "ended_at": "2026-11-21T21:41:21.198Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "cda05272-ec7c-42ce-b622-4a97c732f465": {
+      "session": {
+       "id": "cda05272-ec7c-42ce-b622-4a97c732f465",
+       "actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-worker · worker",
+       "goal": "Role-token smoke builder; thread T-01a2000a-f585-7113-89ae-058d1b9cf53b",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:37:48.444Z",
+       "last_activity_at": "2026-11-21T21:39:13.161Z",
+       "ended_at": "2026-11-21T21:39:19.960Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "f5dc63e9-2f3e-4301-a73b-4d948b2adb47",
+        "title": "Smoke: role-token punch split (test:smoke)",
+        "status": "cancelled"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     }
+    }
+   }
+  },
+  {
+   "at": "2026-11-22T04:01:17.000Z",
+   "responses": {
+    "/api/projects": {
+     "projects": [
+      {
+       "id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "name": "amplify",
+       "description": "Mandrel-Amp Omarchy Theme Plugin",
+       "status": "active",
+       "context_count": 13,
+       "created_at": "2026-11-21T21:05:46.776Z",
+       "updated_at": "2026-11-21T21:05:57.990Z"
+      }
+     ]
+    },
+    "/api/sessions": [
+     {
+      "id": "4f96630e-4366-4dfa-8720-0433bc0edf6b",
+      "actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "shell-spike · worker",
+      "goal": "P0 plugin+shader spike punch a15523ac; thread T-01a20161-df74-71bf-9646-86f33e70c359",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T03:52:23.923Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "4af6ff22-9c34-45e6-b32e-5083bf4ed157",
+      "actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "data-core · worker",
+      "goal": "P0 data layer punch 0edf3b35; thread T-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T03:52:16.939Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": "2026-11-22T04:00:17.000Z",
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": "43163",
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "amplify-coord · coord",
+      "goal": "Coordinate Amplify: live Mandrel-driven Omarchy theme for Amp (plan, 3 directions, punches, build); thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "state": "active",
+      "liveness": "live",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T01:52:28.951Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 8,
+      "task_count": 16,
+      "decision_count": 4,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+      "actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "orb-lab · worker",
+      "goal": "Focused orb and Puck concepts; thread T-01a20118-13e1-733e-8177-fd282b86240d",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:47.491Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 2,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+      "actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-canopy · worker",
+      "goal": "Direction B Canopy mock; thread T-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:40.944Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+      "actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-orrery · worker",
+      "goal": "Direction A Orrery mock; thread T-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:40.771Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+      "actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "design-current · worker",
+      "goal": "Direction C Current mock; thread T-01a20118-0be7-714c-9dff-c4a11e076022",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T02:31:44.965Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 1,
+      "task_count": 0,
+      "decision_count": 1,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": null,
+      "goal": null,
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T00:28:21.321Z",
+      "last_activity_at": "2026-11-22T00:28:21.321Z",
+      "ended_at": "2026-11-22T01:02:11.572Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": null,
+      "goal": null,
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-22T00:27:40.496Z",
+      "last_activity_at": "2026-11-22T00:27:55.455Z",
+      "ended_at": "2026-11-22T00:27:55.455Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7a59c252-17d2-422a-9f64-a28678c793f8",
+      "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-coord · coord",
+      "goal": "Role-token smoke test coordinator; thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "state": "ended",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:36:21.252Z",
+      "last_activity_at": "2026-11-21T21:41:48.118Z",
+      "ended_at": "2026-11-21T21:41:54.907Z",
+      "last_heartbeat_at": null,
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 1,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "7d26fa7f-182e-44b8-8b8b-1be22bada6af",
+      "actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-critic · critic",
+      "goal": "Role-token smoke critic; thread T-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:40:17.035Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     },
+     {
+      "id": "cda05272-ec7c-42ce-b622-4a97c732f465",
+      "actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+      "title": "smoke-worker · worker",
+      "goal": "Role-token smoke builder; thread T-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "state": "active",
+      "liveness": "ended",
+      "creation_reason": "connect",
+      "started_at": "2026-11-21T21:37:48.444Z",
+      "last_activity_at": "2026-11-22T03:58:17.000Z",
+      "ended_at": null,
+      "last_heartbeat_at": "2026-11-22T03:59:17.000Z",
+      "last_explicit_heartbeat_at": null,
+      "context_count": 0,
+      "task_count": 0,
+      "decision_count": 0,
+      "total_tokens": null,
+      "latest_activity": null,
+      "punch_activity": null
+     }
+    ],
+    "/api/tasks": [
+     {
+      "id": "45de8d89-5c5a-449d-8e5d-881dbf42e34f",
+      "title": "P3 · Installer, config, demo mode and docs",
+      "type": "feature",
+      "status": "todo",
+      "stage": "draft",
+      "priority": "high",
+      "assigned_to": "install",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:s",
+       "proof:test"
+      ],
+      "dependencies": [
+       "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+       "63e691ec-afa6-462c-85cb-31b3f38e1d82",
+       "85ff482a-0a02-4094-b913-c2feaa01797d",
+       "bc45ee1d-f717-42dd-8d85-88ca0f80202d",
+       "23a62966-c206-4de3-bc54-d817f5987a17",
+       "523461dd-765a-4050-9aa1-a88fc431ddf3"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:24.122Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "523461dd-765a-4050-9aa1-a88fc431ddf3",
+      "title": "P3 · Ambient music field and performance budget",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "ambient",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [
+       "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:23.290Z",
+      "updated_at": "2026-11-22T03:48:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+      "claim_expires_at": "2026-11-22T03:57:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "23a62966-c206-4de3-bc54-d817f5987a17",
+      "title": "P2 · Puck orb",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "puck",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:s",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:22.501Z",
+      "updated_at": "2026-11-22T03:47:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "claim_expires_at": "2026-11-22T04:02:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "bc45ee1d-f717-42dd-8d85-88ca0f80202d",
+      "title": "P2 · Panes: live stats, latest records, project switcher, quick links",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "panes",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:21.950Z",
+      "updated_at": "2026-11-22T03:46:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+      "claim_expires_at": "2026-11-22T04:06:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "85ff482a-0a02-4094-b913-c2feaa01797d",
+      "title": "P2 · Meridian focused orb",
+      "type": "feature",
+      "status": "blocked",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "meridian",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:l",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:21.399Z",
+      "updated_at": "2026-11-22T03:45:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": "human",
+      "claim_actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "claim_expires_at": "2026-11-22T04:11:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "63e691ec-afa6-462c-85cb-31b3f38e1d82",
+      "title": "P1 · Needs-you basin and Amp live state",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "needs-you",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:20.849Z",
+      "updated_at": "2026-11-22T03:44:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "claim_expires_at": "2026-11-22T04:18:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "a40d7440-0e5e-4728-ae23-53f9b776eda5",
+      "title": "P1 · Desktop orbs: roles, five liveness states, lease cue",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "orbs",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:20.297Z",
+      "updated_at": "2026-11-22T03:43:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "claim_expires_at": "2026-11-22T04:24:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "e3f2e1a4-fae8-4cb0-8f3e-a202973a8836",
+      "title": "P1 · Current river scene",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "river",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:l",
+       "proof:browser"
+      ],
+      "dependencies": [
+       "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+       "a15523ac-9b32-4a74-86f4-80f962d54465"
+      ],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:19.728Z",
+      "updated_at": "2026-11-22T03:42:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "claim_expires_at": "2026-11-22T04:30:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "a15523ac-9b32-4a74-86f4-80f962d54465",
+      "title": "P0 · Plugin skeleton and shader pipeline spike",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:browser"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:19.167Z",
+      "updated_at": "2026-11-22T03:40:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+      "claim_expires_at": "2026-11-22T04:44:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+      "title": "P0 · Data layer: viewer-contract client, liveness clock, replay",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "claimed",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "tags": [
+       "amplify",
+       "punch-list",
+       "size:m",
+       "proof:test"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:18.579Z",
+      "updated_at": "2026-11-22T03:41:17.000Z",
+      "started_at": "2026-11-22T03:40:17.000Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+      "claim_expires_at": "2026-11-22T04:37:17.000Z",
+      "claim_live": true
+     },
+     {
+      "id": "80af28cb-b345-4e05-9e59-9fbaea22de2b",
+      "title": "Amplify build: Current river + Meridian focus",
+      "type": "feature",
+      "status": "todo",
+      "stage": "ready",
+      "priority": "high",
+      "assigned_to": "amplify-coord",
+      "tags": [
+       "amplify",
+       "phase:build"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T03:50:17.753Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "b5a51e99-40f5-47b6-9ddc-b74eebe304e6",
+      "title": "Focused orb craft: 3 focused-orb variants + Puck orb",
+      "type": "feature",
+      "status": "completed",
+      "stage": "merged",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:36.267Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:32:13.068Z",
+      "completed_at": "2026-11-22T03:50:16.307Z",
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "b416eb7d-abf8-4120-9d36-8644b2c8115d",
+      "title": "Direction C mock: Current (punch lanes as a flowing current, operator view)",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "evidence",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:35.821Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": "2026-11-22T02:32:09.192Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "6bbaf7d0-0ae8-4643-8922-75fed624dc2e",
+      "title": "Direction B mock: Canopy (TreeWalker-first: the work as a growing tree)",
+      "type": "feature",
+      "status": "todo",
+      "stage": "ready",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:35.368Z",
+      "updated_at": "2026-11-22T04:01:17.000Z",
+      "started_at": "2026-11-22T02:32:00.456Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "379c80c6-db40-4b73-8c5b-c0a2b6efd13e",
+      "title": "Direction A mock: Orrery (projects as star systems, orbs in orbit)",
+      "type": "feature",
+      "status": "in_progress",
+      "stage": "evidence",
+      "priority": "high",
+      "assigned_to": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+      "tags": [
+       "amplify",
+       "phase:plan",
+       "design"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:29:34.916Z",
+      "updated_at": "2026-11-22T04:01:17.000Z",
+      "started_at": "2026-11-22T02:31:59.167Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "e953b166-5c12-4b81-94aa-65b49cb9ce2e",
+      "title": "Amplify plan: research, 3 directions with mocks, punch breakdown",
+      "type": "feature",
+      "status": "completed",
+      "stage": "merged",
+      "priority": "high",
+      "assigned_to": "amplify-coord",
+      "tags": [
+       "amplify",
+       "phase:plan"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-22T02:21:34.404Z",
+      "updated_at": "2026-11-22T03:52:17.000Z",
+      "started_at": null,
+      "completed_at": "2026-11-22T03:50:34.971Z",
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     },
+     {
+      "id": "f5dc63e9-2f3e-4301-a73b-4d948b2adb47",
+      "title": "Smoke: role-token punch split (test:smoke)",
+      "type": "test",
+      "status": "cancelled",
+      "stage": null,
+      "priority": "low",
+      "assigned_to": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+      "tags": [
+       "test:smoke"
+      ],
+      "dependencies": [],
+      "progress": 0,
+      "created_at": "2026-11-21T21:37:01.929Z",
+      "updated_at": "2026-11-22T00:27:48.478Z",
+      "started_at": "2026-11-21T21:38:25.425Z",
+      "completed_at": null,
+      "blocked_on": null,
+      "claim_actor": null,
+      "claim_expires_at": null,
+      "claim_live": false
+     }
+    ],
+    "/api/contexts": {
+     "contexts": [
+      {
+       "id": "53163e57-4ce0-4907-af33-d511f2053861",
+       "context_type": "handoff",
+       "content": "MODE: build\nWHERE WE ARE: Brian chose direction C (Current) with the Meridian focused orb (c755578f). The plan spine e953b166 and its four design tasks are completed. The build spine is 80af28cb on branch amp-amplify-build, with 10 punches ",
+       "tags": [
+        "amplify",
+        "ref:resume"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:50:36.270Z",
+       "trust": {
+        "band": "unproven"
+       }
+      },
+      {
+       "id": "cae2c3da-41cd-4672-be6d-d0d2387856ff",
+       "context_type": "handoff",
+       "content": "MODE: facilitate (waiting on Brian's direction pick)\nWHERE WE ARE: Plan step for Amplify. Research is done (4c92dda1), the viewer contract is recorded (22d73eeb), and the render host is Quickshell QML (25eced40). Three direction mocks are d",
+       "tags": [
+        "amplify",
+        "ref:resume"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:39:45.131Z",
+       "trust": {
+        "band": "superseded"
+       }
+      },
+      {
+       "id": "8593dade-e850-4de1-bbf7-cf9e9b8dfb5d",
+       "context_type": "discussion",
+       "content": "Coordinator review of orb-lab (01e8ede7, decision 49f5d444). Claim released and verified (b5a51e99 claimLive false). I agree with Meridian (the time globe) as the focus object: it fills the screen height, and its mapping is the most data-ho",
+       "tags": [
+        "amplify",
+        "review",
+        "orb-lab"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:38:54.272Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "01e8ede7-c2b9-4ff8-93eb-053d8cf4c822",
+       "context_type": "completion",
+       "content": "orb-lab completion: focused-orb concepts + Puck ready. Artifact \"Amplify Orb Lab\": https://ampcode.com/artifacts/visuals/amplify-orb-lab-e1e9eb1a-50d9-49d4-9f57-ae9a38263813\nWHAT: one self-contained WebGL1 page (GLSL ES 1.0, uniforms + text",
+       "tags": [
+        "amplify",
+        "orb-lab",
+        "focused-orb"
+       ],
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T03:37:32.642Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "b1f250f1-5293-49ee-8f64-f0a2c983ed2a",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction B \"Canopy\" (398f585b). Claim released and verified (6bbaf7d0 claimLive false). Strengths: the most distinctive of the three and the only one that shows the work's story (decided → built → next) and TreeWalker",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-b"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:03:36.748Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "0cf5437c-9453-4e97-afe9-ba238b819ff9",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction A \"Orrery\" (89d7e652, grammar decision f59ac7e4). Claim released and verified (379c80c6 claimLive false). Strengths: the antique-instrument look is calm and clearly distinct from pulse; the coord stands apart",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-a"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:02:39.177Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "398f585b-97db-4843-a8b0-9049edc23519",
+       "context_type": "completion",
+       "content": "design-canopy: Direction B \"Canopy\" mock ready.\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-b-canopy-477e3f13-4e25-47d5-a864-f82c3a0ce531 (one self-contained HTML, Canvas 2D + 2 WebGL fragment shaders, no libs or netwo",
+       "tags": [
+        "amplify",
+        "design",
+        "direction-b"
+       ],
+       "session_id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+       "created_at": "2026-11-22T03:02:16.683Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "89d7e652-757d-450e-9eb4-2e3d887afe71",
+       "context_type": "completion",
+       "content": "design-orrery: Direction A (Orrery) mock ready.\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-a-orrery-1592f5e5-f6a1-480c-ba9a-721ed67da175 (one self-contained HTML file: WebGL GLSL for the nebula, orbs, and star; Canvas",
+       "tags": [
+        "amplify",
+        "design",
+        "direction-a"
+       ],
+       "session_id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "created_at": "2026-11-22T03:01:22.138Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "f4137a51-6397-400e-a468-d99ff19b77e7",
+       "context_type": "discussion",
+       "content": "Coordinator review of Direction C \"Current\" (64b3a720). Claim released and verified (b416eb7d claimLive false). Strengths: the warm hue is used only for needs-you items, so the needs-you basin reads instantly; the pipeline state is visible;",
+       "tags": [
+        "amplify",
+        "review",
+        "direction-c"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:01:18.224Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "64b3a720-a29f-4eb5-8398-2ed998442a30",
+       "context_type": "completion",
+       "content": "Direction C \"Current\" mock ready (design-current).\nARTIFACT: https://ampcode.com/artifacts/visuals/amplify-direction-c-current-4c10c08f-57e3-478c-88ab-ca5c8dc53dbf (Amp visual artifact, folder visuals; thread T-01a20118-0be7-714c-9dff-c4a11",
+       "tags": [
+        "amplify",
+        "direction-c",
+        "design",
+        "mock"
+       ],
+       "session_id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "created_at": "2026-11-22T02:59:41.243Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "96fdac2e-2b94-4af6-b235-787a7f11cfcb",
+       "context_type": "error",
+       "content": "orb-lab error (fixed in v2/v3): two shader bugs worth remembering for the Quickshell build.\n1) Mercury v1 looked up its reflection map with atan(r.y,r.x) around the view axis. That mapping is singular at the centre of the sphere (r ≈ (0,0,-",
+       "tags": [
+        "amplify",
+        "orb-lab",
+        "shader"
+       ],
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T02:57:08.872Z",
+       "trust": {
+        "band": "superseded"
+       }
+      },
+      {
+       "id": "22d73eeb-a316-4c10-b02c-5675f36f109a",
+       "context_type": "planning",
+       "content": "Amplify viewer contract, from Brian's mandrel-viewer-data.md (DRAFT v0). Governs every design and build orb.\nRULES: viewer is read-only; every action is \"open in Mandrel\" (<base>/r/<id8> works for sessions, contexts, tasks, decisions, proje",
+       "tags": [
+        "amplify",
+        "viewer-contract",
+        "ref:amplify-viewer-contract"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:33:32.574Z",
+       "trust": {
+        "band": "trusted"
+       }
+      },
+      {
+       "id": "4c92dda1-ccac-448b-ad0f-01da62971076",
+       "context_type": "planning",
+       "content": "Amplify research findings (2026-11-22).\nOMARCHY: Current Omarchy (4.0 alpha, branch quattro) runs desktop+wallpaper in Quickshell (shell/plugins/background/Background.qml uses WlrLayer.Background + Bottom MouseArea). Themes are colors.toml ",
+       "tags": [
+        "amplify",
+        "research",
+        "ref:amplify-research"
+       ],
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:13.788Z",
+       "trust": {
+        "band": "trusted"
+       }
+      }
+     ]
+    },
+    "/api/decisions": {
+     "decisions": [
+      {
+       "id": "25eced40-adc4-4d4f-97ad-6f70b5a349eb",
+       "title": "Amplify: render host is an Omarchy shell plugin in Quickshell QML (spike first)",
+       "decision_type": "architecture",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:15.108Z"
+      },
+      {
+       "id": "c755578f-63c0-4eeb-aea9-517b1cbe7f38",
+       "title": "Amplify: which direction to build",
+       "decision_type": "ui_ux",
+       "impact_level": "critical",
+       "status": "active",
+       "answer_status": "open",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:38:54.722Z"
+      },
+      {
+       "id": "f74dcdfc-6af0-44ea-bc03-d6048bf59f44",
+       "title": "Amplify: how the desktop theme authenticates to Mandrel (read path)",
+       "decision_type": "security",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "open",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T02:29:14.311Z"
+      },
+      {
+       "id": "c1f75776-d2c5-40ca-a669-bdb03305f34f",
+       "title": "Amplify Current: how tasks map to river lanes",
+       "decision_type": "ui_ux",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "created_at": "2026-11-22T03:50:16.891Z"
+      },
+      {
+       "id": "f59ac7e4-167d-476d-a84e-5547e2771781",
+       "title": "Orrery (Direction A): visual grammar a builder must keep",
+       "decision_type": "architecture",
+       "impact_level": "medium",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "created_at": "2026-11-22T02:39:38.322Z"
+      },
+      {
+       "id": "23973614-bc62-4ddc-9a31-4b9bfca7901f",
+       "title": "Direction C (Current): warm hue reserved for 'needs you'; one shader program per orb role; liveness on client clock",
+       "decision_type": "ui_ux",
+       "impact_level": "medium",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "created_at": "2026-11-22T02:58:44.566Z"
+      },
+      {
+       "id": "49f5d444-ff7c-4131-af33-8f448be3cf80",
+       "title": "Focused orb: Meridian time globe (longitude = time, latitude = record lane, lease = lit future, loupe for reading)",
+       "decision_type": "ui_ux",
+       "impact_level": "high",
+       "status": "active",
+       "answer_status": "decided",
+       "session_id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "created_at": "2026-11-22T03:36:50.069Z"
+      }
+     ]
+    },
+    "/api/sessions/:id": {
+     "4f96630e-4366-4dfa-8720-0433bc0edf6b": {
+      "session": {
+       "id": "4f96630e-4366-4dfa-8720-0433bc0edf6b",
+       "actor": "brian/amp-worker-t-01a20161-df74-71bf-9646-86f33e70c359",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "shell-spike · worker",
+       "goal": "P0 plugin+shader spike punch a15523ac; thread T-01a20161-df74-71bf-9646-86f33e70c359",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T03:52:23.923Z",
+       "last_activity_at": "2026-11-22T03:52:49.826Z",
+       "ended_at": null,
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "a15523ac-9b32-4a74-86f4-80f962d54465",
+        "title": "P0 · Plugin skeleton and shader pipeline spike",
+        "status": "in_progress"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "4af6ff22-9c34-45e6-b32e-5083bf4ed157": {
+      "session": {
+       "id": "4af6ff22-9c34-45e6-b32e-5083bf4ed157",
+       "actor": "brian/amp-worker-t-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "data-core · worker",
+       "goal": "P0 data layer punch 0edf3b35; thread T-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T03:52:16.939Z",
+       "last_activity_at": "2026-11-22T03:52:45.547Z",
+       "ended_at": null,
+       "last_heartbeat_at": "2026-11-22T04:00:17.000Z",
+       "last_explicit_heartbeat_at": "2026-11-22T04:00:17.000Z",
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": "43163",
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "0edf3b35-3e91-45db-8aa4-d0b5f57c81e0",
+        "title": "P0 · Data layer: viewer-contract client, liveness clock, replay",
+        "status": "in_progress"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "de463c37-c3d0-42ac-b3a3-e63d4e64f814": {
+      "session": {
+       "id": "de463c37-c3d0-42ac-b3a3-e63d4e64f814",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "amplify-coord · coord",
+       "goal": "Coordinate Amplify: live Mandrel-driven Omarchy theme for Amp (plan, 3 directions, punches, build); thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "state": "active",
+       "liveness": "live",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T01:52:28.951Z",
+       "last_activity_at": "2026-11-22T03:50:41.824Z",
+       "ended_at": null,
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 8,
+       "task_count": 16,
+       "decision_count": 4,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "53163e57-4ce0-4907-af33-d511f2053861",
+        "context_type": "handoff",
+        "created_at": "2026-11-22T03:50:36.270Z"
+       },
+       {
+        "id": "cae2c3da-41cd-4672-be6d-d0d2387856ff",
+        "context_type": "handoff",
+        "created_at": "2026-11-22T03:39:45.131Z"
+       },
+       {
+        "id": "8593dade-e850-4de1-bbf7-cf9e9b8dfb5d",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:38:54.272Z"
+       },
+       {
+        "id": "b1f250f1-5293-49ee-8f64-f0a2c983ed2a",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:03:36.748Z"
+       },
+       {
+        "id": "0cf5437c-9453-4e97-afe9-ba238b819ff9",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:02:39.177Z"
+       },
+       {
+        "id": "f4137a51-6397-400e-a468-d99ff19b77e7",
+        "context_type": "discussion",
+        "created_at": "2026-11-22T03:01:18.224Z"
+       },
+       {
+        "id": "22d73eeb-a316-4c10-b02c-5675f36f109a",
+        "context_type": "planning",
+        "created_at": "2026-11-22T02:33:32.574Z"
+       },
+       {
+        "id": "4c92dda1-ccac-448b-ad0f-01da62971076",
+        "context_type": "planning",
+        "created_at": "2026-11-22T02:29:13.788Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "25eced40-adc4-4d4f-97ad-6f70b5a349eb",
+        "title": "Amplify: render host is an Omarchy shell plugin in Quickshell QML (spike first)",
+        "created_at": "2026-11-22T02:29:15.108Z"
+       },
+       {
+        "id": "c755578f-63c0-4eeb-aea9-517b1cbe7f38",
+        "title": "Amplify: which direction to build",
+        "created_at": "2026-11-22T03:38:54.722Z"
+       },
+       {
+        "id": "f74dcdfc-6af0-44ea-bc03-d6048bf59f44",
+        "title": "Amplify: how the desktop theme authenticates to Mandrel (read path)",
+        "created_at": "2026-11-22T02:29:14.311Z"
+       },
+       {
+        "id": "c1f75776-d2c5-40ca-a669-bdb03305f34f",
+        "title": "Amplify Current: how tasks map to river lanes",
+        "created_at": "2026-11-22T03:50:16.891Z"
+       }
+      ],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d": {
+      "session": {
+       "id": "7ca5e6b2-7e4c-4080-988b-7ef79fb6021d",
+       "actor": "brian/amp-worker-t-01a20118-13e1-733e-8177-fd282b86240d",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "orb-lab · worker",
+       "goal": "Focused orb and Puck concepts; thread T-01a20118-13e1-733e-8177-fd282b86240d",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:47.491Z",
+       "last_activity_at": "2026-11-22T03:37:39.071Z",
+       "ended_at": "2026-11-22T03:37:39.071Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 2,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "01e8ede7-c2b9-4ff8-93eb-053d8cf4c822",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:37:32.642Z"
+       },
+       {
+        "id": "96fdac2e-2b94-4af6-b235-787a7f11cfcb",
+        "context_type": "error",
+        "created_at": "2026-11-22T02:57:08.872Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "49f5d444-ff7c-4131-af33-8f448be3cf80",
+        "title": "Focused orb: Meridian time globe (longitude = time, latitude = record lane, lease = lit future, loupe for reading)",
+        "created_at": "2026-11-22T03:36:50.069Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "b5a51e99-40f5-47b6-9ddc-b74eebe304e6",
+        "title": "Focused orb craft: 3 focused-orb variants + Puck orb",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "80c16aeb-c641-4690-ba33-b7aec7f2fd60": {
+      "session": {
+       "id": "80c16aeb-c641-4690-ba33-b7aec7f2fd60",
+       "actor": "brian/amp-worker-t-01a20118-0473-722d-97f0-f8c8fff9b771",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-canopy · worker",
+       "goal": "Direction B Canopy mock; thread T-01a20118-0473-722d-97f0-f8c8fff9b771",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:40.944Z",
+       "last_activity_at": "2026-11-22T03:02:31.126Z",
+       "ended_at": "2026-11-22T03:02:31.125Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "398f585b-97db-4843-a8b0-9049edc23519",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:02:16.683Z"
+       }
+      ],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "6bbaf7d0-0ae8-4643-8922-75fed624dc2e",
+        "title": "Direction B mock: Canopy (TreeWalker-first: the work as a growing tree)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "b324f5cc-15c4-4634-8fba-31c9d7213642": {
+      "session": {
+       "id": "b324f5cc-15c4-4634-8fba-31c9d7213642",
+       "actor": "brian/amp-worker-t-01a20117-fac3-71fb-9bef-c7c744e3d050",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-orrery · worker",
+       "goal": "Direction A Orrery mock; thread T-01a20117-fac3-71fb-9bef-c7c744e3d050",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:40.771Z",
+       "last_activity_at": "2026-11-22T03:01:34.677Z",
+       "ended_at": "2026-11-22T03:01:34.677Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "89d7e652-757d-450e-9eb4-2e3d887afe71",
+        "context_type": "completion",
+        "created_at": "2026-11-22T03:01:22.138Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "f59ac7e4-167d-476d-a84e-5547e2771781",
+        "title": "Orrery (Direction A): visual grammar a builder must keep",
+        "created_at": "2026-11-22T02:39:38.322Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "379c80c6-db40-4b73-8c5b-c0a2b6efd13e",
+        "title": "Direction A mock: Orrery (projects as star systems, orbs in orbit)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "4ac9c312-be78-43b0-98a7-1978fa2e9361": {
+      "session": {
+       "id": "4ac9c312-be78-43b0-98a7-1978fa2e9361",
+       "actor": "brian/amp-worker-t-01a20118-0be7-714c-9dff-c4a11e076022",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "design-current · worker",
+       "goal": "Direction C Current mock; thread T-01a20118-0be7-714c-9dff-c4a11e076022",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T02:31:44.965Z",
+       "last_activity_at": "2026-11-22T02:59:47.864Z",
+       "ended_at": "2026-11-22T02:59:54.061Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 1,
+       "task_count": 0,
+       "decision_count": 1,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [
+       {
+        "id": "64b3a720-a29f-4eb5-8398-2ed998442a30",
+        "context_type": "completion",
+        "created_at": "2026-11-22T02:59:41.243Z"
+       }
+      ],
+      "decisions": [
+       {
+        "id": "23973614-bc62-4ddc-9a31-4b9bfca7901f",
+        "title": "Direction C (Current): warm hue reserved for 'needs you'; one shader program per orb role; liveness on client clock",
+        "created_at": "2026-11-22T02:58:44.566Z"
+       }
+      ],
+      "tasks": [
+       {
+        "id": "b416eb7d-abf8-4120-9d36-8644b2c8115d",
+        "title": "Direction C mock: Current (punch lanes as a flowing current, operator view)",
+        "status": "completed"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9": {
+      "session": {
+       "id": "3e6797ed-4fe4-49dd-a8bd-85cc17d5ecf9",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": null,
+       "goal": null,
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T00:28:21.321Z",
+       "last_activity_at": "2026-11-22T00:28:21.321Z",
+       "ended_at": "2026-11-22T01:02:11.572Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f": {
+      "session": {
+       "id": "35e0c5ff-1c6a-488b-8bdf-06df3562cf8f",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": null,
+       "goal": null,
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-22T00:27:40.496Z",
+       "last_activity_at": "2026-11-22T00:27:55.455Z",
+       "ended_at": "2026-11-22T00:27:55.455Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7a59c252-17d2-422a-9f64-a28678c793f8": {
+      "session": {
+       "id": "7a59c252-17d2-422a-9f64-a28678c793f8",
+       "actor": "brian/amp-coord-t-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-coord · coord",
+       "goal": "Role-token smoke test coordinator; thread T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:36:21.252Z",
+       "last_activity_at": "2026-11-21T21:41:48.118Z",
+       "ended_at": "2026-11-21T21:41:54.907Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 1,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "7d26fa7f-182e-44b8-8b8b-1be22bada6af": {
+      "session": {
+       "id": "7d26fa7f-182e-44b8-8b8b-1be22bada6af",
+       "actor": "brian/amp-critic-t-01a2000d-3588-7028-8a99-2878d80bbeb1",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-critic · critic",
+       "goal": "Role-token smoke critic; thread T-01a2000d-3588-7028-8a99-2878d80bbeb1",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:40:17.035Z",
+       "last_activity_at": "2026-11-21T21:41:14.384Z",
+       "ended_at": "2026-11-21T21:41:21.198Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     },
+     "cda05272-ec7c-42ce-b622-4a97c732f465": {
+      "session": {
+       "id": "cda05272-ec7c-42ce-b622-4a97c732f465",
+       "actor": "brian/amp-worker-t-01a2000a-f585-7113-89ae-058d1b9cf53b",
+       "project_id": "2b802595-ac66-4a5e-b9eb-f5de489f933b",
+       "title": "smoke-worker · worker",
+       "goal": "Role-token smoke builder; thread T-01a2000a-f585-7113-89ae-058d1b9cf53b",
+       "state": "ended",
+       "liveness": "ended",
+       "creation_reason": "connect",
+       "started_at": "2026-11-21T21:37:48.444Z",
+       "last_activity_at": "2026-11-21T21:39:13.161Z",
+       "ended_at": "2026-11-21T21:39:19.960Z",
+       "last_heartbeat_at": null,
+       "last_explicit_heartbeat_at": null,
+       "context_count": 0,
+       "task_count": 0,
+       "decision_count": 0,
+       "total_tokens": null,
+       "latest_activity": null,
+       "punch_activity": null
+      },
+      "contexts": [],
+      "decisions": [],
+      "tasks": [
+       {
+        "id": "f5dc63e9-2f3e-4301-a73b-4d948b2adb47",
+        "title": "Smoke: role-token punch split (test:smoke)",
+        "status": "cancelled"
+       }
+      ],
+      "linked_commits": [],
+      "files": [],
+      "loop_activities": []
+     }
+    }
+   }
+  }
+ ]
+}

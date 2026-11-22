@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "river"
 
 // Amplify service. Loaded two ways from the same file:
 //  - inside omarchy-shell as a third-party `service` plugin (manifest.json),
@@ -115,6 +116,8 @@ Item {
           Region { item: sideOrb.hitItem }
         ]
       }
+
+      River { anchors.fill: parent; animate: !root.still }
 
       // Placeholder layout: the Meridian focus orb and one ambient orb.
       Orb {
