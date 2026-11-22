@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "orbs"
 
 // Amplify service. Loaded two ways from the same file:
 //  - inside omarchy-shell as a third-party `service` plugin (manifest.json),
@@ -90,6 +91,8 @@ Item {
     refreshTheme("")
     probe()
   }
+
+  OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still }
 
   Variants {
     id: windows
