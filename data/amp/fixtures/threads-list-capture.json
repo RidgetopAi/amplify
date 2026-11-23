@@ -1,0 +1,58 @@
+[
+  {
+    "id": "T-01a20197-907d-74a9-81aa-b800a5de0275",
+    "title": "critic-install · installer reload race verdict",
+    "updated": "2026-11-22T04:50:39.881Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 1
+  },
+  {
+    "id": "T-01a20009-9e9d-75b8-a1df-698ad360d5e0",
+    "title": "smoke-coord · coordinator: role-token smoke test",
+    "updated": "2026-11-22T04:49:49.361Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 30
+  },
+  {
+    "id": "T-01a20190-95fb-7613-aef0-02919cf90512",
+    "title": "needs-you · P1 basin and Amp live state",
+    "updated": "2026-11-22T04:43:02.545Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 1
+  },
+  {
+    "id": "T-01a20190-8edf-777f-86cb-98cb293c2f69",
+    "title": "orbs · P1 Desktop orbs",
+    "updated": "2026-11-22T04:43:00.719Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 1
+  },
+  {
+    "id": "T-01a20190-7ef4-70e4-86be-7efb153b3945",
+    "title": "river · P1 Current river scene",
+    "updated": "2026-11-22T04:42:56.643Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 1
+  },
+  {
+    "id": "T-01a20184-5e5d-75a7-9fca-609d1b3023e7",
+    "title": "omarchy-test · local",
+    "updated": "2026-11-22T04:29:42.670Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 1
+  },
+  {
+    "id": "T-01a20161-d86d-7337-9b81-bbc70d3b28e9",
+    "title": "data-core · P0 data layer",
+    "updated": "2026-11-22T04:20:36.801Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 3
+  },
+  {
+    "id": "T-01a20161-df74-71bf-9646-86f33e70c359",
+    "title": "shell-spike · P0 plugin + shader spike",
+    "updated": "2026-11-22T04:14:21.187Z",
+    "tree": "file:///home/user/workspace/repo",
+    "messageCount": 2
+  }
+]

@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import QtQuick
 import "orbs"
 import "river"
+import "basin"
 
 // Amplify service. Loaded two ways from the same file:
 //  - inside omarchy-shell as a third-party `service` plugin (manifest.json),
@@ -94,6 +95,7 @@ Item {
   }
 
   OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still }
+  BasinFeed { id: basinFeed }
 
   Variants {
     id: windows
@@ -116,7 +118,8 @@ Item {
       mask: Region {
         regions: [
           Region { item: focusOrb.hitItem },
-          Region { item: sideOrb.hitItem }
+          Region { item: sideOrb.hitItem },
+          Region { item: basin.hitItem }
         ]
       }
 
@@ -141,6 +144,13 @@ Item {
         core: root.accent; halo: root.foreground; energy: 0.1
         animate: !root.still
         onClicked: name => console.log("amplify: orb click " + name + " screen=" + win.modelData.name)
+      }
+
+      Basin {
+        id: basin
+        feed: basinFeed
+        animate: !root.still
+        anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 30 }
       }
 
       FrameAnimation {
