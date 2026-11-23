@@ -23,6 +23,8 @@ ShellRoot {
         anchors.fill: parent
         // env-read: AMPLIFY_STILL=1 freezes motion (deterministic screenshots).
         animate: Quickshell.env("AMPLIFY_STILL") !== "1"
+        // env-read: AMPLIFY_RIVER_TRACE=1 logs each moving row's drawn positions (shot.sh trajectory gates).
+        trace: Quickshell.env("AMPLIFY_RIVER_TRACE") === "1"
       }
     }
   }

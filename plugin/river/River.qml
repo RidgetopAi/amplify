@@ -21,6 +21,11 @@ Item {
   property var feed: ownFeed
   RiverFeed { id: ownFeed }
   property bool animate: true
+  // Trace mode (shot.sh): every drawn position of a moving row is logged as it
+  // changes ('amplify: river trace <row> <key> <value>'), so the gates can
+  // check the path a slide takes, not only that something moved.
+  property bool trace: false
+  function traceLog(row, key, v) { if (trace) console.log("amplify: river trace " + row + " " + key + " " + v.toFixed(2)) }
 
   readonly property real k: height > 0 ? height / 1080 : 1
   readonly property real dw: height > 0 ? 1080 * width / height : 1920
@@ -168,6 +173,8 @@ Item {
         readonly property real gy: river.cy(gx)
         readonly property real gw: river.hw(gx)
         x: gx; y: 0
+        onXChanged: river.traceLog("gate", model.lane, x)
+        Component.onCompleted: river.traceLog("gate", model.lane, x)
 
         Rectangle {
           x: 0; y: gy - gw - 12; width: 1.2; height: gw * 2 + 44
@@ -202,16 +209,21 @@ Item {
         Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         property real f: model.fraction
         Behavior on f { enabled: river.animate; NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000 } }
-        // Still mode: what this tether draws (lit fraction, colour, holder), for shot.sh.
+        // Still mode: what this tether draws (lit fraction, colour, holder, and
+        // the drawn lit and spent paths: start, control, end), for shot.sh.
         readonly property string drawn: "lit=" + f.toFixed(4) + " tone=" + model.tone + " holder=" + (model.liveness || "none")
+            + " path=" + [litPath.startX, litPath.startY, litQ.controlX, litQ.controlY, litQ.x, litQ.y,
+                          spentPath.startX, spentPath.startY, spentQ.controlX, spentQ.controlY, spentQ.x, spentQ.y]
+                         .map(function (v) { return v.toFixed(2) }).join(",")
         function logDrawn() { if (!river.animate) console.log("amplify: river tether " + model.id8 + " " + drawn) }
         onDrawnChanged: logDrawn()
-        Component.onCompleted: logDrawn()
+        Component.onCompleted: { logDrawn(); river.traceLog("tether", model.id8, x2) }
 
         readonly property real x0: model.mx
         readonly property real y0: model.my
         readonly property real x2: vx
         readonly property real y2: river.cy(vx) + model.voff - 12
+        onX2Changed: river.traceLog("tether", model.id8, x2)
         // Taut while leased (arrives straight down, between the hulls above);
         // slack and sagging below the chord once the lease is gone.
         readonly property real x1: model.expired ? (x0 + x2) / 2 : x2
@@ -224,21 +236,23 @@ Item {
           anchors.fill: parent
           preferredRendererType: Shape.CurveRenderer
           ShapePath {
+            id: spentPath
             strokeColor: river.alpha(model.tone, model.expired ? 0.45 : 0.3)
             strokeWidth: 1.1
             strokeStyle: ShapePath.DashLine
             dashPattern: [2, 4]
             fillColor: "transparent"
             startX: teth.bx; startY: teth.by
-            PathQuad { x: teth.x2; y: teth.y2; controlX: teth.x1 + teth.f * (teth.x2 - teth.x1); controlY: teth.y1 + teth.f * (teth.y2 - teth.y1) }
+            PathQuad { id: spentQ; x: teth.x2; y: teth.y2; controlX: teth.x1 + teth.f * (teth.x2 - teth.x1); controlY: teth.y1 + teth.f * (teth.y2 - teth.y1) }
           }
           ShapePath {
+            id: litPath
             strokeColor: river.alpha(model.tone, 0.85)
             strokeWidth: model.expired ? 0 : 1.8
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             startX: teth.x0; startY: teth.y0
-            PathQuad { x: teth.bx; y: teth.by; controlX: teth.x0 + teth.f * (teth.x1 - teth.x0); controlY: teth.y0 + teth.f * (teth.y1 - teth.y0) }
+            PathQuad { id: litQ; x: teth.bx; y: teth.by; controlX: teth.x0 + teth.f * (teth.x1 - teth.x0); controlY: teth.y0 + teth.f * (teth.y1 - teth.y0) }
           }
         }
         // glow under the lit length's tip, and the knot on the hull
@@ -285,6 +299,8 @@ Item {
         Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         readonly property real len: 14 + 22 * (river.lay ? river.lay.flow : 0)
         x: vx - R.HULL / 2; y: river.cy(vx) + model.off - 11
+        onXChanged: river.traceLog("vessel", model.id8, x + R.HULL / 2)
+        Component.onCompleted: river.traceLog("vessel", model.id8, x + R.HULL / 2)
         width: R.HULL; height: 22
 
         // wake: water passing the hull, as long as the current is strong
@@ -417,12 +433,17 @@ Item {
             id: rings
             x: fxi.cx; y: fxi.cyv
             rotation: -fxi.p * 140
-            // Still mode: where the turned rings are centred, in screen px
-            // (shot.sh checks it is the landing point, i.e. they turn about it).
-            Component.onCompleted: if (!river.animate && model.kind === "reject") Qt.callLater(function () {
-              var c = rings.mapToItem(river, 0, 0)
-              console.log("amplify: river fx rings " + model.id8 + " at " + Math.round(c.x) + "," + Math.round(c.y))
-            })
+            onRotationChanged: if (model.kind === "reject") river.traceLog("rings", model.id8, rotation)
+            // Still mode: where the turned rings are centred, in screen px, and
+            // how far they have turned (shot.sh checks they turn about the
+            // landing point, by 70 degrees at p = 0.5).
+            Component.onCompleted: if (model.kind === "reject") {
+              river.traceLog("rings", model.id8, rotation)
+              if (!river.animate) Qt.callLater(function () {
+                var c = rings.mapToItem(river, 0, 0)
+                console.log("amplify: river fx rings " + model.id8 + " at " + Math.round(c.x) + "," + Math.round(c.y) + " rot=" + rings.rotation.toFixed(1))
+              })
+            }
             transform: Scale { yScale: 0.62 }
             Shape {
               preferredRendererType: Shape.CurveRenderer

@@ -14,11 +14,19 @@
 #   idle:    animated, snapshot at 04:30Z (flow 0, no effects): 4 frames over 3 s identical, CPU idle;
 #   settle:  animated, snapshot at 02:33Z (flow 0, three vessels sail ready → claimed): they move,
 #            then 3 frames over 2 s identical and CPU idle (springs settle);
-#   flowing: animated, snapshot at 04:00:17Z (flow 1): the water moves (control);
+#   flowing: animated, snapshot at 04:00:17Z (flow 1): the water moves (control), downstream;
 #   eddy:    animated, busy at 04:23:17Z (flow 0, one blocked task): the swirl turns on its own hull in 6/6 pairs;
 #   fx:      animated, busy at 04:01:47Z: the PASS ring and REJECT eddy move, then are static by 5 s and log done;
 #            everything off the water but the blocked swirl is static from 5 s to 6 s (tethers and gates settle);
 #   replay:  AMPLIFY_STILL=1, busy with the replay clock running: a verdict effect shows for one step only.
+# Trajectory checks (test/trace.mjs): settle and fx run with AMPLIFY_RIVER_TRACE=1,
+# which logs every drawn position of the moving inventory rows as it changes.
+# Vessels (row 5) and gates (row 2) must slide, with samples strictly between
+# start and end and no jump; tether hull ends (row 3) ride their hull sample for
+# sample; the REJECT rings (row 8) turn one way from 0 to -140 degrees. Still
+# runs check the drawn result: each tether's lit stroke ends where its lease
+# splits the tether (row 4), the REJECT rings stand turned -70 degrees at
+# p = 0.5, and the PASS ring is drawn in gold around its landing point (row 7).
 # Still runs also log what they draw: which hulls show a swirl (only blocked
 # tasks) and each tether's lit fraction, tone and holder, checked against the
 # fixture's leases and the holders' liveness (decision 23973614, contract 22d73eeb).
@@ -75,7 +83,7 @@ grab() { grim "$RUN/$NAME-$1.png"; }
 stop() {
   kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
   cp "$RUN/$NAME.log" "/tmp/river-$NAME.log"
-  grep -h "amplify:\|WARN\|ERROR\|rror" "$RUN/$NAME.log" | grep -v "river lanes" | sed "s/^/  [$NAME] /"
+  grep -h "amplify:\|WARN\|ERROR\|rror" "$RUN/$NAME.log" | grep -v "river lanes\|river trace" | sed "s/^/  [$NAME] /"
   grep -h "river lanes" "$RUN/$NAME.log" | tail -1 | sed "s/^/  [$NAME] /"
 }
 frames() { local n; for n in "$@"; do printf '%s ' "$RUN/$NAME-$n.png"; done; }
@@ -107,8 +115,14 @@ d=$($MOTION still $(frames 0 1 2 3))
   || fail "still: AMPLIFY_STILL=1 scene moved over 3 s ($d px, $((c1 - c0)) CPU ticks)"
 want=$(grep -o "amplify: river fx reject 6bbaf7d0 → .* at [0-9]*,[0-9]*" "$L" | head -1 | awk '{ print $NF }')
 got=$(grep -o "amplify: river fx rings 6bbaf7d0 at [0-9]*,[0-9]*" "$L" | tail -1 | awk '{ print $NF }')
-[[ -n $want ]] && awk -v a="$want" -v b="$got" 'BEGIN { split(a, p, ","); split(b, q, ","); exit !(b != "" && (p[1]-q[1])^2 + (p[2]-q[2])^2 <= 4) }' \
-  && pass "busy: the REJECT rings turn about 6bbaf7d0's landing point ($got)" || fail "busy: REJECT rings centred at ${got:-?}, landing point ${want:-?}"
+rot=$(grep -o "amplify: river fx rings 6bbaf7d0 at .* rot=[-0-9.]*" "$L" | tail -1 | sed 's/.*rot=//')
+[[ -n $want ]] && awk -v a="$want" -v b="$got" -v r="${rot:-x}" 'BEGIN { split(a, p, ","); split(b, q, ","); exit !(b != "" && (p[1]-q[1])^2 + (p[2]-q[2])^2 <= 4 && r != "x" && (r + 70)^2 <= 1) }' \
+  && pass "busy: the REJECT rings turn about 6bbaf7d0's landing point ($got), turned $rot° at p = 0.5" \
+  || fail "busy: REJECT rings centred at ${got:-?} turned ${rot:-?}°, want landing point ${want:-?} turned -70°"
+at=$(grep -o "amplify: river fx pass 379c80c6 → .* at [0-9]*,[0-9]*" "$L" | head -1 | awk '{ print $NF }')
+out=$([[ -n $at ]] && $MOTION gold "$at" "$OUT/river-busy.png")
+[[ $? == 0 && -n $at ]] && pass "busy: the PASS ring is drawn in gold around 379c80c6's landing point ($at: $out)" \
+  || fail "busy: no PASS ring drawn around ${at:-?} (${out:-not logged})"
 s=$(swirls "$L")
 [[ $s == "85ff482a " ]] && pass "busy: a swirl on the blocked hull only (85ff482a)" || fail "busy: swirls on [$s], want only 85ff482a"
 # Each tether's drawn lit fraction is its lease left at 04:01:47Z, from the fixture's
@@ -128,19 +142,27 @@ d=$($MOTION still $(frames 0 1 2 3))
   || fail "idle: river moves or re-renders without data ($d px, $((c1 - c0)) CPU ticks)"
 
 # ---------------------------------------------------------------- settle: vessels sail to a new lane, then stop
-start settle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T02:33:00Z
+start settle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T02:33:00Z
 at 0.3; grab 0; at 1; grab 1; at 5; grab 2; c0=$(ticks); at 6; grab 3; at 7; grab 4; c1=$(ticks); stop
 early=$($MOTION still $(frames 0 1)); late=$($MOTION still $(frames 2 3 4)); ok=$?
 grep -q "flow=0.00 speed=0.0 " "$RUN/settle.log" && [[ $early =~ ^[0-9]+$ && $early != 0 && $ok == 0 ]] && idle "$c0" "$c1" 2 \
   && pass "settle: three vessels sail ready → claimed ($early px), then static from 5 s to 7 s, $((c1 - c0)) CPU ticks" \
   || fail "settle: lane change did not animate and settle (early $early px, late $late px, $((c1 - c0)) CPU ticks)"
+# Rows 5 and 2: the three vessels and the claimed gate slide; nothing that moves jumps.
+out=$(node "$ROOT/plugin/river/test/trace.mjs" "$RUN/settle.log" slide vessel events 3 slide vessel '*' 4 slide gate claimed 1 slide gate '*' 1); ok=$?
+echo "$out" | grep "BAD\|moving" | sed "s/^/  [settle] /"
+[[ $ok == 0 ]] && pass "settle: vessels and the claimed gate slide strictly between their lanes, no jumps ($(echo "$out" | grep -c "slides") traces)" \
+  || fail "settle: a vessel or gate jumped or did not slide"
 
 # ---------------------------------------------------------------- flowing: the same check sees motion (control)
 start flowing "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z
-at 2; grab 0; at 5; grab 1; stop
+at 2; grab 0; at 5; grab 1; at 5.2; grab 2; at 5.4; grab 3; stop
 d=$($MOTION still $(frames 0 1))
 grep -q "flow=1.00 speed=90.0 " "$RUN/flowing.log" && [[ $d =~ ^[0-9]+$ ]] && [[ $d != 0 ]] \
   && pass "flowing: flow 1, the water moved ($d px)" || fail "flowing: no motion seen ($d)"
+# Row 1: the streaks move downstream (left to right) between close frames.
+out=$($MOTION flow $(frames 1 2 3)) && pass "flowing: the water runs downstream, left to right ($out)" \
+  || fail "flowing: the water does not run downstream (${out:-?})"
 
 # ---------------------------------------------------------------- eddy: the blocked swirl turns on its own hull
 start eddy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:23:17Z AMPLIFY_RIVER_FIXTURE="$BUSY"
@@ -154,7 +176,7 @@ echo "$out" | sed "s/^/  [eddy] /"
   || fail "eddy: swirl not on the blocked hull (${E:-no eddy logged})"
 
 # ---------------------------------------------------------------- fx: verdict effects end within 5 s
-start fx "$ROOT/plugin/river" "amplify: river fx reject" AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
+start fx "$ROOT/plugin/river" "amplify: river fx reject" AMPLIFY_RIVER_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 0.6; grab 0; at 1.4; grab 1; at 5; grab 2; at 6; grab 3; stop
 L="$RUN/fx.log"
 eddy=$(grep -o "amplify: river eddy 85ff482a at [0-9]*,[0-9]*" "$L" | tail -1 | awk '{print $NF}')
@@ -170,6 +192,12 @@ done
   || fail "fx: a verdict effect did not move or is still moving after 5 s ($fxmsg)"
 grep -q "amplify: river fx done pass 379c80c6" "$L" && grep -q "amplify: river fx done reject 6bbaf7d0" "$L" \
   && pass "fx: both effects ended (fx done logged within 6 s)" || fail "fx: an effect never ended"
+# Rows 5, 2, 3, 8: the verdict vessels sail, every moving hull and gate slides, each
+# tether's hull end rides its hull, and the REJECT rings turn one way to -140 degrees.
+out=$(node "$ROOT/plugin/river/test/trace.mjs" "$L" slide vessel events 2 slide vessel '*' 11 slide gate '*' 1 follow turn 6bbaf7d0 -140); ok=$?
+echo "$out" | grep "BAD\|moving\|rings" | sed "s/^/  [fx] /"
+[[ $ok == 0 ]] && pass "fx: hulls and gates slide, tethers ride their hulls, the REJECT rings turn 0 → -140° ($(echo "$out" | grep -c "^ok") trace checks)" \
+  || fail "fx: a hull, gate or tether jumped, or the REJECT rings did not turn"
 late=$($MOTION region 0,0,$W,$H "${eddy:--}" $(frames 2 3))
 [[ $late == 0 ]] && pass "fx: off the water, only the blocked swirl moves from 5 s to 6 s (tethers, gates, effects settled)" \
   || fail "fx: $late px still moving off the water at 5-6 s"
