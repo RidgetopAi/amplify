@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "orbs"
 import "river"
 
 // Amplify service. Loaded two ways from the same file:
@@ -91,6 +92,8 @@ Item {
     refreshTheme("")
     probe()
   }
+
+  OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still }
 
   Variants {
     id: windows
