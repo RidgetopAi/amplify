@@ -82,7 +82,8 @@ echo "log: ${ready#*qml: }"
 # The orbs from the trace: "<id8> <x> <y> <light>" of every opaque orb, left to
 # right, as last drawn (still mode: they hold). Uncovered: the live ones (full
 # light) clear of the app window (x >= W/2); covered: any under it.
-orbs=$(awk '$4 == "trace" && $5 == "orbs" && $6 == "orb" && ($8 == "x" || $8 == "y" || $8 == "opacity" || $8 == "light") { v[$7, $8] = $9; id[$7] = 1 }
+# (Parsed from the "amplify: trace" text on, since quickshell may colour its log prefix.)
+orbs=$(awk 'sub(/.*amplify: trace /, "") && $1 == "orbs" && $2 == "orb" && ($4 == "x" || $4 == "y" || $4 == "opacity" || $4 == "light") { v[$3, $4] = $5; id[$3] = 1 }
   END { for (i in id) if (v[i, "opacity"] == 1) printf "%s %d %d %s\n", i, v[i, "x"], v[i, "y"], v[i, "light"] }' "$RUN/plugin.log" | sort -k2 -n)
 uncovered=$(awk -v m=$((W / 2 - 40)) '$2 < m && $4 == 1 { print $1, $2, $3 }' <<< "$orbs")
 covered=$(awk -v m=$((W / 2 + 40)) '$2 > m { print $1, $2, $3 }' <<< "$orbs")
