@@ -1,4 +1,5 @@
 import QtQuick
+import "motion"
 
 // One orb: a ShaderEffect running the compiled orb.frag.qsb plus a circular
 // MouseArea. The window mask in Service.qml is built from these items, so
@@ -11,6 +12,7 @@ Item {
   property color halo: "#cdd6f4"
   property real energy: 0
   property bool animate: true
+  property bool trace: false   // AMPLIFY_TRACE=1 (motion/Trace.qml)
   readonly property alias shaderStatus: fx.status
   readonly property alias shaderLog: fx.log
   readonly property alias hitItem: hit
@@ -27,10 +29,16 @@ Item {
     fragmentShader: Qt.resolvedUrl("shaders/orb.frag.qsb")
 
     NumberAnimation on time {
+      id: shaderClock
       running: orb.animate && orb.visible
       from: 0; to: 3600; duration: 3600 * 1000
       loops: Animation.Infinite
     }
+  }
+
+  Loader {
+    active: orb.trace
+    sourceComponent: Trace { comp: "service"; part: "orb"; ident: orb.name; v: ({ x: fx.time, "x:rate": orb.animate && orb.visible ? 1 : 0 }) }
   }
 
   MouseArea {

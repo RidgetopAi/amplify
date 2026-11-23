@@ -10,6 +10,7 @@ Item {
   property var orb: null
   property real clock: 0          // shared client-clock seconds (surface motion)
   property bool animate: true     // false: no smoothing (deterministic shots)
+  property bool trace: false      // AMPLIFY_TRACE=1: log drawn axes (plugin/motion/Trace.qml)
   property bool mono: false       // flat silhouette, for the role-shape proof
   property color hue: "#89b4fa"
   property color foreground: "#cdd6f4"
@@ -29,6 +30,22 @@ Item {
   property real spinFrom: 0
   onSpinRateChanged: { spinBase = spinBase + clock * (spinFrom - spinRate); spinFrom = spinRate }
   Component.onCompleted: spinFrom = spinRate
+
+  // Drawn: the orb's centre and opacity, the eased material uniforms, spin angle
+  // and lease level; '<axis>:to' is what the session record asks for.
+  Loader {
+    active: view.trace && !!view.orb
+    sourceComponent: Trace {
+      comp: "orbs"; part: "orb"; ident: view.orb ? view.orb.id8 : ""
+      v: ({ x: view.x + view.width / 2, y: view.y + view.height / 2, opacity: view.opacity, rotation: fx.angle,
+            sat: fx.sat, light: fx.light, dorm: fx.dorm, lost: fx.lost, need: fx.need, ended: fx.ended,
+            form: fx.form, energy: fx.energy, length: vesselFx.level,
+            "sat:to": view.orb.sat, "light:to": view.orb.light, "dorm:to": view.orb.dorm, "lost:to": view.orb.lost,
+            "need:to": view.orb.need, "ended:to": view.orb.ended, "form:to": view.orb.form, "energy:to": view.orb.energy,
+            "length:to": view.orb.task ? view.orb.task.lease : 0, "x:to": view.orb.x, "y:to": view.orb.y, "opacity:to": view.orb.endedFade,
+            "rotation:rate": view.animate && view.visible ? view.orb.spin * 6.2832 / 60 : 0 })
+    }
+  }
 
   ShaderEffect {
     id: fx
@@ -77,6 +94,7 @@ Item {
     y: view.height / 2 + view.radius * (view.orb && view.orb.role === "worker" ? 1.16 : 1.04)
 
     ShaderEffect {
+      id: vesselFx
       anchors.fill: parent
       blending: true
       fragmentShader: Qt.resolvedUrl("../shaders/orbvessel.frag.qsb")

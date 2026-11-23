@@ -10,6 +10,7 @@ Item {
   property var b: null        // to orb {x, y, r}
   property real alpha: 1
   property real clock: 0
+  property bool trace: false
   property color hueFrom: "#89b4fa"
   property color hueTo: "#cdd6f4"
 
@@ -26,6 +27,15 @@ Item {
   width: len
   height: 24
   transform: Rotation { origin.x: 0; origin.y: beam.height / 2; angle: Math.atan2(beam.dy, beam.dx) * 180 / Math.PI }
+
+  Loader {
+    active: beam.trace
+    sourceComponent: Trace {
+      comp: "orbs"; part: "beam"; ident: beam.a && beam.b ? beam.a.id8 + ">" + beam.b.id8 : ""
+      v: ({ x: beam.x, y: beam.y + beam.height / 2, length: beam.len, opacity: beam.visible ? beam.alpha : 0,
+            rotation: Math.atan2(beam.dy, beam.dx) * 180 / Math.PI })
+    }
+  }
 
   ShaderEffect {
     anchors.fill: parent
