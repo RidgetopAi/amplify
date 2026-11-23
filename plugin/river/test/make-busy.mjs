@@ -1,6 +1,7 @@
 // Builds plugin/river/test/busy-frames.json from the real amplify snapshot
 // (fixtures/amplify-snapshot.json): the same task and session records, with
-// stages, claims and leases staged so the river shows 9 claims (one expired),
+// stages, claims and leases staged so the river shows 9 claims (one expired, one held by a
+// lost session, one by a quiet one),
 // a blocked eddy, a critic PASS and a REJECT. Two frames, 60 s apart, so the
 // PASS and REJECT come from the lane change between successive scenes, the
 // same way successive live refetches produce them.
@@ -33,6 +34,11 @@ for (const s of sessions) {
     s.last_activity_at = iso(T - 2 * min);
     s.last_heartbeat_at = iso(T - 1 * min);
 }
+// Two holders that are not live (viewer contract 22d73eeb): e3f2e1a4's holder
+// lost (explicit heartbeat 15 min old) and a40d7440's quiet (heartbeating, no
+// write for 12 min). Their tethers wear the lost and quiet tones.
+Object.assign(sessions.find((s) => s.id.startsWith("4ac9c312")), { last_explicit_heartbeat_at: iso(T - 15 * min) });
+Object.assign(sessions.find((s) => s.id.startsWith("b324f5cc")), { last_activity_at: iso(T - 12 * min) });
 
 // [task id8, holder session id8, lease left at T in minutes, status]
 const claims = [
@@ -85,7 +91,7 @@ const out = {
         ...snap.meta,
         kind: "replay-frames",
         label: "amplify load fixture (staged from the 04:00Z snapshot)",
-        notice: "STAGED LOAD FIXTURE. Real amplify task and session records from fixtures/amplify-snapshot.json; stages, claims, leases and session liveness are rewritten by plugin/river/test/make-busy.mjs to exercise 8+ claims, an expired lease, a blocked eddy, a critic PASS and a REJECT. Not a capture of real state.",
+        notice: "STAGED LOAD FIXTURE. Real amplify task and session records from fixtures/amplify-snapshot.json; stages, claims, leases and session liveness are rewritten by plugin/river/test/make-busy.mjs to exercise 8+ claims, an expired lease, a lost and a quiet holder, a blocked eddy, a critic PASS and a REJECT. Not a capture of real state.",
         replay_from: iso(T - 1 * min),
         captured_at: iso(T + 3 * min),
     },

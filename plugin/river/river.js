@@ -14,6 +14,9 @@ var COLORS = { draft: "#6b778c", ready: "#7fa6d9", claimed: "#919ef7", verifying
                evidence: "#e9c47c", merged: "#f1e6d0", deployed: "#f6f1e7" };
 var WARM = "#ff9e74";
 var PASS_GOLD = "#e9c47c";
+// Tether tones by the holder's liveness (viewer contract 22d73eeb). Lost is a
+// muted red, never the warm needs-you coral (decision 23973614).
+var TONES = { slack: "#7d8799", lost: "#e0786a", quiet: "#8f9bd6", live: "#b4c0ff" };
 
 var H = 1080;
 var LEASE_SEC = 2700;      // Mandrel's default claim lease
@@ -103,6 +106,14 @@ function leaseText(l) {
     return m >= 1 ? m + "m left" : Math.ceil(l.remainingSec) + "s left";
 }
 
+// Colour of a tether: slack once the lease is gone, else by its holder's liveness.
+function tetherTone(expired, liveness) {
+    if (expired) return TONES.slack;
+    if (liveness === "lost") return TONES.lost;
+    if (liveness === "quiet" || liveness === "dormant") return TONES.quiet;
+    return TONES.live;
+}
+
 // Moorings keep the vessels' left-to-right order and at least MOOR_GAP apart,
 // so tethers never cross however many claims there are. They sit as close to
 // their vessels as that allows (least-squares: pool adjacent violators on
@@ -181,7 +192,7 @@ function layout(scene, nowMs, W) {
                        holderLiveness: ses ? ses.liveness : null,
                        mx: mx, my: centerY(mx, W) - halfWidth(mx, W) - 92,
                        expired: ls.expired, fraction: ls.fraction, remainingSec: ls.remainingSec,
-                       text: leaseText(ls) });
+                       tone: tetherTone(ls.expired, ses ? ses.liveness : null), text: leaseText(ls) });
     }
 
     // Flow speed and light come from real activity: tasks touched in the last

@@ -10,11 +10,19 @@
 # same records: 9 claims, one expired; 85ff482a blocked; at 04:01:17Z a critic
 # PASS of 379c80c6 and a REJECT of 6bbaf7d0). Motion checks compare frame
 # sequences (test/motion.mjs), not single stills:
-#   still:   AMPLIFY_STILL=1, busy at 04:01:47Z (flow 1, effects, eddy): 4 frames over 3 s identical;
-#   idle:    animated, snapshot at 04:30Z (flow 0, no effects): 4 frames over 3 s identical;
+#   still:   AMPLIFY_STILL=1, busy at 04:01:47Z (flow 1, effects, eddy): 4 frames over 3 s identical, CPU idle;
+#   idle:    animated, snapshot at 04:30Z (flow 0, no effects): 4 frames over 3 s identical, CPU idle;
+#   settle:  animated, snapshot at 02:33Z (flow 0, three vessels sail ready → claimed): they move,
+#            then 3 frames over 2 s identical and CPU idle (springs settle);
 #   flowing: animated, snapshot at 04:00:17Z (flow 1): the water moves (control);
 #   eddy:    animated, busy at 04:23:17Z (flow 0, one blocked task): the swirl turns on its own hull in 6/6 pairs;
-#   fx:      animated, busy at 04:01:47Z: the PASS ring and REJECT eddy move, then are static by 5 s and log done.
+#   fx:      animated, busy at 04:01:47Z: the PASS ring and REJECT eddy move, then are static by 5 s and log done;
+#            everything off the water but the blocked swirl is static from 5 s to 6 s (tethers and gates settle);
+#   replay:  AMPLIFY_STILL=1, busy with the replay clock running: a verdict effect shows for one step only.
+# Still runs also log what they draw: which hulls show a swirl (only blocked
+# tasks) and each tether's lit fraction, tone and holder, checked against the
+# fixture's leases and the holders' liveness (decision 23973614, contract 22d73eeb).
+# CPU idle: Quickshell's utime+stime over the window is under 2 % of one core (decision 25eced40).
 # Every run's log must be free of QML errors and binding loops.
 # Exit status is the number of failed checks.
 #
@@ -71,6 +79,11 @@ stop() {
   grep -h "river lanes" "$RUN/$NAME.log" | tail -1 | sed "s/^/  [$NAME] /"
 }
 frames() { local n; for n in "$@"; do printf '%s ' "$RUN/$NAME-$n.png"; done; }
+# CPU ticks Quickshell has used so far; idle <t0> <t1> <seconds>: under 2 % of one core.
+ticks() { awk '{ print $14 + $15 }' "/proc/$QS/stat"; }
+CLK=$(getconf CLK_TCK)
+idle() { (( ($2 - $1) * 100 <= 2 * $3 * CLK )); }
+swirls() { grep -o "amplify: river swirl [0-9a-f]*" "$1" | awk '{ print $NF }' | sort -u | tr '\n' ' '; }
 
 # ---------------------------------------------------------------- default: the snapshot at capture
 start default "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z
@@ -81,7 +94,7 @@ grep -q "amplify: river lanes draft=9 ready=0 claimed=2 verifying=0 evidence=0 m
 # ---------------------------------------------------------------- busy: verdicts, tethers; still mode is static
 start busy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 1.5; grim "$OUT/river-busy.png"
-cp "$OUT/river-busy.png" "$RUN/busy-0.png"; at 2.5; grab 1; at 3.5; grab 2; at 4.5; grab 3; stop
+cp "$OUT/river-busy.png" "$RUN/busy-0.png"; c0=$(ticks); at 2.5; grab 1; at 3.5; grab 2; at 4.5; grab 3; c1=$(ticks); stop
 L="$RUN/busy.log"
 grep "amplify: river events" "$L" | grep "pass 379c80c6 verifying→evidence" | grep -q "reject 6bbaf7d0 verifying→ready" \
   && pass "busy: critic PASS and REJECT from the lane change" || fail "busy: verdict transitions missing"
@@ -89,16 +102,38 @@ grep -q "tethers=9 expired=523461dd " "$L" && pass "busy: 9 tethers, the lapsed 
 grep -q "amplify: river fx pass 379c80c6 → evidence" "$L" && grep -q "amplify: river fx reject 6bbaf7d0 → ready" "$L" \
   && pass "busy: drew the PASS ring on 379c80c6 and the REJECT eddy on 6bbaf7d0" || fail "busy: verdict effects not drawn"
 d=$($MOTION still $(frames 0 1 2 3))
-[[ $? == 0 ]] && grep -q "flow=1.00" "$L" && grep -q "amplify: river eddy 85ff482a" "$L" \
-  && pass "still: AMPLIFY_STILL=1 busy scene (flow 1, eddy, PASS, REJECT) static over 3 s ($d px)" \
-  || fail "still: AMPLIFY_STILL=1 scene moved over 3 s ($d px)"
+[[ $? == 0 ]] && grep -q "flow=1.00" "$L" && grep -q "amplify: river eddy 85ff482a" "$L" && idle "$c0" "$c1" 3 \
+  && pass "still: AMPLIFY_STILL=1 busy scene (flow 1, eddy, PASS, REJECT) static over 3 s ($d px, $((c1 - c0)) CPU ticks)" \
+  || fail "still: AMPLIFY_STILL=1 scene moved over 3 s ($d px, $((c1 - c0)) CPU ticks)"
+want=$(grep -o "amplify: river fx reject 6bbaf7d0 → .* at [0-9]*,[0-9]*" "$L" | head -1 | awk '{ print $NF }')
+got=$(grep -o "amplify: river fx rings 6bbaf7d0 at [0-9]*,[0-9]*" "$L" | tail -1 | awk '{ print $NF }')
+[[ -n $want ]] && awk -v a="$want" -v b="$got" 'BEGIN { split(a, p, ","); split(b, q, ","); exit !(b != "" && (p[1]-q[1])^2 + (p[2]-q[2])^2 <= 4) }' \
+  && pass "busy: the REJECT rings turn about 6bbaf7d0's landing point ($got)" || fail "busy: REJECT rings centred at ${got:-?}, landing point ${want:-?}"
+s=$(swirls "$L")
+[[ $s == "85ff482a " ]] && pass "busy: a swirl on the blocked hull only (85ff482a)" || fail "busy: swirls on [$s], want only 85ff482a"
+# Each tether's drawn lit fraction is its lease left at 04:01:47Z, from the fixture's
+# claim_expires_at (0 when lapsed); its tone follows its holder (lost muted red,
+# quiet dim, slack grey, live periwinkle).
+out=$(node "$ROOT/plugin/river/test/tethers.mjs" "$BUSY" 2026-11-22T04:01:47Z "$L")
+[[ $? == 0 ]] && pass "busy: each tether lit to its lease, toned by its holder (lost e3f2e1a4, quiet a40d7440)" \
+  || fail "busy: drawn tethers differ: $out"
 
 # ---------------------------------------------------------------- idle: flow 0, nothing may move
 start idle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z
-at 2; grab 0; at 3; grab 1; at 4; grab 2; at 5; grab 3; stop
+at 2; grab 0; c0=$(ticks); at 3; grab 1; at 4; grab 2; at 5; grab 3; c1=$(ticks); stop
 d=$($MOTION still $(frames 0 1 2 3))
-[[ $? == 0 ]] && grep -q "flow=0.00 speed=0.0 " "$RUN/idle.log" && ! grep -q "river eddy\|river fx " "$RUN/idle.log" \
-  && pass "idle: flow 0, no eddy or effect, 4 frames over 3 s identical" || fail "idle: river moves without data ($d px)"
+[[ $? == 0 ]] && grep -q "flow=0.00 speed=0.0 " "$RUN/idle.log" && ! grep -q "river eddy\|river fx \|river swirl" "$RUN/idle.log" \
+  && idle "$c0" "$c1" 3 \
+  && pass "idle: flow 0, no eddy, swirl or effect, 4 frames over 3 s identical, $((c1 - c0)) CPU ticks" \
+  || fail "idle: river moves or re-renders without data ($d px, $((c1 - c0)) CPU ticks)"
+
+# ---------------------------------------------------------------- settle: vessels sail to a new lane, then stop
+start settle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T02:33:00Z
+at 0.3; grab 0; at 1; grab 1; at 5; grab 2; c0=$(ticks); at 6; grab 3; at 7; grab 4; c1=$(ticks); stop
+early=$($MOTION still $(frames 0 1)); late=$($MOTION still $(frames 2 3 4)); ok=$?
+grep -q "flow=0.00 speed=0.0 " "$RUN/settle.log" && [[ $early =~ ^[0-9]+$ && $early != 0 && $ok == 0 ]] && idle "$c0" "$c1" 2 \
+  && pass "settle: three vessels sail ready → claimed ($early px), then static from 5 s to 7 s, $((c1 - c0)) CPU ticks" \
+  || fail "settle: lane change did not animate and settle (early $early px, late $late px, $((c1 - c0)) CPU ticks)"
 
 # ---------------------------------------------------------------- flowing: the same check sees motion (control)
 start flowing "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z
@@ -135,6 +170,19 @@ done
   || fail "fx: a verdict effect did not move or is still moving after 5 s ($fxmsg)"
 grep -q "amplify: river fx done pass 379c80c6" "$L" && grep -q "amplify: river fx done reject 6bbaf7d0" "$L" \
   && pass "fx: both effects ended (fx done logged within 6 s)" || fail "fx: an effect never ended"
+late=$($MOTION region 0,0,$W,$H "${eddy:--}" $(frames 2 3))
+[[ $late == 0 ]] && pass "fx: off the water, only the blocked swirl moves from 5 s to 6 s (tethers, gates, effects settled)" \
+  || fail "fx: $late px still moving off the water at 5-6 s"
+
+# ---------------------------------------------------------------- replay: still mode shows a verdict for one step
+start replay "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_FIXTURE="$BUSY"
+at 5.5; stop
+L="$RUN/replay.log"
+seq=$(grep -o "amplify: river lanes .* fx=[0-9]*" "$L" | awk -F'fx=' '{ printf "%s ", $NF }')
+grep -q "amplify: river fx done pass 379c80c6" "$L" && grep -q "amplify: river fx done reject 6bbaf7d0" "$L" \
+  && [[ " $seq" == *" 2 0 "* ]] && ! [[ " $seq" =~ \ ([3-9]|[1-9][0-9]) ]] \
+  && pass "replay: AMPLIFY_STILL=1, the PASS and REJECT show for one step, then clear (fx per step: $seq)" \
+  || fail "replay: still-mode verdict effects not cleared at the next step (fx per step: $seq)"
 
 # ---------------------------------------------------------------- service: the whole plugin mounts the river
 start in-service "$ROOT/plugin" "amplify: ready layer" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z \

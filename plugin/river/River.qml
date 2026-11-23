@@ -48,13 +48,6 @@ Item {
     if (model.count > arr.length) model.remove(arr.length, model.count - arr.length)
   }
 
-  function tone(t) {
-    if (t.expired) return "#7d8799"
-    if (t.holderLiveness === "lost") return "#e0786a"      // muted red, never the basin coral
-    if (t.holderLiveness === "quiet" || t.holderLiveness === "dormant") return "#8f9bd6"
-    return "#b4c0ff"
-  }
-
   onLayChanged: refresh()
   function refresh() {
     if (!lay) return
@@ -66,18 +59,19 @@ Item {
     }))
     sync(tethers, lay.tethers.map(function (t) {
       return { key: t.id, id8: t.id8, holder: t.holder, mx: t.mx, my: t.my, expired: t.expired,
-               fraction: t.fraction, text: t.text, tone: tone(t),
+               fraction: t.fraction, text: t.text, tone: t.tone, liveness: t.holderLiveness || "",
                vx: vx[t.id].x, voff: vx[t.id].off }
     }))
   }
-  // Once per scene (every step when still or frozen, every minute when playing).
+  // Once per scene, after spawn, so fx= counts the effects this scene draws (every step when still or frozen, every minute when playing).
   function logScene() {
     if (!lay || feed.serial === loggedSerial || (animate && !feed.freezeAt && feed.serial % 60 !== 1)) return
     loggedSerial = feed.serial
     console.log("amplify: river lanes " + lay.gates.map(function (g) { return g.label + "=" + g.count }).join(" ")
         + " vessels=" + lay.vessels.length + " tethers=" + lay.tethers.length
         + " expired=" + lay.tethers.filter(function (t) { return t.expired }).map(function (t) { return t.id8 }).join(",")
-        + " flow=" + lay.flow.toFixed(2) + " speed=" + speed.toFixed(1) + " at=" + new Date(feed.nowMs).toISOString())
+        + " flow=" + lay.flow.toFixed(2) + " speed=" + speed.toFixed(1) + " fx=" + effects.count
+        + " at=" + new Date(feed.nowMs).toISOString())
     // Where each blocked swirl is centred, in screen px (shot.sh checks it turns on this hull).
     lay.vessels.forEach(function (v) {
       if (v.eddy) console.log("amplify: river eddy " + v.id8 + " at " + Math.round(v.x * k) + "," + Math.round((cy(v.x) + v.off) * k))
@@ -87,7 +81,7 @@ Item {
   // A verdict effect lives for one event. Animated, it ends when its animation
   // does (dropFx); still, it shows at p = 0.5 until the next scene step.
   function spawn(events) {
-    if (!animate) effects.clear()
+    if (!animate) while (effects.count) dropFx(effects.get(0).uid)
     if (!lay || !events || !events.length) return
     var prev = feed.prevScene ? R.layout(feed.prevScene, feed.nowMs, dw) : null
     events.forEach(function (e) {
@@ -104,7 +98,8 @@ Item {
       }
       // box: the screen px the effect may draw in (shot.sh checks it goes still).
       console.log("amplify: river fx " + e.kind + " " + e.id8 + " → " + e.to
-                  + " box=" + box.map(function (b) { return Math.round(b * k) }).join(","))
+                  + " box=" + box.map(function (b) { return Math.round(b * k) }).join(",")
+                  + " at " + Math.round(to.x * k) + "," + Math.round(fy * k))
       effects.append({ uid: e.taskId + "@" + feed.serial, kind: e.kind, id8: e.id8, to: e.to,
                        px: to.x, off: to.off, fromX: from ? from.x : to.x, fromOff: from ? from.off : to.off })
     })
@@ -123,9 +118,9 @@ Item {
 
   Connections {
     target: river.feed
-    function onSerialChanged() { river.logScene(); river.spawn(river.feed.events) }
+    function onSerialChanged() { river.spawn(river.feed.events); river.logScene() }
   }
-  Component.onCompleted: { refresh(); logScene(); if (feed) spawn(feed.events) }
+  Component.onCompleted: { refresh(); if (feed) spawn(feed.events); logScene() }
 
   // The current advances only as fast as the work does; with no recent task
   // updates the speed is 0 and the frame clock stops, so idle water is still.
@@ -201,6 +196,11 @@ Item {
         Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         property real f: model.fraction
         Behavior on f { enabled: river.animate; NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000 } }
+        // Still mode: what this tether draws (lit fraction, colour, holder), for shot.sh.
+        readonly property string drawn: "lit=" + f.toFixed(4) + " tone=" + model.tone + " holder=" + (model.liveness || "none")
+        function logDrawn() { if (!river.animate) console.log("amplify: river tether " + model.id8 + " " + drawn) }
+        onDrawnChanged: logDrawn()
+        Component.onCompleted: logDrawn()
 
         readonly property real x0: model.mx
         readonly property real y0: model.my
@@ -301,6 +301,10 @@ Item {
         // swirl orbit off its hull, onto neighbouring vessels.
         Shape {
           visible: model.eddy
+          // Each hull that shows a swirl (shot.sh: only blocked tasks do).
+          function logShown() { if (visible) console.log("amplify: river swirl " + model.id8) }
+          onVisibleChanged: logShown()
+          Component.onCompleted: logShown()
           x: hull.width / 2; y: hull.height / 2
           transformOrigin: Item.TopLeft
           preferredRendererType: Shape.CurveRenderer
@@ -404,8 +408,15 @@ Item {
           readonly property real ang: Math.atan2(ey - qy, ex - qx)
 
           Item {
+            id: rings
             x: fxi.cx; y: fxi.cyv
             rotation: -fxi.p * 140
+            // Still mode: where the turned rings are centred, in screen px
+            // (shot.sh checks it is the landing point, i.e. they turn about it).
+            Component.onCompleted: if (!river.animate && model.kind === "reject") Qt.callLater(function () {
+              var c = rings.mapToItem(river, 0, 0)
+              console.log("amplify: river fx rings " + model.id8 + " at " + Math.round(c.x) + "," + Math.round(c.y))
+            })
             transform: Scale { yScale: 0.62 }
             Shape {
               preferredRendererType: Shape.CurveRenderer
