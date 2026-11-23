@@ -51,6 +51,11 @@ Item {
   onLayChanged: refresh()
   function refresh() {
     if (!lay) return
+    // Gates keyed by lane, so a lane that widens slides its gate (row 2).
+    sync(gates, lay.gates.map(function (g) {
+      return { key: g.lane, lane: g.lane, label: g.label, color: g.color, gx: g.x, count: g.count,
+               more: lay.overflow[g.lane] || 0 }
+    }))
     var vx = {}
     sync(vessels, lay.vessels.map(function (v) {
       vx[v.id] = v
@@ -112,6 +117,7 @@ Item {
     }
   }
 
+  ListModel { id: gates }
   ListModel { id: vessels }
   ListModel { id: tethers }
   ListModel { id: effects }
@@ -155,32 +161,32 @@ Item {
 
     // ---------------------------------------------------------------- gates
     Repeater {
-      model: river.lay ? river.lay.gates : []
+      model: gates
       Item {
-        required property var modelData
-        readonly property real gy: river.cy(modelData.x)
-        readonly property real gw: river.hw(modelData.x)
-        x: modelData.x; y: 0
-        Behavior on x { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }
+        property real gx: model.gx
+        Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }
+        readonly property real gy: river.cy(gx)
+        readonly property real gw: river.hw(gx)
+        x: gx; y: 0
 
         Rectangle {
           x: 0; y: gy - gw - 12; width: 1.2; height: gw * 2 + 44
           gradient: Gradient {
-            GradientStop { position: 0; color: river.alpha(modelData.color, 0) }
-            GradientStop { position: 0.5; color: river.alpha(modelData.color, 0.55) }
-            GradientStop { position: 1; color: river.alpha(modelData.color, 0) }
+            GradientStop { position: 0; color: river.alpha(model.color, 0) }
+            GradientStop { position: 0.5; color: river.alpha(model.color, 0.55) }
+            GradientStop { position: 1; color: river.alpha(model.color, 0) }
           }
         }
         Text {
           x: 7; y: gy + gw + 14
-          text: (modelData.lane === "deployed" ? "→ " : "") + modelData.label.toUpperCase()
-          color: river.alpha(modelData.color, 0.88)
+          text: (model.lane === "deployed" ? "→ " : "") + model.label.toUpperCase()
+          color: river.alpha(model.color, 0.88)
           font { family: river.mono; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 1.6 }
         }
         Text {
           x: 7; y: gy + gw + 31
-          text: modelData.count + (river.lay.overflow[modelData.lane] ? "  +" + river.lay.overflow[modelData.lane] + " more" : "")
-          color: river.alpha(modelData.color, modelData.count ? 0.95 : 0.32)
+          text: model.count + (model.more ? "  +" + model.more + " more" : "")
+          color: river.alpha(model.color, model.count ? 0.95 : 0.32)
           font { family: river.sans; pixelSize: 16; weight: Font.Medium }
         }
       }
