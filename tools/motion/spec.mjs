@@ -1,6 +1,6 @@
 // Checks docs/motion.json against the code (task e0cabe57, done-when 2):
 //  - every animation declaration in plugin/**/*.qml (Behavior on, *Animation,
-//    Timer, Transition, a rotation binding, a Rotation transform, a
+//    *Animator, Timer, Transition, a rotation binding, a Rotation transform, a
 //    "<axis>:rate" trace hook) is claimed by exactly one spec row anchor;
 //  - every anchor matches as many declaring lines as it says (count, default 1);
 //  - every traced part in the spec has a Trace hook in its component's QML,
@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DECL = /Behavior on |\b[A-Z][A-Za-z]*Animation\b|\bTimer\s*\{|\bTransition\s*\{|^\s*rotation\s*:|\bRotation\s*\{/;
+const DECL = /Behavior on |\b[A-Z][A-Za-z]*Animation\b|\b[A-Z][A-Za-z]*Animator\b|\bTimer\s*\{|\bTransition\s*\{|^\s*rotation\s*:|\bRotation\s*\{/;
 const DIRS = { river: "plugin/river", orbs: "plugin/orbs", basin: "plugin/basin", service: "plugin" };
 
 function qmlFiles(root) {
