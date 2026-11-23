@@ -112,6 +112,9 @@ test("9 claims: tethers keep vessel order, never cross, and moorings stay apart"
     assert.equal(eddy.eddy, true);
     assert.equal(eddy.needsYou, true);
     assert.equal(eddy.color, R.WARM);
+    // Warm is reserved for needs-you (decision 23973614): every other vessel wears its lane colour.
+    for (const v of lay.vessels.filter((x) => !x.needsYou)) assert.equal(v.color, R.COLORS[v.lane], v.id8);
+    assert.ok(!Object.values(R.COLORS).includes(R.WARM));
 });
 
 test("moorings sit centred on their vessels, not pushed to one side", () => {

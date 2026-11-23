@@ -78,9 +78,16 @@ Item {
         + " vessels=" + lay.vessels.length + " tethers=" + lay.tethers.length
         + " expired=" + lay.tethers.filter(function (t) { return t.expired }).map(function (t) { return t.id8 }).join(",")
         + " flow=" + lay.flow.toFixed(2) + " speed=" + speed.toFixed(1) + " at=" + new Date(feed.nowMs).toISOString())
+    // Where each blocked swirl is centred, in screen px (shot.sh checks it turns on this hull).
+    lay.vessels.forEach(function (v) {
+      if (v.eddy) console.log("amplify: river eddy " + v.id8 + " at " + Math.round(v.x * k) + "," + Math.round((cy(v.x) + v.off) * k))
+    })
   }
 
+  // A verdict effect lives for one event. Animated, it ends when its animation
+  // does (dropFx); still, it shows at p = 0.5 until the next scene step.
   function spawn(events) {
+    if (!animate) effects.clear()
     if (!lay || !events || !events.length) return
     var prev = feed.prevScene ? R.layout(feed.prevScene, feed.nowMs, dw) : null
     events.forEach(function (e) {
@@ -88,13 +95,26 @@ Item {
       var to = lay.vessels.filter(function (v) { return v.id === e.taskId })[0]
       var from = prev ? prev.vessels.filter(function (v) { return v.id === e.taskId })[0] : null
       if (!to) return
-      console.log("amplify: river fx " + e.kind + " " + e.id8 + " → " + e.to)
+      var fx = from ? from.x : to.x, fy = cy(to.x) + to.off, box
+      if (e.kind === "pass") box = [to.x - 110, fy - 110, to.x + 250, fy + 110]
+      else {
+        var ay = cy(fx) + (from ? from.off : to.off) - 16
+        var qy = Math.min(ay, fy - 18) - 70 - Math.abs(fx - to.x - 30) * 0.12
+        box = [Math.min(fx - 90, to.x - 140), qy - 15, Math.max(fx + 90, to.x + 140), fy + 72]
+      }
+      // box: the screen px the effect may draw in (shot.sh checks it goes still).
+      console.log("amplify: river fx " + e.kind + " " + e.id8 + " → " + e.to
+                  + " box=" + box.map(function (b) { return Math.round(b * k) }).join(","))
       effects.append({ uid: e.taskId + "@" + feed.serial, kind: e.kind, id8: e.id8, to: e.to,
                        px: to.x, off: to.off, fromX: from ? from.x : to.x, fromOff: from ? from.off : to.off })
     })
   }
   function dropFx(uid) {
-    for (var i = 0; i < effects.count; i++) if (effects.get(i).uid === uid) { effects.remove(i); return }
+    for (var i = 0; i < effects.count; i++) if (effects.get(i).uid === uid) {
+      console.log("amplify: river fx done " + effects.get(i).kind + " " + effects.get(i).id8)
+      effects.remove(i)
+      return
+    }
   }
 
   ListModel { id: vessels }
@@ -275,12 +295,16 @@ Item {
             }
           }
         }
-        // blocked: an eddy turning in place
+        // blocked: an eddy turning in place. The arcs are centred on the
+        // Shape's (0, 0), which sits on the hull centre; the default
+        // transformOrigin (centre of the arcs' bounding box) would make the
+        // swirl orbit off its hull, onto neighbouring vessels.
         Shape {
           visible: model.eddy
           x: hull.width / 2; y: hull.height / 2
+          transformOrigin: Item.TopLeft
           preferredRendererType: Shape.CurveRenderer
-          RotationAnimation on rotation { running: river.animate && model.eddy; from: 0; to: -360; duration: 9000; loops: Animation.Infinite }
+          RotationAnimation on rotation { running: river.animate && river.visible && model.eddy; from: 0; to: -360; duration: 9000; loops: Animation.Infinite }
           transform: Scale { yScale: 0.5 }
           ShapePath {
             strokeColor: river.alpha(model.tone, 0.55); strokeWidth: 1.4; fillColor: "transparent"
@@ -322,7 +346,9 @@ Item {
         property real p: river.animate ? 0 : 0.5
         NumberAnimation on p {
           running: river.animate; from: 0; to: 1; duration: 3200
-          onFinished: Qt.callLater(river.dropFx, model.uid)
+          // One closure per effect: Qt.callLater merges calls to the same
+          // function, so two effects ending together would drop only one.
+          onFinished: { var uid = model.uid; Qt.callLater(function () { river.dropFx(uid) }) }
         }
         readonly property real cx: model.px
         readonly property real cyv: river.cy(model.px) + model.off
