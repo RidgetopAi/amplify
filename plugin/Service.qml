@@ -3,6 +3,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import "orbs"
+import "river"
 import "basin"
 
 // Amplify service. Loaded two ways from the same file:
@@ -121,6 +122,8 @@ Item {
           Region { item: basin.hitItem }
         ]
       }
+
+      River { anchors.fill: parent; animate: !root.still }
 
       // Placeholder layout: the Meridian focus orb and one ambient orb.
       Orb {
