@@ -23,7 +23,8 @@
 # which logs every drawn position of the moving inventory rows as it changes.
 # Vessels (row 5) and gates (row 2) must slide, with samples strictly between
 # start and end and no jump; tether hull ends (row 3) ride their hull sample for
-# sample; the REJECT rings (row 8) turn one way from 0 to -140 degrees. Still
+# sample; the REJECT rings (row 8) turn one way from 0 to -140 degrees; hulls
+# that change row (row 11) ease in y (trace vy: hull centre y). Still
 # runs check the drawn result: each tether's lit stroke ends where its lease
 # splits the tether (row 4), the REJECT rings stand turned -70 degrees at
 # p = 0.5, and the PASS ring is drawn in gold around its landing point (row 7).
@@ -198,6 +199,12 @@ out=$(node "$ROOT/plugin/river/test/trace.mjs" "$L" slide vessel events 2 slide 
 echo "$out" | grep "BAD\|moving\|rings" | sed "s/^/  [fx] /"
 [[ $ok == 0 ]] && pass "fx: hulls and gates slide, tethers ride their hulls, the REJECT rings turn 0 → -140° ($(echo "$out" | grep -c "^ok") trace checks)" \
   || fail "fx: a hull, gate or tether jumped, or the REJECT rings did not turn"
+# Row 11: the vessels that change row here (523461dd 50 px, 63e691ec and 379c80c6
+# about 45 px) ease in y: 3+ hull-centre y samples strictly between, no step over half.
+out=$(node "$ROOT/plugin/river/test/trace.mjs" "$L" ease vy 523461dd,63e691ec,379c80c6 3); ok=$?
+echo "$out" | grep "eases" | sed "s/^/  [fx] /"
+[[ $ok == 0 ]] && pass "fx: hulls that change row ease there in y, no hop" \
+  || fail "fx: a hull hopped rows in y"
 late=$($MOTION region 0,0,$W,$H "${eddy:--}" $(frames 2 3))
 [[ $late == 0 ]] && pass "fx: off the water, only the blocked swirl moves from 5 s to 6 s (tethers, gates, effects settled)" \
   || fail "fx: $late px still moving off the water at 5-6 s"

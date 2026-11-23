@@ -1,6 +1,7 @@
 // Trajectory checks for plugin/river/test/shot.sh. With AMPLIFY_RIVER_TRACE=1,
 // River.qml logs each moving row's drawn value whenever it changes:
 //   amplify: river trace vessel <id8> <hull centre x>     (inventory row 5)
+//   amplify: river trace vy <id8> <hull centre y>         (rows 5 and 11: lane and row changes)
 //   amplify: river trace gate <lane> <gate x>              (row 2)
 //   amplify: river trace tether <id8> <hull end x2>        (row 3)
 //   amplify: river trace rings <id8> <rotation, degrees>   (row 8)
@@ -15,6 +16,11 @@
 //         them (1 px clear of both), it first moves toward the end, and no
 //         step covers more than half the distance (a jump). At least
 //         <min count> series must move.
+//     ease <row> <key,…> <min count>
+//         As slide, without the direction rule: at least 3 samples strictly
+//         between start and end and no step over half the distance. For vy,
+//         where the hull's y follows both the river curve and its row offset
+//         and is logged once for each, so it may tick a pixel the other way first.
 //     follow
 //         Every tether's hull end slides (as above) whenever its vessel does,
 //         ends where its vessel ends, and each sample is within 1 px of one
@@ -33,7 +39,7 @@ for (const m of text.matchAll(/amplify: river trace (\w+) (\S+) (-?[\d.]+)/g))
     ((S[m[1]] ??= {})[m[2]] ??= []).push(Number(m[3]));
 const events = [...text.matchAll(/amplify: river events (.*)/g)].flatMap((m) => [...m[1].matchAll(/\w+ ([0-9a-f]{8}) /g)].map((e) => e[1]));
 
-function slide(v) {
+function slide(v, dir = true) {
     const a = v[0], b = v[v.length - 1], d = Math.abs(b - a);
     if (d < 1) return { ok: false, why: `does not move (${a.toFixed(1)})` };
     const lo = Math.min(a, b) + 1, hi = Math.max(a, b) - 1;
@@ -42,23 +48,24 @@ function slide(v) {
     let step = 0;
     for (let i = 1; i < v.length; i++) step = Math.max(step, Math.abs(v[i] - v[i - 1]));
     const toward = first !== undefined && Math.sign(first - a) === Math.sign(b - a);
-    const ok = between >= 3 && toward && step <= d / 2;
-    return { ok, why: `${a.toFixed(1)}→${b.toFixed(1)}: ${between} between, largest step ${step.toFixed(1)} of ${d.toFixed(1)}${toward ? "" : ", starts the wrong way"}` };
+    const ok = between >= 3 && (toward || !dir) && step <= d / 2;
+    return { ok, why: `${a.toFixed(1)}→${b.toFixed(1)}: ${between} between, largest step ${step.toFixed(1)} of ${d.toFixed(1)}${toward || !dir ? "" : ", starts the wrong way"}` };
 }
 
 let fail = false;
 const report = (ok, msg) => { console.log(`${ok ? "ok  " : "BAD "} ${msg}`); if (!ok) fail = true; };
 
 for (let i = 0; i < args.length; i++) {
-    if (args[i] === "slide") {
+    if (args[i] === "slide" || args[i] === "ease") {
+        const dir = args[i] === "slide";
         const [row, which, min] = [args[i + 1], args[i + 2], Number(args[i + 3])]; i += 3;
         const all = S[row] || {};
         const keys = which === "*" ? Object.keys(all).filter((k) => Math.abs(all[k].at(-1) - all[k][0]) >= 20)
             : which === "events" ? events : which.split(",");
         report(keys.length >= min, `${row} ${which}: ${keys.length} moving series (want ≥ ${min})`);
         for (const k of keys) {
-            const r = all[k] ? slide(all[k]) : { ok: false, why: "not traced" };
-            report(r.ok, `${row} ${k} slides ${r.why}`);
+            const r = all[k] ? slide(all[k], dir) : { ok: false, why: "not traced" };
+            report(r.ok, `${row} ${k} ${dir ? "slides" : "eases"} ${r.why}`);
         }
     } else if (args[i] === "follow") {
         const T = S.tether || {}, V = S.vessel || {};

@@ -207,6 +207,9 @@ Item {
         anchors.fill: parent
         property real vx: model.vx
         Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
+        // The hull's row offset, eased like the vessel's so the end stays on the hull.
+        property real voff: model.voff
+        Behavior on voff { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         property real f: model.fraction
         Behavior on f { enabled: river.animate; NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000 } }
         // Still mode: what this tether draws (lit fraction, colour, holder, and
@@ -222,7 +225,7 @@ Item {
         readonly property real x0: model.mx
         readonly property real y0: model.my
         readonly property real x2: vx
-        readonly property real y2: river.cy(vx) + model.voff - 12
+        readonly property real y2: river.cy(vx) + voff - 12
         onX2Changed: river.traceLog("tether", model.id8, x2)
         // Taut while leased (arrives straight down, between the hulls above);
         // slack and sagging below the chord once the lease is gone.
@@ -297,10 +300,14 @@ Item {
         id: hull
         property real vx: model.px
         Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
+        // Row offset: a vessel that changes row eases there instead of hopping.
+        property real voff: model.off
+        Behavior on voff { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         readonly property real len: 14 + 22 * (river.lay ? river.lay.flow : 0)
-        x: vx - R.HULL / 2; y: river.cy(vx) + model.off - 11
+        x: vx - R.HULL / 2; y: river.cy(vx) + voff - 11
         onXChanged: river.traceLog("vessel", model.id8, x + R.HULL / 2)
-        Component.onCompleted: river.traceLog("vessel", model.id8, x + R.HULL / 2)
+        onYChanged: river.traceLog("vy", model.id8, y + 11)
+        Component.onCompleted: { river.traceLog("vessel", model.id8, x + R.HULL / 2); river.traceLog("vy", model.id8, y + 11) }
         width: R.HULL; height: 22
 
         // wake: water passing the hull, as long as the current is strong
