@@ -116,7 +116,7 @@ Brian's check below confirms it.
 
 ```bash
 git clone -b foreman/a15523ac-shell https://github.com/RidgetopAi/amplify ~/src/amplify && cd ~/src/amplify
-tools/install-plugin.sh        # builds .qsb (needs qt6-shadertools: sudo pacman -S qt6-shadertools), validates, links, rescans, waits for the shell to list it, enables
+tools/install-plugin.sh        # builds .qsb (needs qt6-shadertools: sudo pacman -S qt6-shadertools), validates, links, waits out the reload the link triggers and for the shell to list it, enables
 omarchy plugin list | grep amplify && journalctl --user -b | grep -i amplify | tail
 ```
 
