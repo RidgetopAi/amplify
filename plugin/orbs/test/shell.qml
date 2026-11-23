@@ -13,6 +13,9 @@ import "plugin/orbs"
 // at a stated client-clock time; nothing is posed by hand.
 //   AMPLIFY_ORBS_SHEET=roles   coord / worker / critic silhouettes, untitled, never-heartbeat
 //   AMPLIFY_ORBS_SHEET=states  the desktop at fetch time and 20 min later on the client clock
+//   AMPLIFY_ORBS_SHEET=motion  animated, traced (AMPLIFY_TRACE=1): the desktop at fetch, then at
+//                              3 s the client clock jumps to +20 min, so liveness decays (lost,
+//                              dormant, needs-you, ended fade) while the trace runs (shot.sh motion)
 ShellRoot {
   id: root
   // env-read: AMPLIFY_ORBS_SHEET selects the sheet (roles | states).
@@ -114,6 +117,23 @@ ShellRoot {
         Cell { orb: root.snap ? root.orbAt("b8bbe543", root.fetchMs, 46) : null; caption: "orbs"; note: "explicit heartbeat → fuse arc" }
         Cell { orb: root.snap ? root.orbAt("52a1f8c2", root.fetchMs, 46) : null; caption: "river"; note: "never heartbeat → dotted track, socket" }
         Cell { orb: root.snap ? root.orbAt("3e6797ed", Date.parse("2026-11-22T00:28:30Z"), 46, true) : null; caption: "untitled coord"; note: "3e6797ed · title null · 00:28:30Z" }
+      }
+    }
+
+    // ---------------------------------------------------------- motion
+    OrbField {
+      id: decay
+      visible: root.sheet === "motion"
+      anchors.fill: parent
+      animate: true
+      // env-read: AMPLIFY_TRACE=1 logs the orbs' drawn axes (tools/motion/follow.mjs).
+      trace: Quickshell.env("AMPLIFY_TRACE") === "1"
+      fixedOffsetMs: 0
+      accent: root.accent; foreground: root.fg
+      snapshotPath: Qt.resolvedUrl("plugin/orbs/fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
+      Timer {
+        interval: 3000; running: root.sheet === "motion"
+        onTriggered: { decay.fixedOffsetMs = 20 * 60000; decay.tick(); console.log("amplify: orbs motion clock +20 min") }
       }
     }
 

@@ -1,19 +1,19 @@
-// Frame-sequence motion checks for plugin/river/test/shot.sh. Reads grim PNGs
+// Frame-sequence motion checks (pixels) for the shot.sh gates; the trace checks are follow.mjs. Reads grim PNGs
 // through ImageMagick (`magick … rgb:-`), so it needs only node and magick.
 //
-//   node motion.mjs still <f0.png> <f1.png> …
+//   node tools/motion/frames.mjs still <f0.png> <f1.png> …
 //       Every frame identical to the first. Prints the changed-pixel count of
 //       each frame against the first; exit 1 if any differs.
-//   node motion.mjs region <x0,y0,x1,y1> <eddy cx,cy | -> <f0.png> <f1.png> …
+//   node tools/motion/frames.mjs region <x0,y0,x1,y1> <eddy cx,cy | -> <f0.png> <f1.png> …
 //       Changed pixels inside the box between consecutive frames, leaving out
 //       the water (the current moves with flow, under every effect) and the
 //       blocked swirl around (cx, cy). Prints one count per pair; exit 0.
-//   node motion.mjs eddy <cx,cy> <f0.png> <f1.png> …
+//   node tools/motion/frames.mjs eddy <cx,cy> <f0.png> <f1.png> …
 //       The blocked swirl turns in place on its hull at (cx, cy): every
 //       consecutive pair changes some pixels and at least 90 % of them lie on
 //       the swirl's rings (radius 54 and 66 px, squashed 0.5 in y, so r in
 //       44..76 after unsquashing). Exit 1 unless every pair passes.
-//   node motion.mjs flow <f0.png> <f1.png> <f2.png>
+//   node tools/motion/frames.mjs flow <f0.png> <f1.png> <f2.png>
 //       Which way the water runs, from three frames a short, equal time apart:
 //       along the river curve (17 depths across the band) the change f1 - f0
 //       reappears in f2 - f1 shifted by however far the streaks travelled
@@ -21,7 +21,7 @@
 //       the shift s (-60..60 px) where the two changes correlate best, and the
 //       correlation there and at -s; exit 1 unless s >= 3 (content moved left
 //       to right, downstream), the peak is at least 0.5 and -s stays under 0.2.
-//   node motion.mjs gold <cx,cy> <f.png>
+//   node tools/motion/frames.mjs gold <cx,cy> <f.png>
 //       The critic PASS ring drawn around (cx, cy): pixels of the ring's gold
 //       (bright, red > green > blue, red - blue >= 40) on the ring at p = 0.5
 //       (r = 56 design px, 48..64 after scaling), counted in twelve 30-degree
@@ -36,7 +36,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const src = fs.readFileSync(path.join(here, "../river.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
+const src = fs.readFileSync(path.join(here, "../../plugin/river/river.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
 const R = new Function(`${src}\nreturn { centerY, halfWidth };`)();
 
 function load(file) {
@@ -133,6 +133,6 @@ if (cmd === "still") {
     console.log(`${n} gold px on the ring, ${lit}/12 sectors lit (${sectors.join(" ")})`);
     process.exit(n >= 250 && lit >= 9 ? 0 : 1);
 } else {
-    console.error("usage: motion.mjs still|region|eddy|flow|gold …");
+    console.error("usage: frames.mjs still|region|eddy|flow|gold …");
     process.exit(2);
 }

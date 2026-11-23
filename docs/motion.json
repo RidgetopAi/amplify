@@ -1,0 +1,205 @@
+{
+  "about": "Motion spec as data for the Amplify river, orbs, basin and service orbs (task e0cabe57). One row per animation inventory row: what moves, the record that drives it, its trigger, start/end, stop condition, the code that declares it (code: file + a substring of each declaring line) and, per traced part, the check each drawn axis must pass. tools/motion/spec.mjs fails when a declaration in plugin/**/*.qml is claimed by no row, when an anchor matches no declaration, or when a part has no Trace hook. tools/motion/follow.mjs reads this file and an AMPLIFY_TRACE=1 log. Kinds and options are documented at the top of follow.mjs.",
+  "rows": [
+    {
+      "id": "river-1", "comp": "river", "what": "Water streaks advected downstream",
+      "record": "tasks whose updated_at is in the 15 min before the scene clock (layout().flow, flowSpeed = 90 x flow)",
+      "trigger": "a scene with flow > 0", "start": "phase where it stopped", "end": "runs while flow > 0",
+      "stop": "speed 0, !animate or !visible: the frame clock stops",
+      "code": [{ "file": "plugin/river/River.qml", "line": "FrameAnimation {" }],
+      "parts": [{ "part": "water", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
+    },
+    {
+      "id": "river-2", "comp": "river", "what": "Lane gates slide when lanes widen or narrow",
+      "record": "task count per lane (lane mapping c1f75776)", "trigger": "lane counts change between scenes",
+      "start": "the old gate x", "end": "the new gate x", "stop": "spring settles (epsilon 0.2)",
+      "code": [{ "file": "plugin/river/River.qml", "line": "Behavior on gx" }],
+      "parts": [{ "part": "gate", "axes": { "x": { "kind": "spring", "min": 20, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 4 } } }]
+    },
+    {
+      "id": "river-5", "comp": "river", "what": "Vessel sails to its new lane; eases to its new row (row 11)",
+      "record": "task lane (c1f75776) and position in the lane (layout() columns and rows)", "trigger": "a lane or row change between scenes",
+      "start": "the old x and row offset", "end": "the new x and row offset", "stop": "springs settle (epsilon 0.2)",
+      "code": [{ "file": "plugin/river/River.qml", "line": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4", "count": 2 },
+               { "file": "plugin/river/River.qml", "line": "Behavior on voff", "count": 2 }],
+      "parts": [{ "part": "vessel", "axes": {
+        "x": { "kind": "spring", "min": 20, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 4 },
+        "off": { "kind": "spring", "min": 10, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 4, "toward": false },
+        "y": { "kind": "none", "why": "drawn y = centerY(x) + off: checked through x and off" } } }]
+    },
+    {
+      "id": "river-3", "comp": "river", "what": "Tether hull end and knot ride their vessel; tether row offset eases with it (row 11)",
+      "record": "as river-5 (the claimed task's vessel)", "trigger": "its vessel moves", "start": "on the hull", "end": "on the hull",
+      "stop": "with the vessel's springs",
+      "code": [],
+      "parts": [{ "part": "tether", "axes": {
+        "x": { "kind": "rides", "with": "vessel", "tol": 1 },
+        "y": { "kind": "rides", "with": "vessel", "tol": 1 },
+        "kx": { "kind": "rides", "with": "tether", "axis": "x", "tol": 0.5 },
+        "ky": { "kind": "rides", "with": "tether", "axis": "y", "tol": 0.5 },
+        "off": { "kind": "spring", "min": 10, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 4, "toward": false },
+        "length": { "kind": "tween", "min": 0.002, "eps": 0.0005, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2 } } }],
+      "note": "length is row 4: Behavior on f (NumberAnimation, stepMs) tweens the lit fraction to the lease left (claim_expires_at vs the scene clock)."
+    },
+    {
+      "id": "river-4", "comp": "river", "what": "Lit length of a tether shrinks with the lease",
+      "record": "task claim_expires_at, claim_live", "trigger": "each scene step", "start": "the last lease", "end": "the new lease",
+      "stop": "after one step (stepMs); a frozen clock does not change it",
+      "code": [{ "file": "plugin/river/River.qml", "line": "Behavior on f" }],
+      "parts": []
+    },
+    {
+      "id": "river-6", "comp": "river", "what": "Blocked swirl turns in place on its hull",
+      "record": "task status blocked (scene.tasks[].eddy)", "trigger": "the task is blocked", "start": "0", "end": "loops (-40 deg/s)",
+      "stop": "not blocked, !animate or !visible",
+      "code": [{ "file": "plugin/river/River.qml", "line": "RotationAnimation on rotation" }],
+      "parts": [{ "part": "swirl", "axes": { "rotation": { "kind": "spin", "rateTol": 0.25 }, "on": { "kind": "none", "why": "visibility; shot.sh busy swirl set checks only blocked hulls show one" } } }]
+    },
+    {
+      "id": "river-7", "comp": "river", "what": "Critic PASS gold ring grows, sweeps and fades; REJECT effect fades",
+      "record": "one lane change verifying -> later (PASS) or verifying/evidence -> earlier (REJECT), transitions()",
+      "trigger": "that event between two scenes", "start": "p = 0", "end": "p = 1 after 3.2 s, then dropFx",
+      "stop": "onFinished -> dropFx; still mode: shown at p = 0.5 until the next step",
+      "code": [{ "file": "plugin/river/River.qml", "line": "NumberAnimation on p" }],
+      "parts": [{ "part": "pass", "axes": {
+        "opacity": { "kind": "sweep", "from": 0.95, "to": 0, "tol": 0.02, "minBetween": 10, "maxStep": 0.25 },
+        "length": { "kind": "sweep", "from": 14, "to": 98, "tol": 1, "minBetween": 10, "maxStep": 0.25 },
+        "sweep": { "kind": "sweep", "from": 0, "to": 360, "tol": 1, "minBetween": 10, "maxStep": 0.25 } } }]
+    },
+    {
+      "id": "river-8", "comp": "river", "what": "REJECT rings turn while they fade",
+      "record": "as river-7 (bound to p)", "trigger": "a REJECT event", "start": "0 deg", "end": "-140 deg",
+      "stop": "with river-7",
+      "code": [{ "file": "plugin/river/River.qml", "line": "rotation: -fxi.p * 140" }],
+      "parts": [{ "part": "rings", "axes": { "rotation": { "kind": "sweep", "from": 0, "to": -140, "tol": 1, "minBetween": 10, "maxStep": 0.25 } } }]
+    },
+    {
+      "id": "river-9", "comp": "river", "what": "Replay clock: builds the next scene from the fixture each second",
+      "record": "the fixture's records through data/mandrel.js buildScene", "trigger": "running replay", "start": "replay_from", "end": "captured_at, then loops",
+      "stop": "AMPLIFY_RIVER_AT freezes it", "draws": false,
+      "code": [{ "file": "plugin/river/RiverFeed.qml", "line": "Timer {" }], "parts": []
+    },
+    {
+      "id": "river-10", "comp": "river", "what": "Water stage hue steps across each gate (g0/g1 uniforms)",
+      "record": "as river-2", "trigger": "lane counts change", "start": "old gate x", "end": "target gate x at once",
+      "stop": "not animated (cosmetic desync with river-2, ungated by design)", "code": [], "parts": []
+    },
+    {
+      "id": "orbs-clock", "comp": "orbs", "what": "Shared surface clock for every orb, vessel and beam shader",
+      "record": "none: surface motion only; state comes from the frame", "trigger": "animate && visible", "start": "0", "end": "loops (1/s)",
+      "stop": "!animate or !visible",
+      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "NumberAnimation on clock" }],
+      "parts": [{ "part": "clock", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
+    },
+    {
+      "id": "orbs-tick", "comp": "orbs", "what": "Client-clock tick (1 s) and live refetch",
+      "record": "session timestamps on the client clock (tickScene), viewer contract 22d73eeb", "trigger": "replay or live", "start": "fetch", "end": "loops",
+      "stop": "fixedOffsetMs >= 0 (shots) or not live", "draws": false,
+      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer {", "count": 2 }], "parts": []
+    },
+    {
+      "id": "orbs-orb", "comp": "orbs", "what": "Orb material eases between liveness states; surface spins at its liveness rate; lease vessel level eases",
+      "record": "session liveness, last_activity_at, endedAt, creation_reason; held task claim_expires_at (orbProps)",
+      "trigger": "each client tick or refetch", "start": "the last value", "end": "the record's value",
+      "stop": "each tween ends (0.8..1.6 s); the spin angle is spinBase + orbs clock x liveness spin rate, so it stops with the clock or when dormant/ended",
+      "code": [{ "file": "plugin/orbs/OrbView.qml", "line": "Behavior on sat" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on light" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on dorm" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on lost" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on need" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on ended" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on form" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on energy" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on level" }],
+      "parts": [{ "part": "orb", "axes": {
+        "x": { "kind": "step", "eps": 0.5 }, "y": { "kind": "step", "eps": 0.5 },
+        "opacity": { "kind": "step", "eps": 0.001 },
+        "rotation": { "kind": "spin", "rateTol": 0.25 },
+        "sat": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2, "retarget": true, "enter": 0 },
+        "light": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2, "retarget": true, "enter": 0 },
+        "dorm": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5, "retarget": true, "enter": 0 },
+        "lost": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2, "retarget": true, "enter": 0 },
+        "need": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2, "retarget": true, "enter": 0 },
+        "ended": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "retarget": true, "enter": 0 },
+        "form": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "retarget": true, "enter": 1 },
+        "energy": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "retarget": true, "enter": 0 },
+        "length": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "retarget": true, "enter": 0 } } }]
+    },
+    {
+      "id": "orbs-beam", "comp": "orbs", "what": "Activity beam between two orbs fades with the link's age",
+      "record": "scene.links[] (session activity), age on the client clock", "trigger": "each client tick", "start": "alpha at the link age", "end": "gone after 30 min",
+      "stop": "not animated: placed and faded per tick; its packet moves with the orbs clock",
+      "code": [{ "file": "plugin/orbs/Beam.qml", "line": "transform: Rotation" }],
+      "parts": [{ "part": "beam", "axes": {
+        "x": { "kind": "none", "why": "derived from the two orbs' step positions" }, "y": { "kind": "none", "why": "derived from the two orbs' step positions" },
+        "length": { "kind": "none", "why": "derived from the two orbs' step positions" }, "rotation": { "kind": "none", "why": "derived from the two orbs' step positions" },
+        "opacity": { "kind": "none", "why": "link age per tick (orbs.js beams), node-tested" } } }]
+    },
+    {
+      "id": "basin-pool", "comp": "basin", "what": "Warm pool fades in with items, fills with their count, and ripples",
+      "record": "needs-you rows (basin.js buildBasin: Amp threads awaiting input, merges, lost holders, open decisions, blocked-on-human tasks)",
+      "trigger": "row count changes", "start": "the last opacity/fill", "end": "1 when any row (else 0); fill = min(1, count / 4)",
+      "stop": "tweens end; the ripple clock stops when !animate or the pool is hidden",
+      "code": [{ "file": "plugin/basin/Basin.qml", "line": "Behavior on opacity" }, { "file": "plugin/basin/Basin.qml", "line": "Behavior on fill" },
+               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation on time" }],
+      "parts": [{ "part": "pool", "axes": {
+        "opacity": { "kind": "tween", "min": 0.5, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5 },
+        "length": { "kind": "tween", "min": 0.1, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5 },
+        "x": { "kind": "clock", "rateTol": 0.25 } } }]
+    },
+    {
+      "id": "basin-rows", "comp": "basin", "what": "Rows glide in, move and leave by urgency; the first badge's halo breathes",
+      "record": "as basin-pool (rank order)", "trigger": "a row added, removed or re-ranked", "start": "enter from y -26, opacity 0", "end": "its slot (index x 73 px), opacity 1",
+      "stop": "transitions end (0.6..1.4 s); the halo breathes while that row is first and animate",
+      "code": [{ "file": "plugin/basin/Basin.qml", "line": "add: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "ParallelAnimation" },
+               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { property: \"opacity\"; from: 0" },
+               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { property: \"y\"; from: -26" },
+               { "file": "plugin/basin/Basin.qml", "line": "remove: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "displaced: Transition" },
+               { "file": "plugin/basin/Basin.qml", "line": "^move: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "SequentialAnimation on opacity" },
+               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { from: 0.08; to: 0.5" }, { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { from: 0.5; to: 0.08" }],
+      "parts": [{ "part": "row", "axes": {
+        "y": { "kind": "tween", "min": 5, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "settle": 2.5, "enter": -26, "enterRequired": true },
+        "opacity": { "kind": "tween", "min": 0.5, "eps": 0.01, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5, "enter": 0, "enterRequired": true },
+        "halo": { "kind": "pulse", "lo": 0.08, "hi": 0.5, "tol": 0.02 } } }]
+    },
+    {
+      "id": "basin-colour", "comp": "basin", "what": "Headline colour turns warm with items; row border brightens on hover",
+      "record": "row count; pointer hover", "trigger": "count change; hover", "start": "old colour", "end": "new colour",
+      "stop": "ColorAnimation ends (0.18..0.9 s)", "draws": "colour only, no motion axis; untraced",
+      "code": [{ "file": "plugin/basin/Basin.qml", "line": "Behavior on color" }, { "file": "plugin/basin/Basin.qml", "line": "Behavior on border.color" }],
+      "parts": []
+    },
+    {
+      "id": "basin-feed", "comp": "basin", "what": "Amp stream retry, list polling, live scene polling, 15 s rebuild",
+      "record": "amp top / threads list; Mandrel scene", "trigger": "stream down / live mode / clock", "start": "-", "end": "-",
+      "stop": "fixture or pinned clock", "draws": false,
+      "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 4 }], "parts": []
+    },
+    {
+      "id": "service-orb", "comp": "service", "what": "Placeholder Meridian and ambient orbs: shader surface clock",
+      "record": "none (placeholder until Meridian)", "trigger": "animate && visible", "start": "0", "end": "loops (1/s)",
+      "stop": "!animate (AMPLIFY_STILL=1) or !visible",
+      "code": [{ "file": "plugin/Orb.qml", "line": "NumberAnimation on time" }],
+      "parts": [{ "part": "orb", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
+    },
+    {
+      "id": "service-host", "comp": "service", "what": "FPS logger and the ready line",
+      "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
+      "code": [{ "file": "plugin/Service.qml", "line": "FrameAnimation {" }, { "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }], "parts": []
+    }
+  ],
+  "scenarios": {
+    "river-settle": { "run": "plugin/river/test/shot.sh settle: snapshot 02:33Z, flow 0, three vessels sail ready -> claimed",
+      "want": { "river.vessel.x": 3, "river.gate.x": 1 } },
+    "river-fx": { "run": "shot.sh fx: busy 04:01:47Z, PASS 379c80c6, REJECT 6bbaf7d0, 9 tethers",
+      "want": { "river.vessel.x": 11, "river.vessel.off": 3, "river.gate.x": 1, "river.tether.x": 9, "river.tether.y": 8, "river.tether.kx": 9,
+                "river.tether.off": 2, "river.tether.length": 5, "river.rings.rotation": 1, "river.pass.opacity": 1, "river.pass.length": 1,
+                "river.pass.sweep": 1, "river.water.x": 1, "river.swirl.rotation": 1 } },
+    "river-eddy": { "run": "shot.sh eddy: busy 04:23:17Z, flow 0, one blocked task", "want": { "river.swirl.rotation": 1 } },
+    "river-still": { "run": "shot.sh busy: AMPLIFY_STILL=1 at 04:01:47Z", "still": true, "want": {} },
+    "service": { "run": "plugin/orbs/test/shot.sh live: the whole plugin animated with AMPLIFY_TRACE=1",
+      "want": { "orbs.clock.x": 1, "orbs.orb.rotation": 3, "basin.pool.x": 1, "basin.pool.opacity": 1,
+                "basin.pool.length": 1, "basin.row.y": 1, "basin.row.opacity": 1, "basin.row.halo": 1,
+                "service.orb.x": 2, "river.water.x": 1 } },
+    "orbs-decay": { "run": "plugin/orbs/test/shot.sh motion: orbs sheet animated, client clock +20 min at 3 s (lost, dormant, needs-you, ended fade)",
+      "want": { "orbs.orb.sat": 5, "orbs.orb.light": 5, "orbs.orb.dorm": 1, "orbs.orb.lost": 1, "orbs.orb.need": 1, "orbs.orb.ended": 1,
+                "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 } },
+    "service-still": { "run": "plugin/orbs/test/shot.sh layer: AMPLIFY_STILL=1 with AMPLIFY_TRACE=1", "still": true, "want": {} }
+  }
+}

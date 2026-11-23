@@ -20,6 +20,8 @@ Item {
   property color alarm: "#e0786a"     // lost: muted red, never the warm hue
   property color warm: "#ff9e74"      // reserved for needs-you
   property bool animate: true
+  // AMPLIFY_TRACE=1: each orb and beam logs its drawn axes (plugin/motion/Trace.qml).
+  property bool trace: false
   property bool mono: false
   // For shots: a fixed client clock, as ms since the snapshot's capture.
   property real fixedOffsetMs: -1
@@ -39,6 +41,19 @@ Item {
   property real nowMs: 0
   property var frame: ({ ids: [], orbs: {}, beams: [] })
   property var ids: []
+  // Orbs keyed by session id, so a session joining or leaving does not rebuild
+  // the others (a rebuilt orb restarts its spin phase and replays its material
+  // tweens from zero).
+  ListModel { id: orbModel }
+  onIdsChanged: {
+    for (var i = 0; i < ids.length; i++) {
+      var j = -1
+      for (var m = i; m < orbModel.count; m++) if (orbModel.get(m).oid === ids[i]) { j = m; break }
+      if (j < 0) orbModel.insert(i, { oid: ids[i] })
+      else if (j !== i) orbModel.move(j, i, 1)
+    }
+    if (orbModel.count > ids.length) orbModel.remove(ids.length, orbModel.count - ids.length)
+  }
   property var beamKeys: []
   property real clock: 2.3
   readonly property list<QtObject> regions: hitRegions.instances
@@ -109,8 +124,13 @@ Item {
 
   // Shared surface clock for every shader (motion only; state comes from frame).
   NumberAnimation on clock {
+    id: surfaceClock
     running: field.animate && field.visible
     from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite
+  }
+  Loader {
+    active: field.trace
+    sourceComponent: Trace { comp: "orbs"; part: "clock"; ident: "field"; v: ({ x: field.clock, "x:rate": field.animate && field.visible ? 1 : 0 }) }
   }
 
   Repeater {
@@ -122,6 +142,7 @@ Item {
       b: row ? field.frame.orbs[row.to] || null : null
       alpha: row ? row.alpha : 0
       clock: field.clock
+      trace: field.trace
       hueFrom: a ? field.hueFor(a.role) : field.accent
       hueTo: b ? field.hueFor(b.role) : field.accent
     }
@@ -129,14 +150,15 @@ Item {
 
   Repeater {
     id: rep
-    model: field.ids
+    model: orbModel
     OrbView {
-      required property var modelData
-      orb: field.frame.orbs[modelData] || null
+      required property string oid
+      orb: field.frame.orbs[oid] || null
       x: orb ? orb.x - width / 2 : 0
       y: orb ? orb.y - height / 2 : 0
       clock: field.clock
       animate: field.animate
+      trace: field.trace
       mono: field.mono
       hue: field.hueFor(orb ? orb.role : "worker")
       foreground: field.foreground

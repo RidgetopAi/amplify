@@ -13,6 +13,7 @@ Item {
   property color accent: "#89b4fa"
   property color foreground: "#cdd6f4"
   property bool animate: true
+  property bool trace: false
 
   Variants {
     model: Quickshell.screens
@@ -35,6 +36,7 @@ Item {
         accent: orbsLayer.accent
         foreground: orbsLayer.foreground
         animate: orbsLayer.animate
+        trace: orbsLayer.trace
       }
     }
   }

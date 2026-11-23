@@ -34,6 +34,8 @@ Item {
   readonly property bool still: Quickshell.env("AMPLIFY_STILL") === "1"
   // env-read: AMPLIFY_FPS=1 logs frames per second per screen every 5 s.
   readonly property bool logFps: Quickshell.env("AMPLIFY_FPS") === "1"
+  // env-read: AMPLIFY_TRACE=1 logs each moving item's drawn axes (tools/motion/follow.mjs).
+  readonly property bool trace: Quickshell.env("AMPLIFY_TRACE") === "1"
 
   property color accent: "#89b4fa"
   property color foreground: "#cdd6f4"
@@ -94,7 +96,7 @@ Item {
     probe()
   }
 
-  OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still }
+  OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace }
   BasinFeed { id: basinFeed }
 
   Variants {
@@ -123,7 +125,7 @@ Item {
         ]
       }
 
-      River { anchors.fill: parent; animate: !root.still }
+      River { anchors.fill: parent; animate: !root.still; trace: root.trace }
 
       // Placeholder layout: the Meridian focus orb and one ambient orb.
       Orb {
@@ -133,6 +135,7 @@ Item {
         x: win.width * 0.28 - width / 2; y: win.height * 0.5 - height / 2
         core: root.accent; halo: root.warm; energy: 0.6
         animate: !root.still
+        trace: root.trace
         onClicked: name => console.log("amplify: orb click " + name + " screen=" + win.modelData.name)
       }
 
@@ -143,6 +146,7 @@ Item {
         x: win.width * 0.75 - width / 2; y: win.height * 0.5 - height / 2
         core: root.accent; halo: root.foreground; energy: 0.1
         animate: !root.still
+        trace: root.trace
         onClicked: name => console.log("amplify: orb click " + name + " screen=" + win.modelData.name)
       }
 
@@ -150,6 +154,7 @@ Item {
         id: basin
         feed: basinFeed
         animate: !root.still
+        trace: root.trace
         anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 30 }
       }
 

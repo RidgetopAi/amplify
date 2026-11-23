@@ -1,0 +1,1511 @@
+{
+ "about": "Shared mutation catalogue (task e0cabe57). tools/mutate.sh applies each mutation to a scratch copy of the working tree, runs its gates, and prints RED (some gate failed, the mutation is caught) or GREEN (it survives). Each edit replaces `from` with `to` exactly once (a missing or repeated `from` is STALE). deleteRow removes that docs/motion.json row. Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test, plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot, orbs-shot, headless (the render scripts). Critics add the mutations they find here.",
+ "mutations": [
+  {
+   "id": "K1-lease-tween-removed",
+   "source": "888b98cf D1, aa742098 K1",
+   "class": "river row 4 tween",
+   "note": "lit length jumps each step",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "        Behavior on f { enabled: river.animate; NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000 } }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K2-hull-y-target",
+   "source": "888b98cf D2, aa742098 K2",
+   "class": "river row 5 y",
+   "note": "hull jumps to the target y while x slides",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "x: vx - R.HULL / 2; y: river.cy(vx) + voff - 11",
+     "to": "x: vx - R.HULL / 2; y: river.cy(model.px) + voff - 11"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K3-spent-end-model",
+   "source": "aa742098 K3 (hook evasion)",
+   "class": "river row 3 drawn",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "PathQuad { id: spentQ; x: teth.x2;",
+     "to": "PathQuad { id: spentQ; x: model.vx;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K4-tether-y2-target",
+   "source": "888b98cf D3, aa742098 K4",
+   "class": "river row 3 y",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "readonly property real y2: river.cy(vx) + voff - 12",
+     "to": "readonly property real y2: river.cy(model.vx) + voff - 12"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K5-rings-turn-positive",
+   "source": "aa742098 K5",
+   "class": "river row 8",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "rotation: -fxi.p * 140",
+     "to": "rotation: fxi.p * 140"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K6-water-clock-backward",
+   "source": "aa742098 K6",
+   "class": "river row 1",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "onTriggered: river.phase += river.speed * frameTime",
+     "to": "onTriggered: river.phase -= river.speed * frameTime"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K7-gate-holds-then-jumps",
+   "source": "aa742098 K7",
+   "class": "river row 2",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }",
+     "to": "Behavior on gx { enabled: river.animate; SequentialAnimation { PauseAnimation { duration: 600 } NumberAnimation { duration: 0 } } }"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K8-vessel-holds-then-jumps",
+   "source": "aa742098 K8",
+   "class": "river row 5",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset",
+     "to": "Behavior on vx { enabled: river.animate; SequentialAnimation { PauseAnimation { duration: 600 } NumberAnimation { duration: 0 } } }\n        // Row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K9-gate-line-target",
+   "source": "aa742098 K9 (hook evasion)",
+   "class": "river row 2 drawn",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "id: gateLine\n          x: 0;",
+     "to": "id: gateLine\n          x: model.gx - parent.gx;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K10-swirl-turns-back",
+   "source": "aa742098 K10 (was cosmetic)",
+   "class": "river row 6",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "from: 0; to: -360; duration: 9000",
+     "to": "from: 0; to: 360; duration: 9000"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K12-knot-model",
+   "source": "aa742098 K12 (hook evasion)",
+   "class": "river row 3 drawn",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "id: knot\n          x: teth.x2 - 2;",
+     "to": "id: knot\n          x: model.vx - 2;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K13-tether-end-lags",
+   "source": "aa742098 K13",
+   "class": "river row 3",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // The hull's row offset",
+     "to": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 0.7; damping: 0.32; epsilon: 0.2 } }\n        // The hull's row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "K14-pass-ring-still-only",
+   "source": "888b98cf D4, aa742098 K14",
+   "class": "river row 7 live",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "visible: model.kind === \"pass\"\n          anchors.fill: parent\n          // Drawn",
+     "to": "visible: model.kind === \"pass\" && !river.animate\n          anchors.fill: parent\n          // Drawn"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "X1-tether-voff-behavior-removed",
+   "source": "370a46dc H1 (K4 class)",
+   "class": "river row 11 tether",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "property real voff: model.voff\n        Behavior on voff { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }",
+     "to": "property real voff: model.voff"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "H2-vessel-overshoot",
+   "source": "370a46dc H2",
+   "class": "river row 5 overshoot",
+   "note": "underdamped spring overshoots far past the lane",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset",
+     "to": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.08; epsilon: 0.2 } }\n        // Row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "M0-vessel-voff-behavior-removed",
+   "source": "30ecb7e6 M0",
+   "class": "river row 11",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "property real voff: model.off\n        Behavior on voff { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }",
+     "to": "property real voff: model.off"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C8-vessel-behavior-removed",
+   "source": "07b07aed G1",
+   "class": "river row 5",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset",
+     "to": "// Row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C1-gate-behavior-removed",
+   "source": "07b07aed G2",
+   "class": "river row 2",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C2-tether-end-behavior-removed",
+   "source": "07b07aed G3",
+   "class": "river row 3",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // The hull's row offset",
+     "to": "// The hull's row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C27-lit-path-ignores-f",
+   "source": "07b07aed G4",
+   "class": "river row 4 drawn",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "PathQuad { id: litQ; x: teth.bx; y: teth.by;",
+     "to": "PathQuad { id: litQ; x: teth.x2; y: teth.y2;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C28-pass-ring-hidden",
+   "source": "07b07aed G5",
+   "class": "river row 7",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "visible: model.kind === \"pass\"\n          anchors.fill: parent\n          // Drawn",
+     "to": "visible: false\n          anchors.fill: parent\n          // Drawn"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C3-reject-rings-dont-turn",
+   "source": "07b07aed G6",
+   "class": "river row 8",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "rotation: -fxi.p * 140",
+     "to": "rotation: 0"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C4-water-upstream",
+   "source": "07b07aed G7",
+   "class": "river row 1",
+   "note": "",
+   "edits": [
+    {
+     "file": "shaders/river.frag",
+     "from": "float u = p.x - phase;",
+     "to": "float u = p.x + phase;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "N1-ignore-claim-expiry",
+   "source": "05a122b0 N1",
+   "class": "lease",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "exp === null || exp <= nowMs)",
+     "to": "exp === null)"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "N2-rejects-forward",
+   "source": "05a122b0 N2",
+   "class": "transitions",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "(from === \"verifying\" || from === \"evidence\") && b < a) kind = \"reject\"",
+     "to": "(from === \"verifying\" || from === \"evidence\") && b !== a) kind = \"reject\""
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "N3-swirl-default-origin",
+   "source": "05a122b0 N3",
+   "class": "river row 6 pivot",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "x: hull.width / 2; y: hull.height / 2\n          transformOrigin: Item.TopLeft\n",
+     "to": "x: hull.width / 2; y: hull.height / 2\n"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "N4-effect-loops",
+   "source": "05a122b0 N4",
+   "class": "river row 7 stop",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "running: river.animate; from: 0; to: 1; duration: 3200",
+     "to": "running: river.animate; from: 0; to: 1; duration: 3200; loops: Animation.Infinite"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O1-still-never-clears",
+   "source": "05a122b0 O1",
+   "class": "river row 7 still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "    if (!animate) while (effects.count) dropFx(effects.get(0).uid)\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O2-swirl-every-hull",
+   "source": "05a122b0 O2",
+   "class": "river row 6 record",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "id: swirl\n          visible: model.eddy",
+     "to": "id: swirl\n          visible: true"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O3-lost-tone-warm",
+   "source": "05a122b0 O3",
+   "class": "tone",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "lost: \"#e0786a\"",
+     "to": "lost: \"#ff9e74\""
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O7-clock-at-flow-0",
+   "source": "05a122b0 O7",
+   "class": "river row 1 stop",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "running: river.animate && river.visible && river.speed > 0",
+     "to": "running: river.animate && river.visible"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O8-claimed-to-verifying-pass",
+   "source": "05a122b0 O8",
+   "class": "transitions",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "if (from === \"verifying\" && b > a) kind = \"pass\";",
+     "to": "if ((from === \"verifying\" || from === \"claimed\") && b > a) kind = \"pass\";"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "O10-drawn-f-ignores-lease",
+   "source": "05a122b0 O10",
+   "class": "river row 4",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "property real f: model.fraction",
+     "to": "property real f: 1"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R1-drift",
+   "source": "05a122b0 R1-drift",
+   "class": "river row 1",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "return flow > 0 ? 90 * Math.min(1, flow) : 0;",
+     "to": "return flow > 0 ? 90 * Math.min(1, flow) : 6;"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R1-window",
+   "source": "05a122b0 R1-window",
+   "class": "river row 1 record",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "nowMs - u < 15 * 60 * 1000",
+     "to": "nowMs - u < 60 * 60 * 1000"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R2-undamped",
+   "source": "05a122b0 R2",
+   "class": "river row 2",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "spring: 1.2; damping: 0.4;",
+     "to": "spring: 1.2; damping: 0;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R2-in-still",
+   "source": "05a122b0 R2-in-still",
+   "class": "river row 2 still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on gx { enabled: river.animate;",
+     "to": "Behavior on gx { enabled: true;"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R3-undamped",
+   "source": "05a122b0 R3",
+   "class": "river row 3",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // The hull's row offset",
+     "to": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0; epsilon: 0.2 } }\n        // The hull's row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R4-lease-tween-loops",
+   "source": "05a122b0 R4",
+   "class": "river row 4 stop",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000 }",
+     "to": "NumberAnimation { duration: river.feed ? river.feed.stepMs : 1000; loops: Animation.Infinite }"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R5-undamped",
+   "source": "05a122b0 R5",
+   "class": "river row 5",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset",
+     "to": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0; epsilon: 0.2 } }\n        // Row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R5-in-still",
+   "source": "05a122b0 R5-in-still",
+   "class": "river row 5 still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on vx { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset",
+     "to": "Behavior on vx { enabled: true; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }\n        // Row offset"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R6-ignores-still",
+   "source": "05a122b0 R6",
+   "class": "river row 6 still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "running: river.animate && river.visible && model.eddy; from: 0",
+     "to": "running: river.visible && model.eddy; from: 0"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R6-unblocked",
+   "source": "05a122b0 R6-unblocked",
+   "class": "river row 6 record",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "running: river.animate && river.visible && model.eddy; from: 0",
+     "to": "running: river.animate && river.visible; from: 0"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R7-8s",
+   "source": "05a122b0 R7-8s",
+   "class": "river row 7 stop",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "from: 0; to: 1; duration: 3200",
+     "to": "from: 0; to: 1; duration: 8000"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R7-callLater",
+   "source": "05a122b0 R7-callLater",
+   "class": "river row 7 stop",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "onFinished: { var uid = model.uid; Qt.callLater(function () { river.dropFx(uid) }) }",
+     "to": "onFinished: Qt.callLater(river.dropFx, model.uid)"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R8-off-pivot",
+   "source": "05a122b0 R8",
+   "class": "river row 8 pivot",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "id: rings\n            x: fxi.cx; y: fxi.cyv",
+     "to": "id: rings\n            x: fxi.cx; y: fxi.cyv; width: 120; height: 120"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "R9-ignores-freeze",
+   "source": "05a122b0 R9",
+   "class": "river row 9",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/RiverFeed.qml",
+     "from": "running: feed.fixture !== null && feed.freezeAt === \"\"",
+     "to": "running: feed.fixture !== null"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "LOG-typeerror",
+   "source": "05a122b0 LOG",
+   "class": "runtime log",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "  property int loggedSerial: -1\n",
+     "to": "  property int loggedSerial: -1\n  property real broken: river.feed.nope.x\n"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "C1-trunk-label",
+   "source": "05a122b0 C1-trunk-label",
+   "class": "lanes c755578f",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "deployed: \"trunk\" };",
+     "to": "deployed: \"deployed\" };"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "L1-todo-claimed",
+   "source": "05a122b0 L1",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "else if (status === \"todo\") r.lane = \"ready\";",
+     "to": "else if (status === \"todo\") r.lane = \"claimed\";"
+    }
+   ],
+   "gates": [
+    "data"
+   ]
+  },
+  {
+   "id": "L2-in-progress-always-claimed",
+   "source": "05a122b0 L2",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "r.lane = claimLive ? \"claimed\" : \"verifying\";",
+     "to": "r.lane = \"claimed\";"
+    }
+   ],
+   "gates": [
+    "data"
+   ]
+  },
+  {
+   "id": "L3-blocked-no-eddy",
+   "source": "05a122b0 L3",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (status === \"blocked\") r.eddy = true;",
+     "to": "if (false) r.eddy = true;"
+    }
+   ],
+   "gates": [
+    "data",
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "L4-human-not-needs-you",
+   "source": "05a122b0 L4",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (blockedOn === \"human\" && status !== \"completed\") r.needsYou = true;",
+     "to": "if (false) r.needsYou = true;"
+    }
+   ],
+   "gates": [
+    "data",
+    "river"
+   ]
+  },
+  {
+   "id": "L5-completed-verifying",
+   "source": "05a122b0 L5",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "else if (status === \"completed\") r.lane = \"merged\";",
+     "to": "else if (status === \"completed\") r.lane = \"verifying\";"
+    }
+   ],
+   "gates": [
+    "data"
+   ]
+  },
+  {
+   "id": "L6-cancelled-shown",
+   "source": "05a122b0 L6",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (status === \"cancelled\") { r.hidden = true; return r; }",
+     "to": "if (status === \"cancelled\") { r.lane = \"ready\"; return r; }"
+    }
+   ],
+   "gates": [
+    "data",
+    "river"
+   ]
+  },
+  {
+   "id": "L7-stage-ignored",
+   "source": "05a122b0 L7",
+   "class": "lanes c1f75776",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (stage && STAGES.indexOf(stage) >= 0) r.lane = stage;",
+     "to": "if (false) r.lane = stage;"
+    }
+   ],
+   "gates": [
+    "data",
+    "river"
+   ]
+  },
+  {
+   "id": "W1-verifying-warm",
+   "source": "05a122b0 W1",
+   "class": "warm 23973614",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "claimed: \"#919ef7\", verifying: \"#b7a0f4\"",
+     "to": "claimed: \"#919ef7\", verifying: \"#ff9e74\""
+    }
+   ],
+   "gates": [
+    "river"
+   ]
+  },
+  {
+   "id": "W2-warm-on-blocked",
+   "source": "05a122b0 W2",
+   "class": "warm 23973614",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "color: tk.needsYou ? WARM : gate.color",
+     "to": "color: tk.needsYou || tk.eddy ? WARM : gate.color"
+    }
+   ],
+   "gates": [
+    "river"
+   ]
+  },
+  {
+   "id": "T2-quiet-as-live",
+   "source": "05a122b0 T2",
+   "class": "tone",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "if (liveness === \"quiet\" || liveness === \"dormant\") return TONES.quiet;",
+     "to": "if (liveness === \"quiet\" || liveness === \"dormant\") return TONES.live;"
+    }
+   ],
+   "gates": [
+    "river",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "V1-never-lost",
+   "source": "05a122b0 V1",
+   "class": "liveness 23973614",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (explicitAge !== null && explicitAge > LOST_EXPLICIT_SEC) return \"lost\";",
+     "to": "if (false) return \"lost\";"
+    }
+   ],
+   "gates": [
+    "data",
+    "orbs",
+    "river"
+   ]
+  },
+  {
+   "id": "V2-server-not-truth",
+   "source": "05a122b0 V2",
+   "class": "liveness",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "if (LIVENESS_RANK[server] > LIVENESS_RANK[client]) return server;",
+     "to": "if (false) return server;"
+    }
+   ],
+   "gates": [
+    "data",
+    "orbs"
+   ]
+  },
+  {
+   "id": "V3-no-client-decay",
+   "source": "05a122b0 V3",
+   "class": "liveness",
+   "note": "",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "s.liveness = sessionLiveness(raw, nowMs);",
+     "to": "s.liveness = s.serverLiveness || s.liveness;"
+    }
+   ],
+   "gates": [
+    "data",
+    "orbs"
+   ]
+  },
+  {
+   "id": "VC-input",
+   "source": "05a122b0 VC-input",
+   "class": "viewer 22d73eeb",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "  ListModel { id: gates }\n",
+     "to": "  MouseArea { anchors.fill: parent }\n  ListModel { id: gates }\n"
+    }
+   ],
+   "gates": [
+    "river"
+   ]
+  },
+  {
+   "id": "VC-null-title",
+   "source": "05a122b0 VC-null-title",
+   "class": "viewer 22d73eeb",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "if (session) return session.orbName || session.displayTitle;",
+     "to": "if (session) return session.orbName;"
+    }
+   ],
+   "gates": [
+    "river"
+   ]
+  },
+  {
+   "id": "LT-light",
+   "source": "05a122b0 LT-light",
+   "class": "river light",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/river.js",
+     "from": "light: Math.min(1, 0.55 + live * 0.12)",
+     "to": "light: 0.55"
+    }
+   ],
+   "gates": [
+    "river"
+   ]
+  },
+  {
+   "id": "S1-layer-top",
+   "source": "05a122b0 S1",
+   "class": "render host 25eced40",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "readonly property int desktopLayer: WlrLayer.Bottom",
+     "to": "readonly property int desktopLayer: WlrLayer.Top"
+    }
+   ],
+   "gates": [
+    "headless",
+    "river-shot"
+   ]
+  },
+  {
+   "id": "S2-unmounted",
+   "source": "05a122b0 S2",
+   "class": "render host",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "      River { anchors.fill: parent; animate: !root.still; trace: root.trace }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "OB-sat-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb sat",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on sat { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-light-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb light",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on light { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-dorm-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb dorm",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on dorm { enabled: view.animate; NumberAnimation { duration: 1600 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-lost-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb lost",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on lost { enabled: view.animate; NumberAnimation { duration: 900 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-need-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb need",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on need { enabled: view.animate; NumberAnimation { duration: 900 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-ended-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb ended",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on ended { enabled: view.animate; NumberAnimation { duration: 1500 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-form-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb form",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on form { enabled: view.animate; NumberAnimation { duration: 800 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-energy-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb energy",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on energy { enabled: view.animate; NumberAnimation { duration: 800 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-level-behavior-removed",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb length",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on level { enabled: view.animate; NumberAnimation { duration: 900 } }",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-sat-in-still",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "Behavior on sat { enabled: view.animate;",
+     "to": "Behavior on sat { enabled: true;"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-spin-ignores-liveness",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb rotation",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "property real angle: view.spinBase + view.clock * view.spinFrom",
+     "to": "property real angle: view.clock * 0.1"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-spin-resets-on-rate-change",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-orb rotation",
+   "note": "spin phase jumps when liveness changes the rate",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "onSpinRateChanged: { spinBase = spinBase + clock * (spinFrom - spinRate); spinFrom = spinRate }",
+     "to": "onSpinRateChanged: spinFrom = spinRate"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-orbs-rebuilt",
+   "source": "e0cabe57 orbs equivalent (bug fixed here)",
+   "class": "orbs-orb keyed delegates",
+   "note": "every orb rebuilt when the session set changes",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "    model: orbModel\n",
+     "to": "    model: field.ids\n"
+    },
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "      required property string oid\n      orb: field.frame.orbs[oid] || null",
+     "to": "      required property var modelData\n      readonly property string oid: modelData\n      orb: field.frame.orbs[oid] || null"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "OB-clock-ignores-still",
+   "source": "e0cabe57 orbs equivalent",
+   "class": "orbs-clock still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "running: field.animate && field.visible\n    from: 0; to: 3600",
+     "to": "running: field.visible\n    from: 0; to: 3600"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-pool-opacity-behavior-removed",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-pool opacity",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "    Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400; easing.type: Easing.InOutSine } }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-pool-fill-behavior-removed",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-pool length",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "    Behavior on fill { enabled: basin.animate; NumberAnimation { duration: 1600; easing.type: Easing.OutCubic } }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-pool-fades-in-still",
+   "source": "e0cabe57 basin equivalent (bug fixed here)",
+   "class": "basin-pool still",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400",
+     "to": "Behavior on opacity { NumberAnimation { duration: 1400"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-pool-clock-ignores-still",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-pool x",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "running: basin.animate && pool.visible",
+     "to": "running: pool.visible"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-row-enter-y-removed",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-rows y",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "        NumberAnimation { property: \"y\"; from: -26; duration: 1400; easing.type: Easing.OutCubic }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-row-enter-fade-removed",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-rows opacity",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "        NumberAnimation { property: \"opacity\"; from: 0; to: 1; duration: 1100; easing.type: Easing.OutCubic }\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-halo-ignores-still",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-rows halo",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "running: basin.animate && row.index === 0; loops",
+     "to": "running: row.index === 0; loops"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "BA-halo-frozen",
+   "source": "e0cabe57 basin equivalent",
+   "class": "basin-rows halo",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "running: basin.animate && row.index === 0; loops",
+     "to": "running: false; loops"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "SV-orb-ignores-still",
+   "source": "e0cabe57 service equivalent",
+   "class": "service-orb x",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/Orb.qml",
+     "from": "running: orb.animate && orb.visible",
+     "to": "running: orb.visible"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "SP-row-deleted",
+   "source": "e0cabe57 done-when 5",
+   "class": "spec",
+   "note": "the river-8 spec row deleted while its animation stays",
+   "edits": [],
+   "gates": [
+    "spec"
+   ],
+   "deleteRow": "river-8"
+  },
+  {
+   "id": "SP-unlisted-animation",
+   "source": "e0cabe57 done-when 2",
+   "class": "spec",
+   "note": "",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "  ListModel { id: gates }\n",
+     "to": "  NumberAnimation on phase { running: false }\n  ListModel { id: gates }\n"
+    }
+   ],
+   "gates": [
+    "spec"
+   ]
+  },
+  {
+   "id": "TR-tether-trace-removed",
+   "source": "e0cabe57 H3",
+   "class": "trace hook",
+   "note": "tether movers disappear from the trace",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "        Loader {\n          active: river.trace\n          sourceComponent: Trace {\n            comp: \"river\"; part: \"tether\"; ident: model.id8",
+     "to": "        Loader {\n          active: false\n          sourceComponent: Trace {\n            comp: \"river\"; part: \"tether\"; ident: model.id8"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  }
+ ]
+}

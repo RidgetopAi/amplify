@@ -21,11 +21,11 @@ Item {
   property var feed: ownFeed
   RiverFeed { id: ownFeed }
   property bool animate: true
-  // Trace mode (shot.sh): every drawn position of a moving row is logged as it
-  // changes ('amplify: river trace <row> <key> <value>'), so the gates can
-  // check the path a slide takes, not only that something moved.
+  // Trace mode (AMPLIFY_TRACE=1, shot.sh): each moving item makes a Trace
+  // (plugin/motion/Trace.qml) that logs what it draws as it changes, with the
+  // value its record asks for, so tools/motion/follow.mjs checks the path
+  // against docs/motion.json. Off, the Loaders below create nothing.
   property bool trace: false
-  function traceLog(row, key, v) { if (trace) console.log("amplify: river trace " + row + " " + key + " " + v.toFixed(2)) }
 
   readonly property real k: height > 0 ? height / 1080 : 1
   readonly property real dw: height > 0 ? 1080 * width / height : 1920
@@ -137,8 +137,13 @@ Item {
   // updates the speed is 0 and the frame clock stops, so idle water is still.
   readonly property real speed: R.flowSpeed(lay ? lay.flow : 0)
   FrameAnimation {
+    id: waterClock
     running: river.animate && river.visible && river.speed > 0
     onTriggered: river.phase += river.speed * frameTime
+  }
+  Loader {
+    active: river.trace
+    sourceComponent: Trace { comp: "river"; part: "water"; ident: "phase"; v: ({ x: river.phase, "x:rate": river.animate && river.visible ? river.speed : 0 }) }
   }
 
   Item {
@@ -168,15 +173,19 @@ Item {
     Repeater {
       model: gates
       Item {
+        id: gate
         property real gx: model.gx
         Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }
         readonly property real gy: river.cy(gx)
         readonly property real gw: river.hw(gx)
         x: gx; y: 0
-        onXChanged: river.traceLog("gate", model.lane, x)
-        Component.onCompleted: river.traceLog("gate", model.lane, x)
+        Loader {
+          active: river.trace
+          sourceComponent: Trace { comp: "river"; part: "gate"; ident: model.lane; v: ({ x: gate.x + gateLine.x, "x:to": model.gx }) }
+        }
 
         Rectangle {
+          id: gateLine
           x: 0; y: gy - gw - 12; width: 1.2; height: gw * 2 + 44
           gradient: Gradient {
             GradientStop { position: 0; color: river.alpha(model.color, 0) }
@@ -220,13 +229,21 @@ Item {
                          .map(function (v) { return v.toFixed(2) }).join(",")
         function logDrawn() { if (!river.animate) console.log("amplify: river tether " + model.id8 + " " + drawn) }
         onDrawnChanged: logDrawn()
-        Component.onCompleted: { logDrawn(); river.traceLog("tether", model.id8, x2) }
+        Component.onCompleted: logDrawn()
+        // Drawn: the spent stroke's hull end and the knot (hull centre y = end + 12), the lit fraction.
+        Loader {
+          active: river.trace
+          sourceComponent: Trace {
+            comp: "river"; part: "tether"; ident: model.id8
+            v: ({ x: spentQ.x, y: spentQ.y + 12, off: spentQ.y + 12 - river.cy(spentQ.x), kx: knot.x + 2, ky: knot.y + 14,
+                  length: teth.f, "x:to": model.vx, "off:to": model.voff, "length:to": model.fraction })
+          }
+        }
 
         readonly property real x0: model.mx
         readonly property real y0: model.my
         readonly property real x2: vx
         readonly property real y2: river.cy(vx) + voff - 12
-        onX2Changed: river.traceLog("tether", model.id8, x2)
         // Taut while leased (arrives straight down, between the hulls above);
         // slack and sagging below the chord once the lease is gone.
         readonly property real x1: model.expired ? (x0 + x2) / 2 : x2
@@ -270,6 +287,7 @@ Item {
           color: model.tone
         }
         Rectangle {
+          id: knot
           x: teth.x2 - 2; y: teth.y2 - 2; width: 4; height: 4; radius: 2
           color: river.alpha(model.tone, model.expired ? 0.5 : 0.9)
         }
@@ -305,10 +323,20 @@ Item {
         Behavior on voff { enabled: river.animate; SpringAnimation { spring: 1.4; damping: 0.32; epsilon: 0.2 } }
         readonly property real len: 14 + 22 * (river.lay ? river.lay.flow : 0)
         x: vx - R.HULL / 2; y: river.cy(vx) + voff - 11
-        onXChanged: river.traceLog("vessel", model.id8, x + R.HULL / 2)
-        onYChanged: river.traceLog("vy", model.id8, y + 11)
-        Component.onCompleted: { river.traceLog("vessel", model.id8, x + R.HULL / 2); river.traceLog("vy", model.id8, y + 11) }
         width: R.HULL; height: 22
+        // Drawn hull centre; off is its row offset from the river's centre line there.
+        Loader {
+          active: river.trace
+          sourceComponent: Trace {
+            comp: "river"; part: "vessel"; ident: model.id8
+            v: ({ x: hull.x + R.HULL / 2, y: hull.y + 11, off: hull.y + 11 - river.cy(hull.x + R.HULL / 2),
+                  "x:to": model.px, "off:to": model.off })
+          }
+        }
+        Loader {
+          active: river.trace
+          sourceComponent: Trace { comp: "river"; part: "swirl"; ident: model.id8; v: ({ rotation: swirl.rotation, on: swirl.visible ? 1 : 0, "rotation:rate": river.animate && river.visible && model.eddy ? -40 : 0 }) }
+        }
 
         // wake: water passing the hull, as long as the current is strong
         Repeater {
@@ -329,6 +357,7 @@ Item {
         // transformOrigin (centre of the arcs' bounding box) would make the
         // swirl orbit off its hull, onto neighbouring vessels.
         Shape {
+          id: swirl
           visible: model.eddy
           // Each hull that shows a swirl (shot.sh: only blocked tasks do).
           function logShown() { if (visible) console.log("amplify: river swirl " + model.id8) }
@@ -389,8 +418,17 @@ Item {
 
         // critic PASS: a gold ring thrown from the hull
         Item {
+          id: passFx
           visible: model.kind === "pass"
           anchors.fill: parent
+          // Drawn: the arc's opacity (0 when hidden), radius and sweep.
+          Loader {
+            active: river.trace && model.kind === "pass"
+            sourceComponent: Trace {
+              comp: "river"; part: "pass"; ident: model.id8
+              v: ({ opacity: passFx.visible && fxi.visible ? passArcPath.strokeColor.a : 0, length: passArc.radiusX, sweep: passArc.sweepAngle })
+            }
+          }
           Rectangle {
             x: fxi.cx - r; y: fxi.cyv - r; width: r * 2; height: r * 2; radius: r
             readonly property real r: 12 + fxi.p * 40
@@ -400,9 +438,11 @@ Item {
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
+              id: passArcPath
               strokeColor: river.alpha(R.PASS_GOLD, 0.95 * fxi.fade); strokeWidth: 2.2; fillColor: "transparent"
               capStyle: ShapePath.RoundCap
               PathAngleArc {
+                id: passArc
                 centerX: fxi.cx; centerY: fxi.cyv
                 radiusX: 14 + fxi.p * 84; radiusY: radiusX
                 startAngle: -90; sweepAngle: 360 * Math.min(1, fxi.p * 1.7)
@@ -440,12 +480,14 @@ Item {
             id: rings
             x: fxi.cx; y: fxi.cyv
             rotation: -fxi.p * 140
-            onRotationChanged: if (model.kind === "reject") river.traceLog("rings", model.id8, rotation)
+            Loader {
+              active: river.trace && model.kind === "reject"
+              sourceComponent: Trace { comp: "river"; part: "rings"; ident: model.id8; v: ({ rotation: rings.rotation }) }
+            }
             // Still mode: where the turned rings are centred, in screen px, and
             // how far they have turned (shot.sh checks they turn about the
             // landing point, by 70 degrees at p = 0.5).
             Component.onCompleted: if (model.kind === "reject") {
-              river.traceLog("rings", model.id8, rotation)
               if (!river.animate) Qt.callLater(function () {
                 var c = rings.mapToItem(river, 0, 0)
                 console.log("amplify: river fx rings " + model.id8 + " at " + Math.round(c.x) + "," + Math.round(c.y) + " rot=" + rings.rotation.toFixed(1))

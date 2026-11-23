@@ -9,6 +9,8 @@ Item {
 
   required property var feed
   property bool animate: true
+  // AMPLIFY_TRACE=1: the pool and each row log their drawn axes (plugin/motion/Trace.qml).
+  property bool trace: false
   property int maxRows: 5
   readonly property alias hitItem: list
   readonly property int count: feed.rows.length
@@ -41,22 +43,32 @@ Item {
   Connections { target: basin.feed; function onRowsChanged() { basin.sync(basin.feed.rows) } }
   Component.onCompleted: sync(feed.rows)
 
+  Loader {
+    active: basin.trace
+    sourceComponent: Trace {
+      comp: "basin"; part: "pool"; ident: "pool"
+      v: ({ opacity: pool.opacity, length: pool.fill, x: pool.time, "x:rate": basin.animate && pool.visible ? 1 : 0, "opacity:to": basin.count ? 1 : 0,
+            "length:to": Math.min(1, basin.count / 4) })
+    }
+  }
+
   ShaderEffect {
     id: pool
     anchors.centerIn: list
     width: basin.width * 1.7; height: Math.max(300, list.height * 1.9)
     opacity: basin.count ? 1 : 0
     visible: opacity > 0
-    Behavior on opacity { NumberAnimation { duration: 1400; easing.type: Easing.InOutSine } }
+    Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400; easing.type: Easing.InOutSine } }
     property real time: 4.0
     property real fill: Math.min(1, basin.count / 4)
     property real alarm: basin.count && basin.feed.rows[0].kind === "lost" ? 1 : 0
     property real aspect: width / height
     property color warm: basin.warm
     property color lost: basin.lost
-    Behavior on fill { NumberAnimation { duration: 1600; easing.type: Easing.OutCubic } }
+    Behavior on fill { enabled: basin.animate; NumberAnimation { duration: 1600; easing.type: Easing.OutCubic } }
     fragmentShader: Qt.resolvedUrl("pool.frag.qsb")
     NumberAnimation on time {
+      id: poolClock
       running: basin.animate && pool.visible
       from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite
     }
@@ -71,7 +83,7 @@ Item {
       text: basin.count === 0 ? "Nothing needs you" : basin.count === 1 ? "1 thing needs you" : basin.count + " things need you"
       color: basin.count ? "#ffe1cf" : "#8b94a5"
       font.pixelSize: 20; font.weight: basin.count ? Font.DemiBold : Font.Medium; font.letterSpacing: -0.2
-      Behavior on color { ColorAnimation { duration: 900 } }
+      Behavior on color { enabled: basin.animate; ColorAnimation { duration: 900 } }
     }
     Text {
       x: 7; anchors.top: headline.bottom; anchors.topMargin: 3
@@ -89,15 +101,17 @@ Item {
     spacing: 9
     model: rowsModel
 
+    // Still mode (AMPLIFY_STILL=1): rows and the pool take their place at once.
     add: Transition {
+      enabled: basin.animate
       ParallelAnimation {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 1100; easing.type: Easing.OutCubic }
         NumberAnimation { property: "y"; from: -26; duration: 1400; easing.type: Easing.OutCubic }
       }
     }
-    remove: Transition { NumberAnimation { property: "opacity"; to: 0; duration: 600 } }
-    displaced: Transition { NumberAnimation { properties: "x,y"; duration: 900; easing.type: Easing.OutCubic } }
-    move: Transition { NumberAnimation { properties: "x,y"; duration: 900; easing.type: Easing.OutCubic } }
+    remove: Transition { enabled: basin.animate; NumberAnimation { property: "opacity"; to: 0; duration: 600 } }
+    displaced: Transition { enabled: basin.animate; NumberAnimation { properties: "x,y"; duration: 900; easing.type: Easing.OutCubic } }
+    move: Transition { enabled: basin.animate; NumberAnimation { properties: "x,y"; duration: 900; easing.type: Easing.OutCubic } }
 
     delegate: Item {
       id: row
@@ -112,6 +126,14 @@ Item {
       readonly property bool isLost: kind === "lost"
       readonly property color tint: isLost ? basin.lost : basin.warm
       width: list.width; height: 64
+      Loader {
+        active: basin.trace
+        sourceComponent: Trace {
+          comp: "basin"; part: "row"; ident: String(row.key || "").slice(0, 24).replace(/\s/g, "_")
+          v: ({ y: row.y, opacity: row.opacity, "y:to": row.index * (row.height + list.spacing), "opacity:to": 1,
+                halo: haloRing.visible ? haloRing.opacity : 0, "halo:on": basin.animate && row.index === 0 ? 1 : 0 })
+        }
+      }
 
       Rectangle {
         anchors.fill: parent
@@ -140,6 +162,7 @@ Item {
           color: "#2a160e"; font.pixelSize: 12; font.bold: true
         }
         Rectangle {
+          id: haloRing
           anchors.centerIn: parent
           width: parent.width + 10; height: width; radius: width / 2
           color: "transparent"; border.width: 1; border.color: badge.color
