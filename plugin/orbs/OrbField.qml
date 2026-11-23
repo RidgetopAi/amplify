@@ -133,7 +133,16 @@ Item {
     sourceComponent: Trace { comp: "orbs"; part: "clock"; ident: "field"; v: ({ x: field.clock, "x:rate": field.animate && field.visible ? 1 : 0 }) }
   }
 
+  // Every drawn orb and beam program, for the ready line (Service.qml).
+  function shaders() {
+    var out = []
+    for (var i = 0; i < beamRep.count; i++) if (beamRep.itemAt(i)) out = out.concat(beamRep.itemAt(i).shaders())
+    for (var j = 0; j < rep.count; j++) if (rep.itemAt(j)) out = out.concat(rep.itemAt(j).shaders())
+    return out
+  }
+
   Repeater {
+    id: beamRep
     model: field.beamKeys
     Beam {
       required property var modelData
