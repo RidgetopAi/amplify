@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Compile every shaders/*.frag and *.vert to plugin/shaders/<name>.qsb with Qt's qsb.
+# Compile every shaders/*.frag and *.vert to plugin/shaders/<name>.qsb, and every
+# plugin/basin/*.frag to a .qsb beside it, with Qt's qsb.
 # The .qsb files are committed because `omarchy plugin add` runs no build step.
 set -euo pipefail
 
@@ -16,6 +17,11 @@ for src in "$ROOT"/shaders/*.frag "$ROOT"/shaders/*.vert; do
   # GLSL ES 100/300 for GLES, GLSL 120/150 for desktop GL, HLSL/MSL for completeness.
   "$QSB" --glsl "100es,120,150,300es" --hlsl 50 --msl 12 -o "$dst" "$src"
   echo "build-shaders: $(basename "$src") -> plugin/shaders/$(basename "$dst")"
+  count=$((count + 1))
+done
+for src in "$ROOT"/plugin/basin/*.frag; do
+  "$QSB" --glsl "100es,120,150,300es" --hlsl 50 --msl 12 -o "$src.qsb" "$src"
+  echo "build-shaders: plugin/basin/$(basename "$src") -> plugin/basin/$(basename "$src").qsb"
   count=$((count + 1))
 done
 (( count > 0 )) || { echo "build-shaders: no shaders found" >&2; exit 1; }
