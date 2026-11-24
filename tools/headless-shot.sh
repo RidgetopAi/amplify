@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Render the Amplify plugin under a headless Wayland compositor and check it.
 #
-#   tools/headless-shot.sh   # writes docs/spike/headless.png, headless-uncovered.png and orb.png
+#   tools/headless-shot.sh   # writes docs/spike/headless.png and headless-uncovered.png
 #
 # Steps: rebuild the .qsb from shaders/, start sway with the headless backend
 # and pixman renderer, start the harness (wallpaper on the Background layer and
@@ -15,7 +15,10 @@
 #   3. a covered orb's centre shows the app window, so the layer sits below windows;
 #   4. a click on an orb opens its record, a click on empty desktop passes
 #      through the masks to the wallpaper layer, and with the app window moved
-#      away a click on a basin row opens its record.
+#      away a click on a basin row opens its record;
+#   5. neither screenshot is blank. Screenshots are taken in a scratch directory
+#      and copied to docs/spike only when every check passed, so a failed or
+#      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
 # Exit status is the number of failed checks (0 = all passed).
 #
 # Needs: sway, grim, wayvnc, vncdo (vncdotool), quickshell, qsb, ImageMagick (magick). With no GPU, point
@@ -67,12 +70,12 @@ plugin() {
 }
 plugin
 
-grim "$OUT/headless.png"
+grim "$RUN/headless.png"
 
 fails=0
 pass() { echo "PASS $*"; }
 fail() { echo "FAIL $*"; fails=$((fails + 1)); }
-pixel() { magick "$OUT/headless.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:; }
+pixel() { magick "$RUN/headless.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:; }
 
 ready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
 echo "log: ${ready#*qml: }"
@@ -109,9 +112,8 @@ echo "covered orb ${id:-none} at ${x:-?},${y:-?} pixel: $r $g $b (app window is 
 [[ -n $id ]] && (( r > 220 && g > 215 && b > 205 && b < 225 )) && pass "app window covers the orb (layer below windows)" \
   || fail "orb drawn over the app window (or no covered orb)"
 
-# Close-up of the rightmost uncovered live orb (the click target).
+# The click target: the rightmost uncovered live orb.
 read -r OID OX OY <<< "$(tail -1 <<< "$uncovered")"
-grim -g "$(( OX - 90 )),$(( OY - 90 )) 180x180" "$OUT/orb.png"
 
 # The headless backend has no input devices. wayvnc holds one virtual pointer
 # for the whole session (one-shot tools such as wlrctl add and remove a device
@@ -129,7 +131,7 @@ grep -q "harness: wallpaper click" "$RUN/harness.log" && pass "click on empty de
 # click the basin's last row (Service.qml: right 28, bottom 30; rows 64 px high).
 swaymsg '[title="amplify-cover"] move scratchpad' > /dev/null
 sleep 0.5
-grim "$OUT/headless-uncovered.png"
+grim "$RUN/headless-uncovered.png"
 timeout 20 vncdo -s 127.0.0.1::5959 move "$((W - 28 - 250))" "$((H - 30 - 32))" pause 0.3 click 1 pause 0.5
 grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin row opens its record" || fail "basin click lost"
 
@@ -145,5 +147,16 @@ echo "broken log: ${bready#*qml: }" | cut -c1-200
 cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"; mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 
 grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
-echo "headless-shot: $fails failed check(s); wrote docs/spike/headless.png docs/spike/headless-uncovered.png docs/spike/orb.png"
+# A blank capture (nothing rendered) has no spread; a real one has wallpaper, water and orbs.
+for f in headless headless-uncovered; do
+  sd=$(magick "$RUN/$f.png" -format "%[fx:int(1000*standard_deviation)]" info: 2>/dev/null || echo 0)
+  (( sd > 10 )) && pass "$f.png is not blank (stddev $sd/1000)" || fail "$f.png is blank or missing (stddev $sd/1000)"
+done
+
+if (( fails == 0 )); then
+  cp "$RUN/headless.png" "$RUN/headless-uncovered.png" "$OUT/"
+  echo "headless-shot: 0 failed checks; wrote docs/spike/headless.png docs/spike/headless-uncovered.png"
+else
+  echo "headless-shot: $fails failed check(s); docs/spike screenshots left unchanged"
+fi
 exit "$fails"
