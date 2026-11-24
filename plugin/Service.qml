@@ -39,7 +39,6 @@ Item {
 
   property color accent: "#89b4fa"
   property color foreground: "#cdd6f4"
-  property color warm: "#f9e2af"
 
   // omarchy-shell shell call ridgetopai.amplify refreshTheme ""
   function refreshTheme(arg) {
@@ -53,7 +52,6 @@ Item {
     while ((m = re.exec(text)) !== null) out[m[1]] = m[2]
     if (out.accent) accent = out.accent
     if (out.foreground) foreground = out.foreground
-    if (out.yellow) warm = out.yellow
     console.log("amplify: palette accent=" + accent + " foreground=" + foreground)
   }
 
@@ -80,6 +78,34 @@ Item {
     function refreshTheme(arg: string): string { return root.refreshTheme(arg) }
   }
 
+  // "shader=<all> orbs=<compiled>/<programs> river=… basin=…" over every drawn
+  // ShaderEffect (per .qsb program), then the logs of failed ones. A program
+  // that fails to load reports Error on every effect that uses it. Qt 6 reports
+  // Compiled only for a program one effect uses: effects sharing a program stay
+  // Uncompiled while they draw, so a shared program counts as compiled unless
+  // one of its effects reports Error. shader=compiled only when all compiled.
+  function shaderReport(groups) {
+    var all = "compiled", parts = [], logs = []
+    for (var g in groups) {
+      var progs = {}, n = 0, ok = 0
+      for (var i = 0; i < groups[g].length; i++) {
+        var fx = groups[g][i], url = fx.fragmentShader.toString()
+        if (!progs[url]) { progs[url] = { uses: 0, error: false, compiled: false }; n++ }
+        progs[url].uses++
+        if (fx.status === ShaderEffect.Error) { progs[url].error = true; if (fx.log) logs.push(g + ": " + fx.log) }
+        if (fx.status === ShaderEffect.Compiled) progs[url].compiled = true
+      }
+      for (var u in progs) {
+        var p = progs[u]
+        if (p.error) all = "error"
+        else if (p.compiled || p.uses > 1) ok++
+        else if (all !== "error") all = "uncompiled"
+      }
+      parts.push(g + "=" + ok + "/" + n)
+    }
+    return "shader=" + all + " " + parts.join(" ") + (logs.length ? " " + logs.join(" ") : "")
+  }
+
   function probe() {
     if (!probeUrl) return
     var xhr = new XMLHttpRequest()
@@ -96,7 +122,7 @@ Item {
     probe()
   }
 
-  OrbsLayer { accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace }
+  OrbsLayer { id: orbsLayer; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace }
   BasinFeed { id: basinFeed }
 
   Variants {
@@ -115,40 +141,12 @@ Item {
       WlrLayershell.layer: root.desktopLayer
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      // Only the orbs' hit circles take input; everything else falls through
-      // to the wallpaper layer and the desktop's own click handling.
-      mask: Region {
-        regions: [
-          Region { item: focusOrb.hitItem },
-          Region { item: sideOrb.hitItem },
-          Region { item: basin.hitItem }
-        ]
-      }
+      // Only the basin's rows take input here (the orbs have their own layer);
+      // everything else falls through to the wallpaper layer and the desktop's
+      // own click handling.
+      mask: Region { item: basin.hitItem }
 
-      River { anchors.fill: parent; animate: !root.still; trace: root.trace }
-
-      // Placeholder layout: the Meridian focus orb and one ambient orb.
-      Orb {
-        id: focusOrb
-        name: "meridian"
-        width: Math.min(win.width, win.height) * 0.42; height: width
-        x: win.width * 0.28 - width / 2; y: win.height * 0.5 - height / 2
-        core: root.accent; halo: root.warm; energy: 0.6
-        animate: !root.still
-        trace: root.trace
-        onClicked: name => console.log("amplify: orb click " + name + " screen=" + win.modelData.name)
-      }
-
-      Orb {
-        id: sideOrb
-        name: "ambient"
-        width: Math.min(win.width, win.height) * 0.28; height: width
-        x: win.width * 0.75 - width / 2; y: win.height * 0.5 - height / 2
-        core: root.accent; halo: root.foreground; energy: 0.1
-        animate: !root.still
-        trace: root.trace
-        onClicked: name => console.log("amplify: orb click " + name + " screen=" + win.modelData.name)
-      }
+      River { id: river; anchors.fill: parent; animate: !root.still; trace: root.trace }
 
       Basin {
         id: basin
@@ -175,8 +173,8 @@ Item {
       Timer {
         interval: 1500; running: true
         onTriggered: console.log("amplify: ready layer=" + root.layerName
-          + " screen=" + win.modelData.name + " size=" + win.width + "x" + win.height
-          + " shader=" + ["uncompiled", "compiled", "error"][focusOrb.shaderStatus] + " " + focusOrb.shaderLog)
+          + " screen=" + win.modelData.name + " size=" + win.width + "x" + win.height + " "
+          + root.shaderReport({ orbs: orbsLayer.shaders(), river: river.shaders(), basin: basin.shaders() }))
       }
     }
   }

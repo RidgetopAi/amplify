@@ -6,7 +6,7 @@
 #   plugin/orbs/test/shot.sh motion     # only the motion checks
 # The motion check runs the whole plugin with AMPLIFY_TRACE=1 (plugin/motion/Trace.qml),
 # animated for 10 s and then with AMPLIFY_STILL=1, and checks the trace of every
-# orb, beam, basin pool and row and service orb against docs/motion.json with
+# orb, beam, basin pool and row against docs/motion.json with
 # tools/motion/follow.mjs (scenarios service and service-still): material tweens
 # start at the old value and reach the record's, spins turn at the liveness rate,
 # basin rows glide in and the first halo breathes; in still mode nothing moves

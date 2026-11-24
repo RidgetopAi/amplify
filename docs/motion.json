@@ -1,5 +1,5 @@
 {
-  "about": "Motion spec as data for the Amplify river, orbs, basin and service orbs (task e0cabe57). One row per animation inventory row: what moves, the record that drives it, its trigger, start/end, stop condition, the code that declares it (code: file + a substring of each declaring line) and, per traced part, the check each drawn axis must pass. tools/motion/spec.mjs fails when a declaration in plugin/**/*.qml is claimed by no row, when an anchor matches no declaration, or when a part has no Trace hook. tools/motion/follow.mjs reads this file and an AMPLIFY_TRACE=1 log. Kinds and options are documented at the top of follow.mjs.",
+  "about": "Motion spec as data for the Amplify river, orbs, basin and service host (task e0cabe57). One row per animation inventory row: what moves, the record that drives it, its trigger, start/end, stop condition, the code that declares it (code: file + a substring of each declaring line) and, per traced part, the check each drawn axis must pass. tools/motion/spec.mjs fails when a declaration in plugin/**/*.qml is claimed by no row, when an anchor matches no declaration, or when a part has no Trace hook. tools/motion/follow.mjs reads this file and an AMPLIFY_TRACE=1 log. Kinds and options are documented at the top of follow.mjs.",
   "rows": [
     {
       "id": "river-1", "comp": "river", "what": "Water streaks advected downstream",
@@ -172,13 +172,6 @@
       "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 4 }], "parts": []
     },
     {
-      "id": "service-orb", "comp": "service", "what": "Placeholder Meridian and ambient orbs: shader surface clock",
-      "record": "none (placeholder until Meridian)", "trigger": "animate && visible", "start": "0", "end": "loops (1/s)",
-      "stop": "!animate (AMPLIFY_STILL=1) or !visible",
-      "code": [{ "file": "plugin/Orb.qml", "line": "NumberAnimation on time" }],
-      "parts": [{ "part": "orb", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
-    },
-    {
       "id": "service-host", "comp": "service", "what": "FPS logger and the ready line",
       "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
       "code": [{ "file": "plugin/Service.qml", "line": "FrameAnimation {" }, { "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }], "parts": []
@@ -196,7 +189,7 @@
     "service": { "run": "plugin/orbs/test/shot.sh live: the whole plugin animated with AMPLIFY_TRACE=1",
       "want": { "orbs.clock.x": 1, "orbs.orb.rotation": 3, "basin.pool.x": 1, "basin.pool.opacity": 1,
                 "basin.pool.length": 1, "basin.row.y": 1, "basin.row.opacity": 1, "basin.row.halo": 1,
-                "service.orb.x": 2, "river.water.x": 1 } },
+                "river.water.x": 1 } },
     "orbs-decay": { "run": "plugin/orbs/test/shot.sh motion: orbs sheet animated, client clock +20 min at 3 s (lost, dormant, needs-you, ended fade)",
       "want": { "orbs.orb.sat": 5, "orbs.orb.light": 5, "orbs.orb.dorm": 1, "orbs.orb.lost": 1, "orbs.orb.need": 1, "orbs.orb.ended": 1,
                 "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 } },

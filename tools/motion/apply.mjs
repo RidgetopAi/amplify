@@ -44,7 +44,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     if (stale.length) { for (const s of stale) console.log(`STALE ${id}: ${s}`); process.exit(3); }
     for (const [f, s] of Object.entries(files)) {
         const p = path.join(tree, f);
+        const mode = fs.statSync(p).mode;   // keep a mutated script executable
         fs.rmSync(p, { force: true });   // a symlinked file gets its own copy, so the target stays unmutated
-        fs.writeFileSync(p, s);
+        fs.writeFileSync(p, s, { mode });
     }
 }

@@ -15,11 +15,20 @@ Item {
   property bool animate: true
   property bool trace: false
 
+  // The orbs' drawn shader programs on every screen, for the ready line (Service.qml).
+  function shaders() {
+    var out = []
+    for (var i = 0; i < screens.instances.length; i++) out = out.concat(screens.instances[i].shaders())
+    return out
+  }
+
   Variants {
+    id: screens
     model: Quickshell.screens
 
     PanelWindow {
       id: win
+      function shaders() { return field.shaders() }
       required property var modelData
       screen: modelData
       color: "transparent"

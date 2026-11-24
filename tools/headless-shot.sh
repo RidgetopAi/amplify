@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # Render the Amplify plugin under a headless Wayland compositor and check it.
 #
-#   tools/headless-shot.sh            # writes docs/spike/headless.png and docs/spike/orb.png
+#   tools/headless-shot.sh   # writes docs/spike/headless.png and headless-uncovered.png
 #
 # Steps: rebuild the .qsb from shaders/, start sway with the headless backend
 # and pixman renderer, start the harness (wallpaper on the Background layer and
-# an app window over the right half), start `quickshell -p plugin/`, screenshot
-# with grim, then assert:
-#   1. the plugin reports layer=bottom and a compiled shader;
-#   2. the left (uncovered) orb's centre is lit and accent-tinted;
-#   3. the right orb's centre shows the app window, so the layer sits below windows;
-#   4. a click on an orb reaches the orb, and a click on empty desktop passes
-#      through the mask to the wallpaper layer.
+# an app window over the right half), start `quickshell -p plugin/` with
+# AMPLIFY_TRACE=1 so the data-driven orbs (plugin/orbs, replayed snapshot) log
+# where they are drawn, screenshot with grim, then assert:
+#   1. the plugin reports layer=bottom and shader=compiled (every orb, river and
+#      basin program), and reports shader=error when a program is broken;
+#   2. the uncovered orbs' centres are lit and accent-tinted, and nothing is
+#      drawn where the P0 placeholder orb was (0.28W, 0.5H);
+#   3. a covered orb's centre shows the app window, so the layer sits below windows;
+#   4. a click on an orb opens its record, a click on empty desktop passes
+#      through the masks to the wallpaper layer, and with the app window moved
+#      away a click on a basin row opens its record;
+#   5. neither screenshot is blank. Screenshots are taken in a scratch directory
+#      and copied to docs/spike only when every check passed, so a failed or
+#      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
 # Exit status is the number of failed checks (0 = all passed).
 #
 # Needs: sway, grim, wayvnc, vncdo (vncdotool), quickshell, qsb, ImageMagick (magick). With no GPU, point
@@ -55,48 +62,102 @@ export QT_QPA_PLATFORM=wayland
 
 quickshell -p "$ROOT/tools/harness" > "$RUN/harness.log" 2>&1 & PIDS+=($!)
 sleep 2
-AMPLIFY_STILL=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
-  quickshell -p "$ROOT/plugin" > "$RUN/plugin.log" 2>&1 & PIDS+=($!)
-for _ in $(seq 100); do grep -q "amplify: ready" "$RUN/plugin.log" && break; sleep 0.1; done
-sleep 1
+# plugin [dir]: start the plugin (default plugin/), still and traced, and wait for its ready line.
+plugin() {
+  AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
+    quickshell -p "${1:-$ROOT/plugin}" > "$RUN/plugin.log" 2>&1 & QS=$!; PIDS+=($QS)
+  for _ in $(seq 100); do grep -aq "amplify: ready" "$RUN/plugin.log" && break; sleep 0.1; done
+  sleep 1
+}
+plugin
 
-grim "$OUT/headless.png"
-# Focus orb geometry mirrors Service.qml: centre (0.28W, 0.5H), size 0.42*min(W,H).
-S=$(( H * 42 / 100 )); FX=$(( W * 28 / 100 )); RX=$(( W * 75 / 100 )); CY=$(( H / 2 ))
-grim -g "$(( FX - S / 2 )),$(( CY - S / 2 )) ${S}x${S}" "$OUT/orb.png"
+grim "$RUN/headless.png"
 
 fails=0
 pass() { echo "PASS $*"; }
 fail() { echo "FAIL $*"; fails=$((fails + 1)); }
-pixel() { magick "$OUT/headless.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:; }
+pixel() { magick "$RUN/headless.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:; }
 
-ready=$(grep "amplify: ready" "$RUN/plugin.log" | head -1)
+ready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
 echo "log: ${ready#*qml: }"
 [[ $ready == *"layer=bottom"* ]] && pass "layer is bottom" || fail "layer is not bottom"
-[[ $ready == *"shader=compiled"* ]] && pass "shader compiled from .qsb" || fail "shader not compiled"
+[[ $ready == *"shader=compiled"* ]] && pass "every shader compiled from .qsb" || fail "shader not compiled"
 
-read -r r g b <<< "$(pixel "$((FX - S / 8))" "$((CY - S / 8))")"
-echo "focus orb pixel: $r $g $b"
-(( b > 120 && b > r )) && pass "uncovered orb renders (accent-lit)" || fail "uncovered orb not rendered"
+# The orbs from the trace: "<id8> <x> <y> <light>" of every opaque orb, left to
+# right, as last drawn (still mode: they hold). Uncovered: the live ones (full
+# light) clear of the app window (x >= W/2); covered: any under it.
+# (Parsed from the "amplify: trace" text on, since quickshell may colour its log prefix.)
+orbs=$(awk 'sub(/.*amplify: trace /, "") && $1 == "orbs" && $2 == "orb" && ($4 == "x" || $4 == "y" || $4 == "opacity" || $4 == "light") { v[$3, $4] = $5; id[$3] = 1 }
+  END { for (i in id) if (v[i, "opacity"] == 1) printf "%s %d %d %s\n", i, v[i, "x"], v[i, "y"], v[i, "light"] }' "$RUN/plugin.log" | sort -k2 -n)
+uncovered=$(awk -v m=$((W / 2 - 40)) '$2 < m && $4 == 1 { print $1, $2, $3 }' <<< "$orbs")
+covered=$(awk -v m=$((W / 2 + 40)) '$2 > m { print $1, $2, $3 }' <<< "$orbs")
+echo "orbs (id8 x y): $(tr '\n' ';' <<< "$orbs")"
+lit=0
+while read -r id x y; do
+  [[ -n $id ]] || continue
+  read -r r g b <<< "$(pixel "$x" "$y")"
+  echo "uncovered orb $id at $x,$y pixel: $r $g $b"
+  (( b > 120 && b > r )) && lit=$((lit + 1))
+done <<< "$uncovered"
+(( lit > 0 && lit == $(grep -c . <<< "$uncovered") )) && pass "uncovered data orbs render (accent-lit, $lit)" \
+  || fail "uncovered data orbs not rendered ($lit lit)"
 
-# Sample the ambient orb's core (its body radius is ~0.035H), just above the
-# window's centred label, so a Top-layer orb reads blue-white, far from beige.
-read -r r g b <<< "$(pixel "$RX" "$((CY - H * 30 / 720))")"
-echo "covered orb pixel: $r $g $b (app window is 232 227 216)"
-(( r > 220 && g > 215 && b > 205 && b < 225 )) && pass "app window covers the orb (layer below windows)" \
-  || fail "orb drawn over the app window"
+# Where the P0 Meridian placeholder was drawn: only wallpaper and faint river water now.
+read -r r g b <<< "$(pixel "$((W * 28 / 100))" "$((H / 2))")"
+echo "former placeholder pixel: $r $g $b"
+(( r < 90 && g < 90 && b < 110 )) && pass "nothing drawn where the placeholder orb was" || fail "an orb is drawn at the placeholder spot"
+
+read -r id x y <<< "$(head -1 <<< "$covered")"
+read -r r g b <<< "$(pixel "${x:-0}" "${y:-0}")"
+echo "covered orb ${id:-none} at ${x:-?},${y:-?} pixel: $r $g $b (app window is 232 227 216)"
+[[ -n $id ]] && (( r > 220 && g > 215 && b > 205 && b < 225 )) && pass "app window covers the orb (layer below windows)" \
+  || fail "orb drawn over the app window (or no covered orb)"
+
+# The click target: the rightmost uncovered live orb.
+read -r OID OX OY <<< "$(tail -1 <<< "$uncovered")"
 
 # The headless backend has no input devices. wayvnc holds one virtual pointer
 # for the whole session (one-shot tools such as wlrctl add and remove a device
 # per call, which races the client binding wl_pointer), and vncdo drives it.
 wayvnc 127.0.0.1 5959 > "$RUN/wayvnc.log" 2>&1 & PIDS+=($!)
 sleep 1
-timeout 20 vncdo -s 127.0.0.1::5959 move "$FX" "$CY" pause 0.3 click 1 pause 0.3 \
+timeout 20 vncdo -s 127.0.0.1::5959 move "$OX" "$OY" pause 0.3 click 1 pause 0.3 \
   move "$((W / 2 - 40))" "$((H - 60))" pause 0.3 click 1 pause 0.5
-grep -q "amplify: orb click meridian" "$RUN/plugin.log" && pass "click on orb reaches the orb" || fail "click on orb lost"
+grep -aq "amplify: orb open http" "$RUN/plugin.log" && pass "click on orb $OID opens its record ($(grep -ao "amplify: orb open .*" "$RUN/plugin.log" | head -1))" \
+  || fail "click on orb $OID lost"
 grep -q "harness: wallpaper click" "$RUN/harness.log" && pass "click on empty desktop passes through the mask" \
   || fail "empty-desktop click swallowed by the Amplify layer"
 
-grep -h "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | sed 's/^/  /'
-echo "headless-shot: $fails failed check(s); wrote docs/spike/headless.png docs/spike/orb.png"
+# The basin sits under the app window (lower right); move the window away, then
+# click the basin's last row (Service.qml: right 28, bottom 30; rows 64 px high).
+swaymsg '[title="amplify-cover"] move scratchpad' > /dev/null
+sleep 0.5
+grim "$RUN/headless-uncovered.png"
+timeout 20 vncdo -s 127.0.0.1::5959 move "$((W - 28 - 250))" "$((H - 30 - 32))" pause 0.3 click 1 pause 0.5
+grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin row opens its record" || fail "basin click lost"
+
+# A broken program must turn the ready line to shader=error: the same plugin with one
+# orb program truncated (a copy; plugin/ links into data/).
+kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/plugin-main.log"
+mkdir "$RUN/broken"; cp -a "$ROOT/plugin" "$ROOT/data" "$RUN/broken/"
+head -c 64 "$ROOT/plugin/shaders/orb_worker.frag.qsb" > "$RUN/broken/plugin/shaders/orb_worker.frag.qsb"
+plugin "$RUN/broken/plugin"
+bready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
+echo "broken log: ${bready#*qml: }" | cut -c1-200
+[[ $bready == *"shader=error"* ]] && pass "a broken orb program reports shader=error" || fail "ready line hides a broken shader"
+cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"; mv "$RUN/plugin-main.log" "$RUN/plugin.log"
+
+grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
+# A blank capture (nothing rendered) has no spread; a real one has wallpaper, water and orbs.
+for f in headless headless-uncovered; do
+  sd=$(magick "$RUN/$f.png" -format "%[fx:int(1000*standard_deviation)]" info: 2>/dev/null || echo 0)
+  (( sd > 10 )) && pass "$f.png is not blank (stddev $sd/1000)" || fail "$f.png is blank or missing (stddev $sd/1000)"
+done
+
+if (( fails == 0 )); then
+  cp "$RUN/headless.png" "$RUN/headless-uncovered.png" "$OUT/"
+  echo "headless-shot: 0 failed checks; wrote docs/spike/headless.png docs/spike/headless-uncovered.png"
+else
+  echo "headless-shot: $fails failed check(s); docs/spike screenshots left unchanged"
+fi
 exit "$fails"

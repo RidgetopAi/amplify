@@ -19,6 +19,8 @@ Item {
   readonly property real radius: orb ? orb.r : 30
   readonly property alias hitItem: hit
   signal activated(string url)
+  // Its drawn programs, for the ready line (Service.qml): the body, and the vessel when shown.
+  function shaders() { return !visible || opacity <= 0 ? [] : vessel.visible ? [fx, vesselFx] : [fx] }
 
   width: radius * 2 * 1.9
   height: width
