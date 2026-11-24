@@ -1538,6 +1538,59 @@
    "gates": [
     "river-shot"
    ]
+  },
+  {
+   "id": "XG1-service-trace-off-in-still",
+   "source": "d1c6236b XG1",
+   "class": "trace empty log",
+   "note": "no trace in still mode, so service-still checks an empty log",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "readonly property bool trace: Quickshell.env(\"AMPLIFY_TRACE\") === \"1\"\n",
+     "to": "readonly property bool trace: Quickshell.env(\"AMPLIFY_TRACE\") === \"1\" && !still\n"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "XG1b-untraced-still-pool-fades",
+   "source": "d1c6236b XG1b",
+   "class": "trace empty log + basin-pool still",
+   "note": "XG1 plus BA-pool-fades-in-still: the still-mode fade hides behind the empty log",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "readonly property bool trace: Quickshell.env(\"AMPLIFY_TRACE\") === \"1\"\n",
+     "to": "readonly property bool trace: Quickshell.env(\"AMPLIFY_TRACE\") === \"1\" && !still\n"
+    },
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400",
+     "to": "Behavior on opacity { NumberAnimation { duration: 1400"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "XG2-unlisted-animator",
+   "source": "d1c6236b XG2",
+   "class": "spec",
+   "note": "an Animator the spec regex did not see",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "  ListModel { id: gates }\n",
+     "to": "  OpacityAnimator on opacity { running: false }\n  ListModel { id: gates }\n"
+    }
+   ],
+   "gates": [
+    "spec"
+   ]
   }
  ]
 }
