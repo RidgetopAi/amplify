@@ -3,16 +3,26 @@
 #
 #   tools/mutate.sh                 # control, then every mutation in tools/motion/mutations.json
 #   tools/mutate.sh K1-lease-tween-removed C3-reject-rings-dont-turn   # control, then these
+#   tools/mutate.sh -j 4 …          # up to 4 runs at once (default: nproc)
 #   tools/mutate.sh --list          # ids, sources and gates
 #
 # Each mutation is applied to a fresh scratch copy of the working tree (tracked and
 # untracked files, never the tree itself) by tools/motion/apply.mjs; then the gates it
-# lists run there. RED: at least one gate exited non-zero (the mutation is caught).
-# GREEN: every gate passed (it survives). STALE: an edit no longer matches the code
-# (fix the catalogue). The control (no edit) runs every gate the selection uses and
-# must be GREEN. Prints one table row per mutation with each gate's exit code and
-# keeps every gate log in $MUTATE_OUT (default /tmp/mutate-<time>).
-# Exit status: survivors + stale + (1 if the control is not GREEN).
+# lists run there, cheapest first, stopping at the first gate that exits non-zero.
+# RED: a gate exited non-zero (the mutation is caught). GREEN: every gate passed (it
+# survives). STALE: an edit no longer matches the code (fix the catalogue). The control
+# (no edit) runs every gate the selection uses and must be GREEN. Prints one table row
+# per run, in selection order, with the exit code of each gate it ran, and keeps every
+# gate log in $MUTATE_OUT (default /tmp/mutate-<time>).
+# Exit status: survivors + stale + errors + (1 if the control is not GREEN).
+#
+# Parallel runs (task f8c9133d): the control and the mutations are queued and up to N
+# run at once. Each run gets its own scratch copy, and each gate it runs a fresh runtime
+# dir, passed as SHOT_RUNTIME_DIR (and TMPDIR): the render gates use it as XDG_RUNTIME_DIR,
+# so each gate's sway makes its own Wayland socket and its clients and grim connect only
+# to it. A gate holds a lock on its runtime dir; a run that finds it held reports ERROR
+# (isolation broken). After each gate, whatever it left running is killed. The headless
+# gate drives wayvnc on a fixed port, so headless gates take turns.
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
 # plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot
@@ -33,7 +43,17 @@ if [[ ${1:-} == --list ]]; then
   exit 0
 fi
 
-ids=("$@")
+JOBS=$(nproc) ids=()
+while (( $# )); do
+  case $1 in
+    -j) JOBS=${2:-}; shift ;;
+    -j*) JOBS=${1#-j} ;;
+    *) ids+=("$1") ;;
+  esac
+  shift
+done
+[[ $JOBS =~ ^[1-9][0-9]*$ ]] || { echo "mutate: -j needs a positive number" >&2; exit 2; }
+
 (( ${#ids[@]} )) || mapfile -t ids < <(node -e 'for (const m of require(process.argv[1]).mutations) console.log(m.id)' "$CAT")
 gates_of() { node -e 'const m = require(process.argv[1]).mutations.find((x) => x.id === process.argv[2]); if (!m) process.exit(2); console.log(m.gates.join(" "))' "$CAT" "$1"; }
 
@@ -44,27 +64,57 @@ declare -A CMD=(
 )
 ORDER=(data orbs river motion spec headless orbs-shot river-shot)   # cheapest first
 
-# The scratch copy: the working tree as it is now (tracked and untracked, not ignored), without .git.
-BASE="$(mktemp -d)"
-trap 'rm -rf "$BASE" "${SCR:-}"' EXIT
+# WORK holds the base copy, each run's scratch copy, runtime dir and result.
+WORK="$(mktemp -d)"
+trap 'wait; rm -rf "$WORK"' EXIT
+# The base copy: the working tree as it is now (tracked and untracked, not ignored), without .git.
+BASE="$WORK/base"; mkdir "$BASE"
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | grep -zv '^\.amp/' | tar --null -T - -cf -) | tar -xf - -C "$BASE"
 
-# run <id> <gate…>: one table row.
+# reap <dir>: kill what a gate left running, found by the MUTATE_RUN=<dir> every process
+# it started inherits. (Nix's sway wrapper runs sway under dbus-run-session when there is
+# no session bus, so the shot scripts' kill of the sway pid leaves sway and dbus running.)
+reap() {
+  local p
+  for p in /proc/[0-9]*; do grep -qzx "MUTATE_RUN=$1" "$p/environ" 2>/dev/null && kill "${p#/proc/}" 2>/dev/null; done
+}
+
+# gate <n> <id> <gate>: run one gate in run n's scratch copy, in its own runtime dir
+# (fresh per gate, locked while in use) and temp dir; prints its exit code, or "busy"
+# when the runtime dir is already locked (isolation broken).
+gate() {
+  local n=$1 id=$2 g=$3 rt="$WORK/rt-$1-$3" rc
+  mkdir -p "$rt"
+  exec 9< "$rt"
+  flock -n 9 || { echo "mutate: runtime dir $rt is in use by another run" > "$OUT/$id-$g.log"; exec 9<&-; echo busy; return; }
+  local env=(MUTATE_RUN="$rt" SHOT_RUNTIME_DIR="$rt" TMPDIR="$rt")
+  [[ $g == headless ]] && env+=(flock "$WORK/headless.lock")
+  (cd "$WORK/scr-$n" && exec env "${env[@]}" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
+  rc=$?
+  reap "$rt"; exec 9<&-; rm -rf "$rt"
+  echo "$rc"
+}
+
+# run <n> <id> <gate…>: one table row on stdout. Returns 0 RED, 1 GREEN, 2 STALE, 3 ERROR.
 run() {
-  local id=$1; shift
-  SCR="$(mktemp -d)"; cp -a "$BASE/." "$SCR/"
+  local n=$1 id=$2; shift 2
+  local scr="$WORK/scr-$n"
+  mkdir -p "$scr"; cp -a "$BASE/." "$scr/"
   if [[ $id != control ]]; then
-    node "$ROOT/tools/motion/apply.mjs" "$SCR" "$id" > "$OUT/$id-apply.log" 2>&1
-    if [[ $? != 0 ]]; then printf '%-36s STALE  %s\n' "$id" "$(head -1 "$OUT/$id-apply.log")"; rm -rf "$SCR"; return 2; fi
+    node "$ROOT/tools/motion/apply.mjs" "$scr" "$id" > "$OUT/$id-apply.log" 2>&1
+    if [[ $? != 0 ]]; then printf '%-36s STALE  %s\n' "$id" "$(head -1 "$OUT/$id-apply.log")"; rm -rf "$scr"; return 2; fi
   fi
-  local g codes="" red=0
+  local g rc codes="" red=0
   for g in "${ORDER[@]}"; do
     [[ " $* " == *" $g "* ]] || continue
-    (cd "$SCR" && ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
-    local rc=$?
-    codes+=" $g=$rc"; (( rc )) && red=1
+    rc=$(gate "$n" "$id" "$g")
+    if [[ $rc == busy ]]; then
+      printf '%-36s ERROR  %s\n' "$id" "$(< "$OUT/$id-$g.log")"; rm -rf "$scr"; return 3
+    fi
+    codes+=" $g=$rc"
+    (( rc )) && { red=1; break; }
   done
-  rm -rf "$SCR"
+  rm -rf "$scr"
   printf '%-36s %-6s%s\n' "$id" "$( ((red)) && echo RED || echo GREEN)" "$codes"
   return $((red ? 0 : 1))
 }
@@ -75,14 +125,32 @@ for id in "${ids[@]}"; do
   for x in $g; do [[ " ${all[*]} " == *" $x "* ]] || all+=("$x"); done
 done
 
-echo "mutate: ${#ids[@]} mutations, logs in $OUT"
+# The queue: the control first, then the selection. Runs finish in any order; rows
+# print in queue order as soon as every earlier run has finished.
+queue=(control "${ids[@]}")
+echo "mutate: ${#ids[@]} mutations, -j $JOBS, logs in $OUT"
 printf '%-36s %-6s %s\n' MUTATION RESULT "GATE=EXIT"
-bad=0
-run control "${all[@]}"; [[ $? == 1 ]] || { echo "mutate: control is not GREEN (see $OUT/control-*.log)"; bad=1; }
-red=0 green=0 stale=0
-for id in "${ids[@]}"; do
-  run "$id" $(gates_of "$id")
-  case $? in 0) red=$((red + 1)) ;; 1) green=$((green + 1)) ;; *) stale=$((stale + 1)) ;; esac
+bad=0 red=0 green=0 stale=0 err=0 next=0
+flush() {
+  while [[ -f $WORK/rc-$next ]]; do
+    cat "$WORK/row-$next"
+    local rc; rc=$(< "$WORK/rc-$next")
+    if (( next == 0 )); then
+      [[ $rc == 1 ]] || { echo "mutate: control is not GREEN (see $OUT/control-*.log)"; bad=1; }
+    else
+      case $rc in 0) red=$((red + 1)) ;; 1) green=$((green + 1)) ;; 2) stale=$((stale + 1)) ;; *) err=$((err + 1)) ;; esac
+    fi
+    next=$((next + 1))
+  done
+}
+for n in "${!queue[@]}"; do
+  while (( $(jobs -rp | wc -l) >= JOBS )); do wait -n; flush; done
+  id=${queue[n]}
+  if (( n == 0 )); then gates=("${all[@]}"); else read -ra gates <<< "$(gates_of "$id")"; fi
+  ( run "$n" "$id" "${gates[@]}" > "$WORK/row-$n"; echo $? > "$WORK/rc-$n.tmp"; mv "$WORK/rc-$n.tmp" "$WORK/rc-$n" ) &
+  flush
 done
-echo "mutate: $red RED, $green GREEN (survived), $stale STALE of ${#ids[@]}; control $( ((bad)) && echo 'NOT GREEN' || echo GREEN)"
-exit $((green + stale + bad))
+while (( next < ${#queue[@]} )) && [[ -n $(jobs -rp) ]]; do wait -n; flush; done
+wait; flush
+echo "mutate: $red RED, $green GREEN (survived), $stale STALE$( ((err)) && echo ", $err ERROR") of ${#ids[@]}; control $( ((bad)) && echo 'NOT GREEN' || echo GREEN)"
+exit $((green + stale + err + bad))
