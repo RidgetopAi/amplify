@@ -29,10 +29,11 @@ Scenarios (`scenarios` in the spec) name the runs, set `still: true` for `AMPLIF
 ```sh
 tools/mutate.sh                 # control, then all mutations
 tools/mutate.sh K1-lease-tween-removed X1-tether-voff-behavior-removed
+tools/mutate.sh -j 4            # up to 4 runs at once (default: nproc)
 tools/mutate.sh --list
 ```
 
-Each mutation edits a scratch copy of the working tree (`from` → `to`, exactly once, or `deleteRow` for a spec row) and runs the gates it lists. RED means a gate caught it, GREEN means it survives, STALE means the catalogue no longer matches the code. The builder runs the whole catalogue before handoff and puts the table in the run report; the critic runs the same command and adds any surviving mutation it finds.
+Each mutation edits a scratch copy of the working tree (`from` → `to`, exactly once, or `deleteRow` for a spec row) and runs the gates it lists, cheapest first, stopping at the first that fails. Runs go in parallel (`-j N`, with at most `MUTATE_RENDER_JOBS`, default nproc, render gates at once); each gate gets its own runtime dir (`SHOT_RUNTIME_DIR`), so render gates never share a compositor, and is cleaned up after. RED means a gate caught it, GREEN means it survives, STALE means the catalogue no longer matches the code. The builder runs the whole catalogue before handoff and puts the table in the run report; the critic runs the same command and adds any surviving mutation it finds.
 
 ## Verdict tiers (proposal)
 

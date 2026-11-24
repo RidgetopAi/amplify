@@ -64,7 +64,8 @@ PIDS=()
 cleanup() { kill "${PIDS[@]}" 2>/dev/null; wait 2>/dev/null; rm -rf "$RUN"; }
 trap cleanup EXIT
 
-export XDG_RUNTIME_DIR="$RUN" WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
+# env-read: SHOT_RUNTIME_DIR overrides the runtime dir (tools/mutate.sh gives each gate it runs its own).
+export XDG_RUNTIME_DIR="${SHOT_RUNTIME_DIR:-$RUN}" WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
 unset WAYLAND_DISPLAY DISPLAY SWAYSOCK
 # env-read: HEADLESS_MESA selects a Mesa install for llvmpipe when there is no /dev/dri.
 if [[ -n ${HEADLESS_MESA:-} ]]; then
@@ -74,8 +75,8 @@ fi
 
 printf 'output HEADLESS-1 resolution %sx%s position 0 0\ndefault_border none\n' "$W" "$H" > "$RUN/sway.cfg"
 sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
-for _ in $(seq 50); do ls "$RUN"/wayland-* >/dev/null 2>&1 && break; sleep 0.1; done
-export WAYLAND_DISPLAY="$(basename "$(ls "$RUN"/wayland-? | head -1)")"
+for _ in $(seq 50); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 0.1; done
+export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
 export QT_QPA_PLATFORM=wayland
 
 checks=0 fails=0 RUNS=()
