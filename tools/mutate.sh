@@ -21,12 +21,11 @@
 # dir, passed as SHOT_RUNTIME_DIR (and TMPDIR): the render gates use it as XDG_RUNTIME_DIR,
 # so each gate's sway makes its own Wayland socket and its clients and grim connect only
 # to it. A gate holds a lock on its runtime dir; a run that finds it held reports ERROR
-# (isolation broken). After each gate, whatever it left running is killed. The headless
-# gate drives wayvnc on a fixed port, so headless gates take turns. A render gate keeps
-# about one core busy on llvmpipe and its motion checks have time limits (a tether
-# settles within 2 s), so at most $MUTATE_RENDER_JOBS (default: nproc) render gates run
-# at once, whatever -j is; on a 2-vCPU orb 4 at once made the control's river-shot miss
-# that limit (2.08 s).
+# (isolation broken). After each gate, whatever it left running is killed. A render gate
+# keeps about one core busy on llvmpipe and its checks have time limits (a tether settles
+# within 2 s), so at most $MUTATE_RENDER_JOBS (default: nproc) render gates run at once,
+# whatever -j is (on a 2-vCPU orb, 4 at once made the control's river-shot miss that limit,
+# 2.08 s), and the headless gate runs alone (it also drives wayvnc on a fixed port).
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
 # plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot
@@ -77,11 +76,15 @@ WORK="$(mktemp -d)"
 # starts) matches <glob>: after a gate, what it left running; on exit, everything any gate
 # started. (Nix's sway wrapper runs sway under dbus-run-session when there is no session
 # bus, so the shot scripts' kill of the sway pid leaves sway and dbus-daemon running.)
+# It waits (up to 3 s) for them to exit, so a gate's slot frees only when its sway is gone.
 reap() {
-  local p e
+  local p e pids=() i
   for p in /proc/[0-9]*; do
-    { while IFS= read -r -d '' e; do [[ $e == MUTATE_RUN=$1 ]] && { kill "${p#/proc/}"; break; }; done < "$p/environ"; } 2>/dev/null
+    { while IFS= read -r -d '' e; do [[ $e == MUTATE_RUN=$1 ]] && { pids+=("${p#/proc/}"); break; }; done < "$p/environ"; } 2>/dev/null
   done
+  (( ${#pids[@]} )) || return 0
+  kill "${pids[@]}" 2>/dev/null
+  for ((i = 0; i < 30; i++)); do kill -0 "${pids[@]}" 2>/dev/null || return 0; sleep 0.1; done
 }
 # On exit, interrupted or not: stop the runs, then whatever their gates still run.
 cleanup() { kill $(jobs -p) 2>/dev/null; wait; reap "$WORK/*"; sleep 0.5; reap "$WORK/*"; rm -rf "$WORK"; }
@@ -92,12 +95,24 @@ trap 'exit 130' INT TERM
 BASE="$WORK/base"; mkdir "$BASE"
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | grep -zv '^\.amp/' | tar --null -T - -cf -) | tar -xf - -C "$BASE"
 
-# render_slot: hold (on fd 8) one of the RENDER render-gate slots, waiting for a free one.
+# render_slot [all]: hold one of the RENDER render-gate slots (fds in SLOTS), waiting for a
+# free one; with "all", every slot, so the gate renders alone (the headless gate: its
+# broken-shader check gives a fresh, uncached plugin copy 10 s to report ready, which one
+# other render on a 2-vCPU orb made it miss).
 render_slot() {
-  local k
+  local k fd
+  SLOTS=()
+  if [[ ${1:-} == all ]]; then
+    for ((k = 1; k <= RENDER; k++)); do exec {fd}> "$WORK/render-$k.lock"; flock "$fd"; SLOTS+=("$fd"); done
+    return
+  fi
   while :; do
-    for ((k = 1; k <= RENDER; k++)); do exec 8> "$WORK/render-$k.lock"; flock -n 8 && return; done
-    exec 8>&-; sleep 0.5
+    for ((k = 1; k <= RENDER; k++)); do
+      exec {fd}> "$WORK/render-$k.lock"
+      flock -n "$fd" && { SLOTS=("$fd"); return; }
+      exec {fd}>&-
+    done
+    sleep 0.5
   done
 }
 
@@ -109,12 +124,13 @@ gate() {
   mkdir -p "$rt"
   exec 9< "$rt"
   flock -n 9 || { echo "mutate: runtime dir $rt is in use by another run" > "$OUT/$id-$g.log"; exec 9<&-; echo busy; return; }
-  [[ $g == *-shot || $g == headless ]] && render_slot
+  local SLOTS=() fd
+  [[ $g == *-shot ]] && render_slot
+  [[ $g == headless ]] && render_slot all
   local env=(MUTATE_RUN="$rt" SHOT_RUNTIME_DIR="$rt" TMPDIR="$rt")
-  [[ $g == headless ]] && env+=(flock "$WORK/headless.lock")
   (cd "$WORK/scr-$n" && exec env "${env[@]}" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
   rc=$?
-  reap "$rt"; exec 8>&- 9<&-; rm -rf "$rt"
+  reap "$rt"; for fd in "${SLOTS[@]}"; do exec {fd}>&-; done; exec 9<&-; rm -rf "$rt"
   echo "$rc"
 }
 
