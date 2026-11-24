@@ -43,7 +43,9 @@
 //   want           { "<comp>.<part>.<axis>": n }: at least n movers of that
 //                  axis in this run (so a check cannot pass with nothing moving).
 // A traced (comp, part) or axis the spec does not list fails: every moving
-// thing needs a row. Prints one line per check; exit 1 if any fails.
+// thing needs a row. A log with no trace lines fails (still scenarios have no
+// mover floors, so an untraced run would otherwise pass). Prints one line per
+// check; exit 1 if any fails.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -242,6 +244,9 @@ export function check(spec, scenario, text) {
     const sc = spec.scenarios[scenario];
     if (!sc) throw new Error(`no scenario ${scenario}`);
     const S = parse(text);
+    // An empty trace passes every per-item check (still scenarios have no mover floors),
+    // so a run that traced nothing fails here (gap G1, verdict d1c6236b).
+    if (!S.size) return { results: [{ name: "trace", ok: false, why: "no trace lines in the log (AMPLIFY_TRACE=1 not on, or nothing traced)" }], movers: {}, ok: false };
     const logEnd = Math.max(0, ...[...S.values()].flatMap((s) => Object.values(s.axes).map((a) => a.at(-1).t)));
     const rows = new Map(spec.rows.flatMap((r) => r.parts.map((p) => [`${r.comp} ${p.part}`, { row: r, ...p }])));
     const results = [], movers = {};

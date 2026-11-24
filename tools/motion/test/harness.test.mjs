@@ -90,6 +90,14 @@ test("still: a change outside a data step fails", () => {
     assert.equal(run({ x: spring }, { "c p a": [{ x: 0, "x:to": 0 }, { "x:to": 100 }, { x: 50 }, { x: 100 }] }, {}, true).ok, false);
 });
 
+test("a log with no trace lines fails, still or not (G1)", () => {
+    const untraced = "amplify: ready layer=bottom screen=HEADLESS-1\namplify: palette accent=#7aa2f7";
+    assert.equal(check(spec({ x: spring }, {}, true), "s", untraced).ok, false, "still scenario, no floors");
+    assert.equal(check(spec({ x: spring }), "s", "").ok, false, "live scenario, no floors");
+    assert.equal(check(realSpec, "service-still", untraced).ok, false, "service-still");
+    assert.equal(check(realSpec, "river-still", untraced).ok, false, "river-still");
+});
+
 test("a traced part or axis the spec does not list fails", () => {
     assert.equal(run({ x: spring }, { "c z a": [{ x: 1 }] }).ok, false);
     assert.equal(run({ x: spring }, { "c p a": [{ x: 0, "x:to": 0, y: 3 }] }).ok, false);
@@ -112,10 +120,13 @@ test("the spec check fails when a row is deleted or an animation is added withou
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "spec-"));
     fs.cpSync(path.join(root, "plugin"), path.join(tmp, "plugin"), { recursive: true, verbatimSymlinks: true });
     const f = path.join(tmp, "plugin/basin/Basin.qml");
-    fs.writeFileSync(f, fs.readFileSync(f, "utf8").replace("  width: 500\n", "  width: 500\n  NumberAnimation on opacity { running: false }\n"));
-    const r = checkSpec(realSpec, tmp);
+    const src = fs.readFileSync(f, "utf8");
+    for (const decl of ["NumberAnimation on opacity { running: false }", "OpacityAnimator on opacity { running: false }", "RotationAnimator { target: pool; running: false }"]) {
+        fs.writeFileSync(f, src.replace("  width: 500\n", `  width: 500\n  ${decl}\n`));
+        const r = checkSpec(realSpec, tmp);
+        assert.ok(r.problems.some((p) => p.includes("Basin.qml") && p.includes("not in docs/motion.json") && p.includes(decl)), `${decl}\n${r.problems.join("\n")}`);
+    }
     fs.rmSync(tmp, { recursive: true });
-    assert.ok(r.problems.some((p) => p.includes("Basin.qml") && p.includes("not in docs/motion.json")), r.problems.join("\n"));
 });
 
 test("the mutation catalogue applies to this tree and covers the river records", () => {
@@ -126,7 +137,7 @@ test("the mutation catalogue applies to this tree and covers the river records",
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);
     }
-    for (const id of ["K1-lease-tween-removed", "K2-hull-y-target", "K4-tether-y2-target", "K14-pass-ring-still-only", "X1-tether-voff-behavior-removed", "SP-row-deleted"])
+    for (const id of ["K1-lease-tween-removed", "K2-hull-y-target", "K4-tether-y2-target", "K14-pass-ring-still-only", "X1-tether-voff-behavior-removed", "SP-row-deleted", "XG1-service-trace-off-in-still", "XG1b-untraced-still-pool-fades", "XG2-unlisted-animator"])
         assert.ok(ids.includes(id), id);
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
 });
