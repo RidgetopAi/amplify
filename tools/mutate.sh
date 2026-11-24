@@ -99,21 +99,24 @@ BASE="$WORK/base"; mkdir "$BASE"
 # free one; with "all", every slot, so the gate renders alone (the headless gate: its
 # broken-shader check gives a fresh, uncached plugin copy 10 s to report ready, which one
 # other render on a 2-vCPU orb made it miss).
+# Waiters queue on a turnstile first, so a run that waits is not passed over by later ones.
 render_slot() {
-  local k fd
+  local k fd t
   SLOTS=()
+  exec {t}> "$WORK/render.turnstile"; flock "$t"
   if [[ ${1:-} == all ]]; then
     for ((k = 1; k <= RENDER; k++)); do exec {fd}> "$WORK/render-$k.lock"; flock "$fd"; SLOTS+=("$fd"); done
-    return
-  fi
-  while :; do
-    for ((k = 1; k <= RENDER; k++)); do
-      exec {fd}> "$WORK/render-$k.lock"
-      flock -n "$fd" && { SLOTS=("$fd"); return; }
-      exec {fd}>&-
+  else
+    while (( ! ${#SLOTS[@]} )); do
+      for ((k = 1; k <= RENDER; k++)); do
+        exec {fd}> "$WORK/render-$k.lock"
+        flock -n "$fd" && { SLOTS=("$fd"); break; }
+        exec {fd}>&-
+      done
+      (( ${#SLOTS[@]} )) || sleep 0.2
     done
-    sleep 0.5
-  done
+  fi
+  exec {t}>&-
 }
 
 # gate <n> <id> <gate>: run one gate in run n's scratch copy, in its own runtime dir
