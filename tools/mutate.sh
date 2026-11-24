@@ -22,7 +22,11 @@
 # so each gate's sway makes its own Wayland socket and its clients and grim connect only
 # to it. A gate holds a lock on its runtime dir; a run that finds it held reports ERROR
 # (isolation broken). After each gate, whatever it left running is killed. The headless
-# gate drives wayvnc on a fixed port, so headless gates take turns.
+# gate drives wayvnc on a fixed port, so headless gates take turns. A render gate keeps
+# about one core busy on llvmpipe and its motion checks have time limits (a tether
+# settles within 2 s), so at most $MUTATE_RENDER_JOBS (default: nproc) render gates run
+# at once, whatever -j is; on a 2-vCPU orb 4 at once made the control's river-shot miss
+# that limit (2.08 s).
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
 # plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot
@@ -43,7 +47,8 @@ if [[ ${1:-} == --list ]]; then
   exit 0
 fi
 
-JOBS=$(nproc) ids=()
+# env-read: MUTATE_RENDER_JOBS caps the render gates (river-shot, orbs-shot, headless) running at once.
+JOBS=$(nproc) RENDER=${MUTATE_RENDER_JOBS:-$(nproc)} ids=()
 while (( $# )); do
   case $1 in
     -j) JOBS=${2:-}; shift ;;
@@ -53,6 +58,7 @@ while (( $# )); do
   shift
 done
 [[ $JOBS =~ ^[1-9][0-9]*$ ]] || { echo "mutate: -j needs a positive number" >&2; exit 2; }
+[[ $RENDER =~ ^[1-9][0-9]*$ ]] || { echo "mutate: MUTATE_RENDER_JOBS needs a positive number" >&2; exit 2; }
 
 (( ${#ids[@]} )) || mapfile -t ids < <(node -e 'for (const m of require(process.argv[1]).mutations) console.log(m.id)' "$CAT")
 gates_of() { node -e 'const m = require(process.argv[1]).mutations.find((x) => x.id === process.argv[2]); if (!m) process.exit(2); console.log(m.gates.join(" "))' "$CAT" "$1"; }
@@ -86,6 +92,15 @@ trap 'exit 130' INT TERM
 BASE="$WORK/base"; mkdir "$BASE"
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | grep -zv '^\.amp/' | tar --null -T - -cf -) | tar -xf - -C "$BASE"
 
+# render_slot: hold (on fd 8) one of the RENDER render-gate slots, waiting for a free one.
+render_slot() {
+  local k
+  while :; do
+    for ((k = 1; k <= RENDER; k++)); do exec 8> "$WORK/render-$k.lock"; flock -n 8 && return; done
+    exec 8>&-; sleep 0.5
+  done
+}
+
 # gate <n> <id> <gate>: run one gate in run n's scratch copy, in its own runtime dir
 # (fresh per gate, locked while in use) and temp dir; prints its exit code, or "busy"
 # when the runtime dir is already locked (isolation broken).
@@ -94,11 +109,12 @@ gate() {
   mkdir -p "$rt"
   exec 9< "$rt"
   flock -n 9 || { echo "mutate: runtime dir $rt is in use by another run" > "$OUT/$id-$g.log"; exec 9<&-; echo busy; return; }
+  [[ $g == *-shot || $g == headless ]] && render_slot
   local env=(MUTATE_RUN="$rt" SHOT_RUNTIME_DIR="$rt" TMPDIR="$rt")
   [[ $g == headless ]] && env+=(flock "$WORK/headless.lock")
   (cd "$WORK/scr-$n" && exec env "${env[@]}" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
   rc=$?
-  reap "$rt"; exec 9<&-; rm -rf "$rt"
+  reap "$rt"; exec 8>&- 9<&-; rm -rf "$rt"
   echo "$rc"
 }
 
@@ -135,7 +151,7 @@ done
 # The queue: the control first, then the selection. Runs finish in any order; rows
 # print in queue order as soon as every earlier run has finished.
 queue=(control "${ids[@]}")
-echo "mutate: ${#ids[@]} mutations, -j $JOBS, logs in $OUT"
+echo "mutate: ${#ids[@]} mutations, -j $JOBS (render gates $RENDER), logs in $OUT"
 printf '%-36s %-6s %s\n' MUTATION RESULT "GATE=EXIT"
 bad=0 red=0 green=0 stale=0 err=0 next=0
 flush() {
