@@ -66,18 +66,25 @@ ORDER=(data orbs river motion spec headless orbs-shot river-shot)   # cheapest f
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
-trap 'wait; rm -rf "$WORK"' EXIT
+
+# reap <glob>: kill every process whose MUTATE_RUN (which each gate passes to everything it
+# starts) matches <glob>: after a gate, what it left running; on exit, everything any gate
+# started. (Nix's sway wrapper runs sway under dbus-run-session when there is no session
+# bus, so the shot scripts' kill of the sway pid leaves sway and dbus-daemon running.)
+reap() {
+  local p e
+  for p in /proc/[0-9]*; do
+    { while IFS= read -r -d '' e; do [[ $e == MUTATE_RUN=$1 ]] && { kill "${p#/proc/}"; break; }; done < "$p/environ"; } 2>/dev/null
+  done
+}
+# On exit, interrupted or not: stop the runs, then whatever their gates still run.
+cleanup() { kill $(jobs -p) 2>/dev/null; wait; reap "$WORK/*"; sleep 0.5; reap "$WORK/*"; rm -rf "$WORK"; }
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
 # The base copy: the working tree as it is now (tracked and untracked, not ignored), without .git.
 BASE="$WORK/base"; mkdir "$BASE"
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | grep -zv '^\.amp/' | tar --null -T - -cf -) | tar -xf - -C "$BASE"
-
-# reap <dir>: kill what a gate left running, found by the MUTATE_RUN=<dir> every process
-# it started inherits. (Nix's sway wrapper runs sway under dbus-run-session when there is
-# no session bus, so the shot scripts' kill of the sway pid leaves sway and dbus running.)
-reap() {
-  local p
-  for p in /proc/[0-9]*; do grep -qzx "MUTATE_RUN=$1" "$p/environ" 2>/dev/null && kill "${p#/proc/}" 2>/dev/null; done
-}
 
 # gate <n> <id> <gate>: run one gate in run n's scratch copy, in its own runtime dir
 # (fresh per gate, locked while in use) and temp dir; prints its exit code, or "busy"
