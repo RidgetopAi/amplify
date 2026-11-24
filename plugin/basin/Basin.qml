@@ -16,6 +16,8 @@ Item {
   readonly property int count: feed.rows.length
   readonly property bool replay: !!(feed.activeScene && feed.activeScene.meta && feed.activeScene.meta.mode === "replay")
   signal opened(string url)
+  // The pool's program, for the ready line (Service.qml); none while the pool is hidden (no rows).
+  function shaders() { return pool.visible ? [pool] : [] }
 
   // Warm is reserved for humans; these never follow the theme.
   readonly property color warm: "#ff9e74"

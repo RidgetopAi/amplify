@@ -37,7 +37,11 @@ Item {
     }
   }
 
+  // Its program, for the ready line (Service.qml); none while hidden, since only drawn effects compile.
+  function shaders() { return visible ? [fx] : [] }
+
   ShaderEffect {
+    id: fx
     anchors.fill: parent
     blending: true
     fragmentShader: Qt.resolvedUrl("../shaders/orbbeam.frag.qsb")

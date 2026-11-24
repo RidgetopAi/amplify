@@ -36,6 +36,9 @@ Item {
   readonly property string mono: "JetBrains Mono, DejaVu Sans Mono, monospace"
   readonly property string sans: "Inter, Noto Sans, DejaVu Sans, sans-serif"
 
+  // Its shader program, for the ready line (Service.qml).
+  function shaders() { return [water] }
+
   function cy(x) { return R.centerY(x, dw) }
   function hw(x) { return R.halfWidth(x, dw) }
   function gateX(i) { return lay ? lay.gates[i].x : dw * (0.025 + i * 0.139) }
@@ -158,6 +161,7 @@ Item {
       layer.smooth: true
       layer.textureSize: Qt.size(Math.max(1, Math.round(river.width / 2)), Math.max(1, Math.round(river.height / 2)))
       ShaderEffect {
+        id: water
         anchors.fill: parent
         property real phase: river.phase
         property real light: river.lay ? river.lay.light : 0.55

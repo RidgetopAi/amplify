@@ -1083,7 +1083,7 @@
    "edits": [
     {
      "file": "plugin/Service.qml",
-     "from": "      River { anchors.fill: parent; animate: !root.still; trace: root.trace }\n",
+     "from": "      River { id: river; anchors.fill: parent; animate: !root.still; trace: root.trace }\n",
      "to": ""
     }
    ],
@@ -1449,19 +1449,51 @@
    ]
   },
   {
-   "id": "SV-orb-ignores-still",
-   "source": "e0cabe57 service equivalent",
-   "class": "service-orb x",
-   "note": "",
+   "id": "PH-fixed-orb-readded",
+   "source": "4d7c36c5 done-when 6",
+   "class": "service placeholder",
+   "note": "a hard-coded orb (fixed energy 0.6, no record) drawn where the Meridian placeholder was",
    "edits": [
     {
-     "file": "plugin/Orb.qml",
-     "from": "running: orb.animate && orb.visible",
-     "to": "running: orb.visible"
+     "file": "plugin/Service.qml",
+     "from": "      Basin {\n",
+     "to": "      OrbView { orb: ({ id8: \"meridian\", name: \"meridian\", sub: \"\", role: \"worker\", liveness: \"live\", r: 90, sat: 1, light: 1, energy: 0.6, form: 1, dorm: 0, lost: 0, need: 0, ended: 0, endedFade: 1, spin: 1, pulse: 1, seed: 0, fuse: -1 }); x: win.width * 0.28 - width / 2; y: win.height * 0.5 - height / 2 }\n      Basin {\n"
     }
    ],
    "gates": [
-    "orbs-shot"
+    "headless"
+   ]
+  },
+  {
+   "id": "PH-ready-hides-shader-error",
+   "source": "4d7c36c5 done-when 6",
+   "class": "service ready line",
+   "note": "the ready line reports compiled when a remaining program failed",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        if (p.error) all = \"error\"\n",
+     "to": "        if (p.error) ok++\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PH-click-empty-desktop",
+   "source": "4d7c36c5 done-when 6",
+   "class": "headless click",
+   "note": "the orb click check pointed at empty desktop",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "move \"$OX\" \"$OY\" pause",
+     "to": "move \"$((W / 2 - 40))\" \"$((H - 120))\" pause"
+    }
+   ],
+   "gates": [
+    "headless"
    ]
   },
   {
