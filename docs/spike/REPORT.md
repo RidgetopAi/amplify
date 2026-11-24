@@ -50,11 +50,11 @@ misbehaves on real hardware.
 | --- | --- |
 | `plugin/manifest.json` | `ridgetopai.amplify`, kind `service`, entry `Service.qml` |
 | `plugin/Service.qml` | One `PanelWindow` per screen (`Variants` over `Quickshell.screens`) on `WlrLayer.Bottom`, `ExclusionMode.Ignore`, no keyboard focus; `mask: Region` built from the orbs' hit circles; palette via `Process` (`cat colors.toml`) re-run by a `FileView` watch; `IpcHandler` target `amplify` (`refreshTheme`); optional `XMLHttpRequest` probe (`AMPLIFY_PROBE_URL`); optional fps log (`AMPLIFY_FPS=1`) |
-| `plugin/Orb.qml` | `ShaderEffect` with `fragmentShader: shaders/orb.frag.qsb` + circular `MouseArea` |
+| `plugin/Orb.qml` | Spike only, removed in 4d7c36c5: `ShaderEffect` with `fragmentShader: shaders/orb.frag.qsb` + circular `MouseArea` |
 | `plugin/shell.qml` | Standalone entry for `quickshell -p plugin/` |
-| `shaders/orb.frag` | Qt 6 GLSL 440 placeholder Meridian orb: lit sphere, surface noise, rotating meridian, pulse ring, halo; uniforms `time`, `energy`, `core`, `halo` |
-| `plugin/shaders/orb.frag.qsb` | Compiled by `tools/build-shaders.sh` (qsb → GLSL 100es/120/150/300es, HLSL 50, MSL 12). Committed because `omarchy plugin add` runs no build step |
-| `tools/headless-shot.sh` | Headless render + 6 checks (below); writes `docs/spike/headless.png`, `docs/spike/orb.png` |
+| `shaders/orb.frag` | Spike only, removed in 4d7c36c5 with its `.qsb` (the data-driven orbs in `plugin/orbs` replace it). Qt 6 GLSL 440 placeholder orb: lit sphere, surface noise, rotating meridian, pulse ring, halo; uniforms `time`, `energy`, `core`, `halo` |
+| `plugin/shaders/*.qsb`, `plugin/basin/*.frag.qsb` | Compiled by `tools/build-shaders.sh` (qsb → GLSL 100es/120/150/300es, HLSL 50, MSL 12). Committed because `omarchy plugin add` runs no build step |
+| `tools/headless-shot.sh` | Headless render and checks (below); writes `docs/spike/headless.png` and `docs/spike/headless-uncovered.png`, only from a passing run |
 | `tools/harness/` | Stand-in desktop: wallpaper on `WlrLayer.Background` that logs clicks, an app window over the right half, a fixture palette |
 | `tools/install-plugin.sh` | Primary install into omarchy-shell (link, rescan, wait until listed, enable; `--remove`) |
 | `tools/test-install-plugin.sh` | Installer test against stub `omarchy`/`omarchy-shell` with a delayed rescan |
@@ -70,19 +70,33 @@ wayvnc because one-shot `wlrctl` adds and removes a virtual pointer on every
 call, and Qt never binds `wl_pointer` in time to see the click.
 
 ```
-HEADLESS_MESA=/nix/store/…-mesa-26.3.1 tools/headless-shot.sh   # exit 0
-log: amplify: ready layer=bottom screen=HEADLESS-1 size=1280x720 shader=compiled
+HEADLESS_MESA=/nix/store/…-mesa-26.3.1 tools/headless-shot.sh   # exit 0 (task 5afeee5f)
+log: amplify: ready layer=bottom screen=HEADLESS-1 size=1280x720 shader=compiled orbs=5/5 river=1/1 basin=1/1
 PASS layer is bottom
-PASS shader compiled from .qsb
-PASS uncovered orb renders (accent-lit)                       pixel 142 189 255
-PASS app window covers the orb (layer below windows)          pixel 232 227 216
-PASS click on orb reaches the orb                             "amplify: orb click meridian"
-PASS click on empty desktop passes through the mask           "harness: wallpaper click 600,660"
+PASS every .qsb rebuilt from source
+PASS every shader compiled from .qsb (orbs=5/5 river=1/1 basin=1/1)
+PASS uncovered data orbs render (accent-lit, 2)
+PASS nothing drawn where the placeholder orb was
+PASS app window covers the orb (layer below windows)
+PASS click on orb b8bbe543 opens its record (amplify: orb open https://ampcode.com/threads/T-01a20190-…)
+PASS click on empty desktop passes through the mask
+PASS click on a basin row opens its record
+PASS broken orbs programs report shader=error (orbs=0/5 river=1/1 basin=1/1)
+PASS broken river programs report shader=error (orbs=5/5 river=0/1 basin=1/1)
+PASS broken basin programs report shader=error (orbs=5/5 river=1/1 basin=0/1)
+PASS blank-capture guard flags a uniform frame (stddev 0/1000)
+PASS headless.png is not blank (stddev 409/1000)
+PASS headless-uncovered.png is not blank (stddev 85/1000)
 ```
 
-![Headless desktop: Meridian orb on the wallpaper, second orb hidden under the app window](headless.png)
+The spike's own run (6 checks, one placeholder orb that logged `amplify: orb click
+meridian`) is superseded by the checks above; the mutation table below is from the spike.
 
-![Orb close-up](orb.png)
+![Headless desktop: the data-driven orbs, river and basin on the wallpaper, the right half under the app window](headless.png)
+
+![The same desktop with the app window moved away, so the basin is uncovered](headless-uncovered.png)
+
+`orb.png` in this folder is the spike's close-up of its placeholder orb; nothing regenerates it since the placeholder was removed (4d7c36c5).
 
 Mutations, each run on a copy of the tree:
 
@@ -124,7 +138,7 @@ Already installed from the first attempt (plugin listed but disabled)? Pick up t
 `cd ~/src/amplify && git pull && tools/install-plugin.sh`.
 
 Expected: two orbs on every monitor, above the wallpaper and below every window.
-Clicking an orb's centre logs `amplify: orb click meridian`. Double-clicking empty
+Clicking an orb's centre logs `amplify: orb open <its record's URL>`. Double-clicking empty
 desktop still opens Omarchy's background picker, because the mask passes it
 through. Changing the theme (`omarchy-theme-set <name>`) recolours the orbs within
 a second. Remove with `tools/install-plugin.sh --remove`. If the shell logs
@@ -147,7 +161,7 @@ llvmpipe numbers mean nothing for this, so these must come from your machine. Se
    Record shell CPU % and GPU %.
 2. **fps busy**: drag a window across the orbs and play a video in another window.
    Does fps stay at refresh, and does it stutter the video?
-3. **fps focus**: the Meridian (focus) orb at full size on your largest or HiDPI
+3. **fps focus**: the largest orb at full size on your largest or HiDPI
    monitor. Record GPU % against idle. The shader costs per pixel, so this is the
    worst case for one orb.
 4. **CPU when covered**: a fullscreen or tiled window covering every orb for 60 s.

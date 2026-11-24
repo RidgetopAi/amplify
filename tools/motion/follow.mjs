@@ -42,6 +42,8 @@
 //                  sweep, spin, clock or pulse changes after its first sample.
 //   want           { "<comp>.<part>.<axis>": n }: at least n movers of that
 //                  axis in this run (so a check cannot pass with nothing moving).
+//   traced         [ "<comp>" | "<comp>.<part>" ]: each logs at least one traced
+//                  item in this run; required in a still scenario (GAP-A).
 // A traced (comp, part) or axis the spec does not list fails: every moving
 // thing needs a row. A log with no trace lines fails (still scenarios have no
 // mover floors, so an untraced run would otherwise pass). Prints one line per
@@ -247,9 +249,18 @@ export function check(spec, scenario, text) {
     // An empty trace passes every per-item check (still scenarios have no mover floors),
     // so a run that traced nothing fails here (gap G1, verdict d1c6236b).
     if (!S.size) return { results: [{ name: "trace", ok: false, why: "no trace lines in the log (AMPLIFY_TRACE=1 not on, or nothing traced)" }], movers: {}, ok: false };
+    // A still scenario has no mover floors, so one component that stops tracing (only in
+    // still mode) would hide its still-mode motion behind the others' lines (GAP-A,
+    // verdict 814ebfd4): `traced` names every component, or comp.part, that runs in it,
+    // and each must log at least one traced item.
+    const results = [], movers = {};
+    if (sc.still && !sc.traced?.length) results.push({ name: "traced", ok: false, why: "a still scenario must name the components it traces (traced)" });
+    for (const want of sc.traced || []) {
+        const n = [...S.values()].filter((s) => want === s.comp || want === `${s.comp}.${s.part}`).length;
+        results.push({ name: `traced ${want}`, ok: n > 0, why: `${n} traced items (want ≥ 1)` });
+    }
     const logEnd = Math.max(0, ...[...S.values()].flatMap((s) => Object.values(s.axes).map((a) => a.at(-1).t)));
     const rows = new Map(spec.rows.flatMap((r) => r.parts.map((p) => [`${r.comp} ${p.part}`, { row: r, ...p }])));
-    const results = [], movers = {};
     for (const s of S.values()) {
         const def = rows.get(`${s.comp} ${s.part}`);
         if (!def) { results.push({ name: `${s.comp}.${s.part}`, ok: false, why: "traced but not in the spec" }); continue; }

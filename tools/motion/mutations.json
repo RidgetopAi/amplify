@@ -1,5 +1,5 @@
 {
- "about": "Shared mutation catalogue (task e0cabe57). tools/mutate.sh applies each mutation to a scratch copy of the working tree, runs its gates, and prints RED (some gate failed, the mutation is caught) or GREEN (it survives). Each edit replaces `from` with `to` exactly once (a missing or repeated `from` is STALE). deleteRow removes that docs/motion.json row. Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test, plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot, orbs-shot, headless (the render scripts). Critics add the mutations they find here.",
+ "about": "Shared mutation catalogue (task e0cabe57). tools/mutate.sh applies each mutation to a scratch copy of the working tree, runs its gates, and prints RED (some gate failed, the mutation is caught) or GREEN (it survives). Each edit replaces `from` with `to` exactly once (a missing or repeated `from` is STALE). deleteRow removes that docs/motion.json row. Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test, plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), mutate (tools/motion/test/mutate.test.mjs), river-shot, orbs-shot, headless (the render scripts). Critics add the mutations they find here.",
  "mutations": [
   {
    "id": "K1-lease-tween-removed",
@@ -1590,6 +1590,187 @@
    ],
    "gates": [
     "spec"
+   ]
+  },
+  {
+   "id": "GA-basin-untraced-in-still",
+   "source": "814ebfd4 GAP-A (5afeee5f)",
+   "class": "trace still component floor",
+   "note": "only the basin stops tracing in still mode; river and orbs still log, so the log is not empty",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        animate: !root.still\n        trace: root.trace\n",
+     "to": "        animate: !root.still\n        trace: root.trace && !root.still\n"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "GAb-basin-untraced-still-pool-fades",
+   "source": "814ebfd4 GAP-A (5afeee5f)",
+   "class": "trace still component floor + basin-pool still",
+   "note": "GA plus BA-pool-fades-in-still: the still-mode pool fade hides behind the untraced basin",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        animate: !root.still\n        trace: root.trace\n",
+     "to": "        animate: !root.still\n        trace: root.trace && !root.still\n"
+    },
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400",
+     "to": "Behavior on opacity { NumberAnimation { duration: 1400"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "N1-blank-capture-guard-off",
+   "source": "ccb79924 N1 (5afeee5f)",
+   "class": "headless blank capture",
+   "note": "the blank-capture guard passes everything, so a black capture would be published to docs/spike",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "(( sd > 10 )); }",
+     "to": "(( sd >= 0 )); }"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "N1b-black-uncovered-capture",
+   "source": "ccb79924 N1 probe A (5afeee5f)",
+   "class": "headless blank capture",
+   "note": "the uncovered capture comes out black (nothing rendered)",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "grim \"$RUN/headless-uncovered.png\"\n",
+     "to": "grim \"$RUN/headless-uncovered.png\"; magick -size ${W}x${H} xc:black \"$RUN/headless-uncovered.png\"\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "G3-broken-pool-frag",
+   "source": "f39fc3ac G3 (5afeee5f)",
+   "class": "shader build",
+   "note": "a syntax error in plugin/basin/pool.frag, beside its committed pool.frag.qsb",
+   "edits": [
+    {
+     "file": "plugin/basin/pool.frag",
+     "from": "void main() {\n",
+     "to": "void main() {\n  this is not glsl;\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "G6-shader-error-only-for-orbs",
+   "source": "f39fc3ac G6 (5afeee5f)",
+   "class": "service ready line",
+   "note": "the ready line reports shader=error only for an orb program; a broken river or basin program reads uncompiled",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        if (p.error) all = \"error\"\n",
+     "to": "        if (p.error && g === \"orbs\") all = \"error\"\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "G4-basin-reports-no-programs",
+   "source": "f39fc3ac G4 (5afeee5f)",
+   "class": "service ready line",
+   "note": "the basin lists no effects, so the ready line reads basin=0/0 and still says compiled",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "function shaders() { return pool.visible ? [pool] : [] }",
+     "to": "function shaders() { return [] }"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "MS1-no-early-stop",
+   "source": "56993f5b (5afeee5f)",
+   "class": "mutate.sh",
+   "note": "every gate runs after the first red one",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "    (( rc )) && { red=1; break; }\n",
+     "to": "    (( rc )) && red=1\n"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "MS2-stale-not-counted",
+   "source": "56993f5b (5afeee5f)",
+   "class": "mutate.sh",
+   "note": "the exit status leaves out stale mutations",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "exit $((green + stale + err + bad))",
+     "to": "exit $((green + err + bad))"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "MS3-shared-runtime-dir",
+   "source": "56993f5b (5afeee5f)",
+   "class": "mutate.sh",
+   "note": "every gate of a run shares one runtime dir (isolation broken under -j)",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "rt=\"$WORK/rt-$1-$3\" rc",
+     "to": "rt=\"$WORK/rt-shared\" rc"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "MS4-leftovers-not-reaped",
+   "source": "56993f5b (5afeee5f)",
+   "class": "mutate.sh",
+   "note": "nothing a gate left running is killed, after it or on exit",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "  (( ${#pids[@]} )) || return 0\n  kill \"${pids[@]}\" 2>/dev/null\n  for ((i = 0; i < 30; i++)); do kill -0 \"${pids[@]}\" 2>/dev/null || return 0; sleep 0.1; done\n}",
+     "to": "  return 0\n}"
+    }
+   ],
+   "gates": [
+    "mutate"
    ]
   }
  ]

@@ -28,12 +28,25 @@ mkdir -p "$OUT"
 
 RUN="$(mktemp -d)"
 PIDS=()
-SHEET="$ROOT/.orbs-sheet.qml"
-cleanup() { kill "${PIDS[@]}" 2>/dev/null; wait 2>/dev/null; cp "$RUN"/*.log /tmp/ 2>/dev/null; rm -rf "$RUN" "$SHEET"; }
+# Per run, so parallel runs neither share a sheet nor overwrite each other's kept logs.
+SHEET="$ROOT/.orbs-sheet-$$.qml"
+LOGS="$(mktemp -d "${TMPDIR:-/tmp}/orbs-shot-logs.XXXXXX")"
+. "$ROOT/tools/shot-reap.sh"; shot_tag "$RUN"
+cleanup() {
+  kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null
+  cp "$RUN"/*.log "$LOGS/" 2>/dev/null && echo "shot: logs in $LOGS"; rm -rf "$RUN" "$SHEET"
+}
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # env-read: SHOT_RUNTIME_DIR overrides the runtime dir (tools/mutate.sh gives each gate it runs its own).
 export XDG_RUNTIME_DIR="${SHOT_RUNTIME_DIR:-$RUN}" WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
+# Animations on wall-clock time. Qt's default (vsync) driver advances one frame interval
+# per frame however late it is drawn, so on llvmpipe with 2 vCPUs a 1.2 s tween ran up to
+# 2.2 s and failed its 2 s settle limit (orbs.orb.sat, basin.pool.opacity); with this they
+# settle in 1.25-1.33 s and 1.42-1.44 s. The limits are unchanged (task 5afeee5f).
+export QSG_USE_SIMPLE_ANIMATION_DRIVER=1
 unset WAYLAND_DISPLAY DISPLAY SWAYSOCK
 # env-read: HEADLESS_MESA selects a Mesa install for llvmpipe when there is no /dev/dri.
 if [[ -n ${HEADLESS_MESA:-} ]]; then

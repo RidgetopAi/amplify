@@ -8,15 +8,19 @@
 # an app window over the right half), start `quickshell -p plugin/` with
 # AMPLIFY_TRACE=1 so the data-driven orbs (plugin/orbs, replayed snapshot) log
 # where they are drawn, screenshot with grim, then assert:
-#   1. the plugin reports layer=bottom and shader=compiled (every orb, river and
-#      basin program), and reports shader=error when a program is broken;
+#   1. the plugin reports layer=bottom and shader=compiled with every program this
+#      scene draws (orbs=5/5 river=1/1 basin=1/1) on a working GL context, the .qsb
+#      having been rebuilt from source; and, run again with each component's programs
+#      broken in turn, shader=error with that component at 0 (task 5afeee5f: G3, G4,
+#      G6, N2);
 #   2. the uncovered orbs' centres are lit and accent-tinted, and nothing is
 #      drawn where the P0 placeholder orb was (0.28W, 0.5H);
 #   3. a covered orb's centre shows the app window, so the layer sits below windows;
 #   4. a click on an orb opens its record, a click on empty desktop passes
 #      through the masks to the wallpaper layer, and with the app window moved
 #      away a click on a basin row opens its record;
-#   5. neither screenshot is blank. Screenshots are taken in a scratch directory
+#   5. neither screenshot is blank (and the blank check itself flags a uniform
+#      frame). Screenshots are taken in a scratch directory
 #      and copied to docs/spike only when every check passed, so a failed or
 #      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
 # Exit status is the number of failed checks (0 = all passed).
@@ -30,14 +34,18 @@ OUT="$ROOT/docs/spike"
 W=1280 H=720
 mkdir -p "$OUT"
 
-# 1. Shaders are always rebuilt here so a stale .qsb cannot pass the check.
-rm -f "$ROOT"/plugin/shaders/*.qsb
-"$ROOT/tools/build-shaders.sh" || echo "headless-shot: shader build failed" >&2
+# 1. Shaders are always rebuilt here, orbs, river and basin alike, so a stale .qsb
+# cannot pass the check (G3: a broken plugin/basin/pool.frag passed on its committed .qsb).
+rm -f "$ROOT"/plugin/shaders/*.qsb "$ROOT"/plugin/basin/*.qsb
+"$ROOT/tools/build-shaders.sh"; built=$?
 
 RUN="$(mktemp -d)"
-cleanup() { kill "${PIDS[@]}" 2>/dev/null; wait 2>/dev/null; rm -rf "$RUN"; }
+. "$ROOT/tools/shot-reap.sh"; shot_tag "$RUN"
+cleanup() { kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null; rm -rf "$RUN"; }
 PIDS=()
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # env-read: SHOT_RUNTIME_DIR overrides the runtime dir (tools/mutate.sh gives each gate it runs its own).
 export XDG_RUNTIME_DIR="${SHOT_RUNTIME_DIR:-$RUN}" WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
@@ -78,10 +86,23 @@ pass() { echo "PASS $*"; }
 fail() { echo "FAIL $*"; fails=$((fails + 1)); }
 pixel() { magick "$RUN/headless.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:; }
 
+# The programs each component draws in this scene (G4), in the ready line's order:
+# orbs 5 (coord, critic and worker bodies, beam, vessel), river 1 (water), basin 1 (pool).
+# A component that draws none reads n=0/0, so the counts are asserted, not only the status.
+COMPS=(orbs river basin); declare -A PROGS=([orbs]=5 [river]=1 [basin]=1)
+# counts [group]: "orbs=5/5 river=1/1 basin=1/1", with that group's programs at 0.
+counts() { local g s=""; for g in "${COMPS[@]}"; do s+=" $g=$([[ $g == "${1:-}" ]] && echo 0 || echo "${PROGS[$g]}")/${PROGS[$g]}"; done; echo "${s# }"; }
+# Without a GL driver Qt fails to make its RHI and the effects never load, yet the ready
+# line can still read compiled (N2), so a failed graphics context fails the check too.
+nogl() { grep -aE "Failed to create RHI|Failed to initialize graphics backend" "$RUN/plugin.log" | head -1; }
+
 ready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
 echo "log: ${ready#*qml: }"
 [[ $ready == *"layer=bottom"* ]] && pass "layer is bottom" || fail "layer is not bottom"
-[[ $ready == *"shader=compiled"* ]] && pass "every shader compiled from .qsb" || fail "shader not compiled"
+(( built == 0 )) && pass "every .qsb rebuilt from source" || fail "shader build failed (tools/build-shaders.sh exit $built)"
+gl=$(nogl)
+[[ $ready == *"shader=compiled $(counts)"* && -z $gl ]] && pass "every shader compiled from .qsb ($(counts))" \
+  || fail "shaders not all compiled (want shader=compiled $(counts))${gl:+; ${gl#*: }}"
 
 # The orbs from the trace: "<id8> <x> <y> <light>" of every opaque orb, left to
 # right, as last drawn (still mode: they hold). Uncovered: the live ones (full
@@ -136,22 +157,34 @@ grim "$RUN/headless-uncovered.png"
 timeout 20 vncdo -s 127.0.0.1::5959 move "$((W - 28 - 250))" "$((H - 30 - 32))" pause 0.3 click 1 pause 0.5
 grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin row opens its record" || fail "basin click lost"
 
-# A broken program must turn the ready line to shader=error: the same plugin with one
-# orb program truncated (a copy; plugin/ links into data/).
+# A broken program must turn the ready line to shader=error, for every component (G6):
+# the same plugin (a copy with data/ and fixtures/, which plugin/ links into) with each
+# component's programs truncated in turn must read shader=error with that component at 0.
 kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/plugin-main.log"
-mkdir "$RUN/broken"; cp -a "$ROOT/plugin" "$ROOT/data" "$RUN/broken/"
-head -c 64 "$ROOT/plugin/shaders/orb_worker.frag.qsb" > "$RUN/broken/plugin/shaders/orb_worker.frag.qsb"
-plugin "$RUN/broken/plugin"
-bready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
-echo "broken log: ${bready#*qml: }" | cut -c1-200
-[[ $bready == *"shader=error"* ]] && pass "a broken orb program reports shader=error" || fail "ready line hides a broken shader"
-cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"; mv "$RUN/plugin-main.log" "$RUN/plugin.log"
+declare -A BREAK=([orbs]="plugin/shaders/orb*.qsb" [river]="plugin/shaders/river.frag.qsb" [basin]="plugin/basin/*.frag.qsb")
+for g in "${COMPS[@]}"; do
+  B="$RUN/broken-$g"; mkdir "$B"; cp -a "$ROOT/plugin" "$ROOT/data" "$ROOT/fixtures" "$B/"
+  for f in $B/${BREAK[$g]}; do head -c 64 "$ROOT/${f#"$B/"}" > "$f"; done
+  plugin "$B/plugin"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+  bready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
+  echo "broken $g log: ${bready#*qml: }" | cut -c1-200
+  [[ $bready == *"shader=error $(counts "$g")"* ]] && pass "broken $g programs report shader=error ($(counts "$g"))" \
+    || fail "ready line hides broken $g programs (want shader=error $(counts "$g"))"
+  cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"
+done
+mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 
 grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
 # A blank capture (nothing rendered) has no spread; a real one has wallpaper, water and orbs.
+# lit <png>: prints the capture's spread and is true when it is not blank. The guard is the
+# only check that keeps a black capture out of docs/spike, so it is first run on a uniform
+# frame, which it must flag (N1).
+lit() { local sd; sd=$(magick "$1" -format "%[fx:int(1000*standard_deviation)]" info: 2>/dev/null || echo 0); echo "$sd"; (( sd > 10 )); }
+magick -size 64x64 xc:'#101418' "$RUN/uniform.png"
+sd=$(lit "$RUN/uniform.png") && fail "blank-capture guard passes a uniform frame (stddev $sd/1000)" \
+  || pass "blank-capture guard flags a uniform frame (stddev $sd/1000)"
 for f in headless headless-uncovered; do
-  sd=$(magick "$RUN/$f.png" -format "%[fx:int(1000*standard_deviation)]" info: 2>/dev/null || echo 0)
-  (( sd > 10 )) && pass "$f.png is not blank (stddev $sd/1000)" || fail "$f.png is blank or missing (stddev $sd/1000)"
+  sd=$(lit "$RUN/$f.png") && pass "$f.png is not blank (stddev $sd/1000)" || fail "$f.png is blank or missing (stddev $sd/1000)"
 done
 
 if (( fails == 0 )); then

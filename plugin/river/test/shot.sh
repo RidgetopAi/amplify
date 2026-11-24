@@ -56,16 +56,24 @@ follow() {
 BUSY="$ROOT/plugin/river/test/busy-frames.json"
 W=1920 H=1080
 mkdir -p "$OUT"
-"$ROOT/tools/build-shaders.sh" >/dev/null || echo "shot: shader build failed" >&2
+"$ROOT/tools/build-shaders.sh" >/dev/null || { echo "shot: shader build failed" >&2; exit 1; }
 node "$ROOT/plugin/river/test/make-busy.mjs" >/dev/null
 
 RUN="$(mktemp -d)"
 PIDS=()
-cleanup() { kill "${PIDS[@]}" 2>/dev/null; wait 2>/dev/null; rm -rf "$RUN"; }
+# Per run, so parallel runs do not overwrite each other's kept logs.
+LOGS="$(mktemp -d "${TMPDIR:-/tmp}/river-shot-logs.XXXXXX")"
+. "$ROOT/tools/shot-reap.sh"; shot_tag "$RUN"
+cleanup() { kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null; rm -rf "$RUN"; echo "shot: logs in $LOGS"; }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # env-read: SHOT_RUNTIME_DIR overrides the runtime dir (tools/mutate.sh gives each gate it runs its own).
 export XDG_RUNTIME_DIR="${SHOT_RUNTIME_DIR:-$RUN}" WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1
+# Animations on wall-clock time, as in plugin/orbs/test/shot.sh: the default (vsync)
+# driver runs them slow when llvmpipe frames are late, against the time limits here.
+export QSG_USE_SIMPLE_ANIMATION_DRIVER=1
 unset WAYLAND_DISPLAY DISPLAY SWAYSOCK
 # env-read: HEADLESS_MESA selects a Mesa install for llvmpipe when there is no /dev/dri.
 if [[ -n ${HEADLESS_MESA:-} ]]; then
@@ -96,7 +104,7 @@ at() { sleep "$(awk -v t0="$T0" -v s="$1" -v now="$(date +%s.%N)" 'BEGIN { d = t
 grab() { grim "$RUN/$NAME-$1.png"; }
 stop() {
   kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
-  cp "$RUN/$NAME.log" "/tmp/river-$NAME.log"
+  cp "$RUN/$NAME.log" "$LOGS/river-$NAME.log"
   grep -h "amplify:\|WARN\|ERROR\|rror" "$RUN/$NAME.log" | grep -v "river lanes\|amplify: trace\|river tether" | sed "s/^/  [$NAME] /"
   grep -h "river lanes" "$RUN/$NAME.log" | tail -1 | sed "s/^/  [$NAME] /"
 }
