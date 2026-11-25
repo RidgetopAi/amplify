@@ -44,6 +44,9 @@
 //                  axis in this run (so a check cannot pass with nothing moving).
 //   traced         [ "<comp>" | "<comp>.<part>" ]: each logs at least one traced
 //                  item in this run; required in a still scenario (GAP-A).
+//   keyed          [ "<comp>.<part>" ]: items of that part are kept across data steps,
+//                  never made again (an ident#2 series): a keyed delegate that is rebuilt
+//                  when others join or leave restarts its spin and tweens (8b5eca2f).
 // A traced (comp, part) or axis the spec does not list fails: every moving
 // thing needs a row. A log with no trace lines fails (still scenarios have no
 // mover floors, so an untraced run would otherwise pass). Prints one line per
@@ -258,6 +261,10 @@ export function check(spec, scenario, text) {
     for (const want of sc.traced || []) {
         const n = [...S.values()].filter((s) => want === s.comp || want === `${s.comp}.${s.part}`).length;
         results.push({ name: `traced ${want}`, ok: n > 0, why: `${n} traced items (want ≥ 1)` });
+    }
+    for (const want of sc.keyed || []) {
+        const again = [...S.values()].filter((s) => `${s.comp}.${s.part}` === want && s.ident.includes("#")).map((s) => s.ident);
+        results.push({ name: `keyed ${want}`, ok: !again.length, why: again.length ? `made again: ${again.join(" ")}` : "no item made again" });
     }
     const logEnd = Math.max(0, ...[...S.values()].flatMap((s) => Object.values(s.axes).map((a) => a.at(-1).t)));
     const rows = new Map(spec.rows.flatMap((r) => r.parts.map((p) => [`${r.comp} ${p.part}`, { row: r, ...p }])));

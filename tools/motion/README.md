@@ -22,7 +22,7 @@ One spec, one trace, one check and one mutation list, shared by builder and crit
 - `step`: drawn at its target at every sample (no animation by design).
 - `none`: not checked; `why` says why.
 
-Scenarios (`scenarios` in the spec) name the runs, set `still: true` for `AMPLIFY_STILL=1` (nothing may change between data steps) and set `want` floors on the number of movers per axis, so a check cannot pass with nothing moving. A still scenario has no movers, so it names in `traced` every component (or `comp.part`) that runs in it, and each must log at least one traced item (GAP-A). They run inside the existing gates: river `shot.sh` (river-settle, river-fx, river-eddy, river-still) and orbs `shot.sh motion` (service, service-still, orbs-decay).
+Scenarios (`scenarios` in the spec) name the runs, set `still: true` for `AMPLIFY_STILL=1` (nothing may change between data steps) and set `want` floors on the number of movers per axis, so a check cannot pass with nothing moving. A still scenario has no movers, so it names in `traced` every component (or `comp.part`) that runs in it, and each must log at least one traced item (GAP-A). `keyed` names parts whose items must never be made again during the run (a trace series `ident#2`): orbs are keyed by session, so one leaving must not rebuild the others (8b5eca2f). They run inside the existing gates: river `shot.sh` (river-settle, river-fx, river-eddy, river-still) and orbs `shot.sh motion` (service, service-still, orbs-decay).
 
 ## Mutation catalogue
 

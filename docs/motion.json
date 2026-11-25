@@ -190,7 +190,8 @@
                 "river.water.x": 1 } },
     "orbs-decay": { "run": "plugin/orbs/test/shot.sh motion: orbs sheet animated, client clock +20 min at 3 s (lost, dormant, needs-you, ended fade)",
       "want": { "orbs.orb.sat": 5, "orbs.orb.light": 5, "orbs.orb.dorm": 1, "orbs.orb.lost": 1, "orbs.orb.need": 1, "orbs.orb.ended": 1,
-                "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 } },
+                "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 },
+      "keyed": ["orbs.orb"] },
     "service-still": { "run": "plugin/orbs/test/shot.sh layer: AMPLIFY_STILL=1 with AMPLIFY_TRACE=1", "still": true, "want": {},
       "traced": ["river.water", "river.vessel", "orbs.orb", "orbs.clock", "basin.pool", "basin.row"] }
   }
