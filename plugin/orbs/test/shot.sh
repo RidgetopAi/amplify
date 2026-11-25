@@ -9,7 +9,7 @@
 # orb, beam, basin pool and row against docs/motion.json with
 # tools/motion/follow.mjs (scenarios service and service-still): material tweens
 # start at the old value and reach the record's, spins turn at the liveness rate,
-# basin rows glide in and the first halo breathes; in still mode nothing moves
+# basin rows glide in and the first halo holds steady; in still mode nothing moves
 # between data steps.
 # The layer check runs the real plugin (Service.qml mounts OrbsLayer) with
 # AMPLIFY_STILL=1 and fails when quickshell warns "Unable to assign" from

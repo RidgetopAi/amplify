@@ -1308,12 +1308,12 @@
    "id": "OB-clock-ignores-still",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-clock still",
-   "note": "",
+   "note": "the spin clock runs in still mode (8b5eca2f: the clock is the spin clock now)",
    "edits": [
     {
      "file": "plugin/orbs/OrbField.qml",
-     "from": "running: field.animate && field.visible\n    from: 0; to: 3600",
-     "to": "running: field.visible\n    from: 0; to: 3600"
+     "from": "readonly property bool spinning: animate && visible && rimSpeed > 0",
+     "to": "readonly property bool spinning: visible && rimSpeed > 0"
     }
    ],
    "gates": [
@@ -1369,22 +1369,6 @@
    ]
   },
   {
-   "id": "BA-pool-clock-ignores-still",
-   "source": "e0cabe57 basin equivalent",
-   "class": "basin-pool x",
-   "note": "",
-   "edits": [
-    {
-     "file": "plugin/basin/Basin.qml",
-     "from": "running: basin.animate && pool.visible",
-     "to": "running: pool.visible"
-    }
-   ],
-   "gates": [
-    "orbs-shot"
-   ]
-  },
-  {
    "id": "BA-row-enter-y-removed",
    "source": "e0cabe57 basin equivalent",
    "class": "basin-rows y",
@@ -1410,38 +1394,6 @@
      "file": "plugin/basin/Basin.qml",
      "from": "        NumberAnimation { property: \"opacity\"; from: 0; to: 1; duration: 1100; easing.type: Easing.OutCubic }\n",
      "to": ""
-    }
-   ],
-   "gates": [
-    "orbs-shot"
-   ]
-  },
-  {
-   "id": "BA-halo-ignores-still",
-   "source": "e0cabe57 basin equivalent",
-   "class": "basin-rows halo",
-   "note": "",
-   "edits": [
-    {
-     "file": "plugin/basin/Basin.qml",
-     "from": "running: basin.animate && row.index === 0; loops",
-     "to": "running: row.index === 0; loops"
-    }
-   ],
-   "gates": [
-    "orbs-shot"
-   ]
-  },
-  {
-   "id": "BA-halo-frozen",
-   "source": "e0cabe57 basin equivalent",
-   "class": "basin-rows halo",
-   "note": "",
-   "edits": [
-    {
-     "file": "plugin/basin/Basin.qml",
-     "from": "running: basin.animate && row.index === 0; loops",
-     "to": "running: false; loops"
     }
    ],
    "gates": [
@@ -1851,6 +1803,127 @@
    ],
    "gates": [
     "headless"
+   ]
+  },
+  {
+   "id": "IC1-orb-clock-runs-forever",
+   "source": "8b5eca2f critic case",
+   "class": "orbs-clock idle",
+   "note": "the main 3162e0b0 clock back: an infinite NumberAnimation at frame rate while animate && visible, whatever the orbs' liveness; the spec anchor moves with it, so only the idle gate can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "  Timer { id: spinClock\n    running: field.spinning; repeat: true\n    interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))\n    onTriggered: { var t = Date.now(); field.clock += (t - field.clockAt) / 1000; field.clockAt = t }\n  }\n",
+     "to": "  NumberAnimation on clock {\n    running: field.animate && field.visible\n    from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite\n  }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "\"line\": \"Timer { id: spinClock\" }",
+     "to": "\"line\": \"NumberAnimation on clock\" }"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "IC2-orb-clock-unpaced",
+   "source": "8b5eca2f critic case",
+   "class": "orbs-clock idle",
+   "note": "the spin clock steps every 16 ms instead of once per SPIN_STEP_PX of rim travel: a lost orb redraws its window at frame rate",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))",
+     "to": "interval: 16"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "IC3-lease-drift-every-tick",
+   "source": "8b5eca2f critic case",
+   "class": "orbs-orb length idle",
+   "note": "the vessel level follows the lease every second (no LEASE_STEPS): its 900 ms tween restarts each tick, so a draining lease keeps the window drawing",
+   "edits": [
+    {
+     "file": "plugin/orbs/orbs.js",
+     "from": "lease: lease === null ? 0 : stepped(lease, LEASE_STEPS, true), held: held,",
+     "to": "lease: lease === null ? 0 : lease, held: held,"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "IC4-pool-ripples-forever",
+   "source": "8b5eca2f critic case",
+   "class": "basin-pool idle",
+   "note": "the main 3162e0b0 pool ripple clock back (infinite while the pool shows), with its spec anchor",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "    fragmentShader: Qt.resolvedUrl(\"pool.frag.qsb\")\n",
+     "to": "    fragmentShader: Qt.resolvedUrl(\"pool.frag.qsb\")\n    NumberAnimation on time {\n      running: basin.animate && pool.visible\n      from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite\n    }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"Behavior on fill\" }],",
+     "to": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"Behavior on fill\" }, { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"NumberAnimation on time\" }],"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "IC5-halo-breathes-forever",
+   "source": "8b5eca2f critic case",
+   "class": "basin-rows halo idle",
+   "note": "the main 3162e0b0 halo breath back (infinite while that row is first), with its spec anchors; the traced halo is a step axis, so orbs-shot would also catch it",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "          visible: row.index === 0\n",
+     "to": "          visible: row.index === 0\n          SequentialAnimation on opacity {\n            running: basin.animate && row.index === 0; loops: Animation.Infinite\n            NumberAnimation { from: 0.08; to: 0.5; duration: 1600; easing.type: Easing.InOutSine }\n            NumberAnimation { from: 0.5; to: 0.08; duration: 1600; easing.type: Easing.InOutSine }\n          }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"^move: Transition\" }],",
+     "to": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"^move: Transition\" }, { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"SequentialAnimation on opacity\" },\n               { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"NumberAnimation { from: 0.08; to: 0.5\" }, { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"NumberAnimation { from: 0.5; to: 0.08\" }],"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "IC6-halo-breathes-in-service",
+   "source": "8b5eca2f critic case",
+   "class": "basin-rows halo",
+   "note": "as IC5, caught by the follow check instead: the halo must hold at its target (spec step axis)",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "          visible: row.index === 0\n",
+     "to": "          visible: row.index === 0\n          SequentialAnimation on opacity {\n            running: basin.animate && row.index === 0; loops: Animation.Infinite\n            NumberAnimation { from: 0.08; to: 0.5; duration: 1600; easing.type: Easing.InOutSine }\n            NumberAnimation { from: 0.5; to: 0.08; duration: 1600; easing.type: Easing.InOutSine }\n          }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"^move: Transition\" }],",
+     "to": "{ \"file\": \"plugin/basin/Basin.qml\", \"line\": \"^move: Transition\" }, { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"SequentialAnimation on opacity\" },\n               { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"NumberAnimation { from: 0.08; to: 0.5\" }, { \"file\": \"plugin/basin/Basin.qml\", \"line\": \"NumberAnimation { from: 0.5; to: 0.08\" }],"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
    ]
   }
  ]

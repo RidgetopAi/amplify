@@ -25,6 +25,8 @@ Item {
   property bool mono: false
   // For shots: a fixed client clock, as ms since the snapshot's capture.
   property real fixedOffsetMs: -1
+  // Replay: the client clock starts at this ISO time instead of the capture, then runs on.
+  property string startAt: ""
   property string snapshotPath: Qt.resolvedUrl("fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
   property int refetchSec: 30
   property bool showLabel: true
@@ -82,7 +84,7 @@ Item {
   function sceneFromSnapshot(snap) {
     var r = snap.responses
     fetchMs = Date.parse(snap.meta.captured_at)
-    startReal = Date.now()
+    startReal = Date.now() - (startAt ? Date.parse(startAt) - fetchMs : 0)
     scene = Mandrel.buildScene({
       sessions: r["/api/sessions"], tasks: r["/api/tasks"], contexts: r["/api/contexts"],
       decisions: r["/api/decisions"], projects: r["/api/projects"], sessionDetails: r["/api/sessions/:id"]
@@ -106,12 +108,12 @@ Item {
       catch (e) { console.log("amplify: orbs snapshot unreadable " + e) }
     }
   }
-  Timer {
+  Timer { id: refetchTimer
     running: field.config.mode === "live"; repeat: true; triggeredOnStart: true
     interval: field.refetchSec * 1000
     onTriggered: field.refetch()
   }
-  Timer {
+  Timer { id: tickTimer
     running: field.fixedOffsetMs < 0; repeat: true; interval: 1000
     onTriggered: {
       // Replay loops after 45 min of client time, back to the capture.
@@ -122,15 +124,31 @@ Item {
   onWidthChanged: tick()
   onHeightChanged: tick()
 
-  // Shared surface clock for every shader (motion only; state comes from frame).
-  NumberAnimation on clock {
-    id: surfaceClock
-    running: field.animate && field.visible
-    from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite
+  // Spin clock (task 8b5eca2f): seconds that advance only while a drawn orb spins at its
+  // liveness rate (orbs.js MATERIAL), in one step each time the fastest rim has turned
+  // Orbs.SPIN_STEP_PX, at most 8 steps a second. So the window draws as often as its
+  // records move pixels: about twice a second for a live orb, every 4-6 s for a lost
+  // one, and never when every orb is dormant or ended. Each step adds the real time
+  // since the last, so spins keep their rate.
+  readonly property real rimSpeed: {
+    var v = 0
+    for (var i = 0; i < ids.length; i++) {
+      var o = frame.orbs[ids[i]]
+      if (o && o.spin > 0) v = Math.max(v, o.spin / 60 * 2 * Math.PI * o.r)
+    }
+    return v
+  }
+  readonly property bool spinning: animate && visible && rimSpeed > 0
+  property real clockAt: 0
+  onSpinningChanged: clockAt = Date.now()
+  Timer { id: spinClock
+    running: field.spinning; repeat: true
+    interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))
+    onTriggered: { var t = Date.now(); field.clock += (t - field.clockAt) / 1000; field.clockAt = t }
   }
   Loader {
     active: field.trace
-    sourceComponent: Trace { comp: "orbs"; part: "clock"; ident: "field"; v: ({ x: field.clock, "x:rate": field.animate && field.visible ? 1 : 0 }) }
+    sourceComponent: Trace { comp: "orbs"; part: "clock"; ident: "field"; v: ({ x: field.clock, "x:rate": field.spinning ? 1 : 0 }) }
   }
 
   // Every drawn orb and beam program, for the ready line (Service.qml).
@@ -150,7 +168,6 @@ Item {
       a: row ? field.frame.orbs[row.from] || null : null
       b: row ? field.frame.orbs[row.to] || null : null
       alpha: row ? row.alpha : 0
-      clock: field.clock
       trace: field.trace
       hueFrom: a ? field.hueFor(a.role) : field.accent
       hueTo: b ? field.hueFor(b.role) : field.accent

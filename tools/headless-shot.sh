@@ -22,7 +22,11 @@
 #      through the masks to the wallpaper layer, and with the app window moved
 #      away a click on a basin row opens its record;
 #   5. neither screenshot is blank (and the blank check itself flags a uniform
-#      frame). Screenshots are taken in a scratch directory
+#      frame);
+#   6. idle on a model of the desktop (task 8b5eca2f): three outputs (one 2560x1440), the
+#      whole plugin animated, the replay with nothing changing: Quickshell under 2 % of one
+#      core, no river/basin window redraws, each orbs window under one frame a second.
+#      Screenshots are taken in a scratch directory
 #      and copied to docs/spike only when every check passed, so a failed or
 #      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
 # Exit status is the number of failed checks (0 = all passed).
@@ -203,6 +207,47 @@ all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river repor
   || fail "a broken river reads other than shader=error before the first frame"
 cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" >> "$RUN/plugin-main.log"
 mv "$RUN/plugin-main.log" "$RUN/plugin.log"
+
+# Idle CPU on a model of Brian's desktop (task 8b5eca2f): three outputs (1920x1080,
+# 1920x1080, 2560x1440), the whole plugin animated (orbs, river and basin on every screen,
+# six windows), replaying with nothing changing: the river frozen at flow 0 (04:30Z), the
+# orbs' client clock from 05:24:10Z (one lost orb turning, three leases draining, the rest
+# dormant), basin rows from the amp capture. After 6 s to settle, over 10 s: Quickshell
+# under 2 % of one core (decision 25eced40); no amplify window swaps a frame; each
+# amplify-orbs window swaps under one frame a second, the lost orb's turn (AMPLIFY_FPS=1
+# logs each window's swapped frames every 5 s). On llvmpipe one frame of these windows
+# costs about 20 ms of CPU, so this budget leaves no room for a clock that runs on its own.
+swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
+swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
+swaymsg create_output > /dev/null; swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null; sleep 1
+AMPLIFY_FPS=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" \
+  AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z \
+  quickshell -p "$ROOT/plugin" > "$RUN/idle.log" 2>&1 & QS=$!; PIDS+=($QS)
+for _ in $(seq 100); do grep -aq "amplify: ready" "$RUN/idle.log" && break; sleep 0.1; done
+sleep 6
+CLK=$(getconf CLK_TCK) c0=$(awk '{ print $14 + $15 }' "/proc/$QS/stat") l0=$(wc -l < "$RUN/idle.log")
+sleep 10
+c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+sizes=$(grep -ao "amplify: ready .* size=[0-9x]*" "$RUN/idle.log" | sed 's/.*screen=//' | sort | tr '\n' ' ')
+echo "idle: screens $sizes"
+pct=$(awk -v t=$((c1 - c0)) -v k="$CLK" 'BEGIN { printf "%.1f", t / k / 10 * 100 }')
+idlerr=$(grep -acE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/idle.log")
+[[ $sizes == "HEADLESS-1 size=1920x1080 HEADLESS-2 size=1920x1080 HEADLESS-3 size=2560x1440 " ]] && (( (c1 - c0) * 100 <= 2 * 10 * CLK && idlerr == 0 )) \
+  && pass "idle: three outputs, orbs + river + basin animated, Quickshell at $pct % of one core (budget 2 %)" \
+  || fail "idle: Quickshell at $pct % of one core over 10 s on three outputs (budget 2 %; screens: $sizes; $idlerr QML errors)"
+# The windows' frame rates logged inside the 10 s: "<window> <screen> <fps>" per line.
+fps=$(tail -n +"$((l0 + 1))" "$RUN/idle.log" | grep -ao "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*" | sed 's/amplify: fps window=//; s/ screen=/ /')
+echo "$fps" | awk '{ v[$1 " " $2] = v[$1 " " $2] " " $3 } END { for (k in v) print "  idle fps " k ":" v[k] }' | sort
+n=$(awk '$1 == "amplify" { s[$2] = 1 } END { print length(s) }' <<< "$fps") worst=$(awk '$1 == "amplify" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
+(( n == 3 )) && awk -v m="$worst" 'BEGIN { exit !(m <= 0.2) }' \
+  && pass "idle: no river/basin window redraws at flow 0 with nothing changing (worst $worst fps on $n screens)" \
+  || fail "idle: a river/basin window keeps drawing with nothing changing (worst $worst fps, $n of 3 screens logged)"
+n=$(awk '$1 == "amplify-orbs" { s[$2] = 1 } END { print length(s) }' <<< "$fps") worst=$(awk '$1 == "amplify-orbs" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
+(( n == 3 )) && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
+  && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on $n screens, under 1)" \
+  || fail "idle: an orbs window draws faster than its records move (worst $worst fps, $n of 3 screens logged)"
+grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/idle.log" | head -3 | sed 's/^/  idle: /'
+grep -av "amplify: fps" "$RUN/idle.log" >> "$RUN/plugin.log"
 
 grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
 # A blank capture (nothing rendered) has no spread; a real one has wallpaper, water and orbs.

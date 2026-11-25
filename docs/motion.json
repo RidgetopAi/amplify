@@ -85,17 +85,17 @@
       "stop": "not animated (cosmetic desync with river-2, ungated by design)", "code": [], "parts": []
     },
     {
-      "id": "orbs-clock", "comp": "orbs", "what": "Shared surface clock for every orb, vessel and beam shader",
-      "record": "none: surface motion only; state comes from the frame", "trigger": "animate && visible", "start": "0", "end": "loops (1/s)",
-      "stop": "!animate or !visible",
-      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "NumberAnimation on clock" }],
+      "id": "orbs-clock", "comp": "orbs", "what": "Spin clock for every orb: real seconds, stepped each time the fastest drawn rim turns Orbs.SPIN_STEP_PX (at most 8 steps/s); the shaders' surface time is held (task 8b5eca2f)",
+      "record": "the drawn sessions' liveness spin rates (orbs.js MATERIAL: live, forming, quiet, lost spin; dormant and ended do not)", "trigger": "a drawn orb spins, animate && visible", "start": "where it stopped", "end": "runs while an orb spins (1/s)",
+      "stop": "no drawn orb spins, !animate or !visible",
+      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: spinClock" }],
       "parts": [{ "part": "clock", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
     },
     {
       "id": "orbs-tick", "comp": "orbs", "what": "Client-clock tick (1 s) and live refetch",
       "record": "session timestamps on the client clock (tickScene), viewer contract 22d73eeb", "trigger": "replay or live", "start": "fetch", "end": "loops",
       "stop": "fixedOffsetMs >= 0 (shots) or not live", "draws": false,
-      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer {", "count": 2 }], "parts": []
+      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: refetchTimer" }, { "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: tickTimer" }], "parts": []
     },
     {
       "id": "orbs-orb", "comp": "orbs", "what": "Orb material eases between liveness states; surface spins at its liveness rate; lease vessel level eases",
@@ -132,31 +132,28 @@
         "opacity": { "kind": "none", "why": "link age per tick (orbs.js beams), node-tested" } } }]
     },
     {
-      "id": "basin-pool", "comp": "basin", "what": "Warm pool fades in with items, fills with their count, and ripples",
+      "id": "basin-pool", "comp": "basin", "what": "Warm pool fades in with items and fills with their count; its ripple is held (task 8b5eca2f)",
       "record": "needs-you rows (basin.js buildBasin: Amp threads awaiting input, merges, lost holders, open decisions, blocked-on-human tasks)",
       "trigger": "row count changes", "start": "the last opacity/fill", "end": "1 when any row (else 0); fill = min(1, count / 4)",
-      "stop": "tweens end; the ripple clock stops when !animate or the pool is hidden",
-      "code": [{ "file": "plugin/basin/Basin.qml", "line": "Behavior on opacity" }, { "file": "plugin/basin/Basin.qml", "line": "Behavior on fill" },
-               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation on time" }],
+      "stop": "tweens end",
+      "code": [{ "file": "plugin/basin/Basin.qml", "line": "Behavior on opacity" }, { "file": "plugin/basin/Basin.qml", "line": "Behavior on fill" }],
       "parts": [{ "part": "pool", "axes": {
         "opacity": { "kind": "tween", "min": 0.5, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5 },
-        "length": { "kind": "tween", "min": 0.1, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5 },
-        "x": { "kind": "clock", "rateTol": 0.25 } } }]
+        "length": { "kind": "tween", "min": 0.1, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5 } } }]
     },
     {
-      "id": "basin-rows", "comp": "basin", "what": "Rows glide in, move and leave by urgency; the first badge's halo breathes",
+      "id": "basin-rows", "comp": "basin", "what": "Rows glide in, move and leave by urgency; the first badge wears a steady halo (task 8b5eca2f)",
       "record": "as basin-pool (rank order)", "trigger": "a row added, removed or re-ranked", "start": "enter from y -26, opacity 0", "end": "its slot (index x 73 px), opacity 1",
-      "stop": "transitions end (0.6..1.4 s); the halo breathes while that row is first and animate",
+      "stop": "transitions end (0.6..1.4 s)",
       "code": [{ "file": "plugin/basin/Basin.qml", "line": "add: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "ParallelAnimation" },
                { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { property: \"opacity\"; from: 0" },
                { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { property: \"y\"; from: -26" },
                { "file": "plugin/basin/Basin.qml", "line": "remove: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "displaced: Transition" },
-               { "file": "plugin/basin/Basin.qml", "line": "^move: Transition" }, { "file": "plugin/basin/Basin.qml", "line": "SequentialAnimation on opacity" },
-               { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { from: 0.08; to: 0.5" }, { "file": "plugin/basin/Basin.qml", "line": "NumberAnimation { from: 0.5; to: 0.08" }],
+               { "file": "plugin/basin/Basin.qml", "line": "^move: Transition" }],
       "parts": [{ "part": "row", "axes": {
         "y": { "kind": "tween", "min": 5, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "settle": 2.5, "enter": -26, "enterRequired": true },
         "opacity": { "kind": "tween", "min": 0.5, "eps": 0.01, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 2.5, "enter": 0, "enterRequired": true },
-        "halo": { "kind": "pulse", "lo": 0.08, "hi": 0.5, "tol": 0.02 } } }]
+        "halo": { "kind": "step", "eps": 0.001 } } }]
     },
     {
       "id": "basin-colour", "comp": "basin", "what": "Headline colour turns warm with items; row border brightens on hover",
@@ -172,9 +169,9 @@
       "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 4 }], "parts": []
     },
     {
-      "id": "service-host", "comp": "service", "what": "FPS logger and the ready line",
+      "id": "service-host", "comp": "service", "what": "Per-window swapped-frame logger (AMPLIFY_FPS=1, every 5 s) and the ready line",
       "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
-      "code": [{ "file": "plugin/Service.qml", "line": "FrameAnimation {" }, { "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }], "parts": []
+      "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []
     }
   ],
   "scenarios": {
@@ -188,8 +185,8 @@
     "river-still": { "run": "shot.sh busy: AMPLIFY_STILL=1 at 04:01:47Z", "still": true, "want": {},
       "traced": ["river.vessel", "river.gate", "river.tether", "river.water"] },
     "service": { "run": "plugin/orbs/test/shot.sh live: the whole plugin animated with AMPLIFY_TRACE=1",
-      "want": { "orbs.clock.x": 1, "orbs.orb.rotation": 3, "basin.pool.x": 1, "basin.pool.opacity": 1,
-                "basin.pool.length": 1, "basin.row.y": 1, "basin.row.opacity": 1, "basin.row.halo": 1,
+      "want": { "orbs.clock.x": 1, "orbs.orb.rotation": 3, "basin.pool.opacity": 1,
+                "basin.pool.length": 1, "basin.row.y": 1, "basin.row.opacity": 1,
                 "river.water.x": 1 } },
     "orbs-decay": { "run": "plugin/orbs/test/shot.sh motion: orbs sheet animated, client clock +20 min at 3 s (lost, dormant, needs-you, ended fade)",
       "want": { "orbs.orb.sat": 5, "orbs.orb.light": 5, "orbs.orb.dorm": 1, "orbs.orb.lost": 1, "orbs.orb.need": 1, "orbs.orb.ended": 1,

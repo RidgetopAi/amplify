@@ -49,7 +49,7 @@ Item {
     active: basin.trace
     sourceComponent: Trace {
       comp: "basin"; part: "pool"; ident: "pool"
-      v: ({ opacity: pool.opacity, length: pool.fill, x: pool.time, "x:rate": basin.animate && pool.visible ? 1 : 0, "opacity:to": basin.count ? 1 : 0,
+      v: ({ opacity: pool.opacity, length: pool.fill, "opacity:to": basin.count ? 1 : 0,
             "length:to": Math.min(1, basin.count / 4) })
     }
   }
@@ -61,6 +61,8 @@ Item {
     opacity: basin.count ? 1 : 0
     visible: opacity > 0
     Behavior on opacity { enabled: basin.animate; NumberAnimation { duration: 1400; easing.type: Easing.InOutSine } }
+    // The ripple is held where still mode draws it: no record moves it, and a free-running
+    // clock here redrew every screen at frame rate for as long as anything needed you (task 8b5eca2f).
     property real time: 4.0
     property real fill: Math.min(1, basin.count / 4)
     property real alarm: basin.count && basin.feed.rows[0].kind === "lost" ? 1 : 0
@@ -69,11 +71,6 @@ Item {
     property color lost: basin.lost
     Behavior on fill { enabled: basin.animate; NumberAnimation { duration: 1600; easing.type: Easing.OutCubic } }
     fragmentShader: Qt.resolvedUrl("pool.frag.qsb")
-    NumberAnimation on time {
-      id: poolClock
-      running: basin.animate && pool.visible
-      from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite
-    }
   }
 
   Item {
@@ -133,7 +130,7 @@ Item {
         sourceComponent: Trace {
           comp: "basin"; part: "row"; ident: String(row.key || "").slice(0, 24).replace(/\s/g, "_")
           v: ({ y: row.y, opacity: row.opacity, "y:to": row.index * (row.height + list.spacing), "opacity:to": 1,
-                halo: haloRing.visible ? haloRing.opacity : 0, "halo:on": basin.animate && row.index === 0 ? 1 : 0 })
+                halo: haloRing.visible ? haloRing.opacity : 0, "halo:to": haloRing.visible ? 1 : 0 })
         }
       }
 
@@ -151,7 +148,7 @@ Item {
         Behavior on border.color { ColorAnimation { duration: 180 } }
       }
 
-      // Urgency badge: rank 1 breathes, later ranks cool slightly.
+      // Urgency badge: rank 1 wears a steady halo, later ranks cool slightly.
       Rectangle {
         id: badge
         x: 12; anchors.verticalCenter: parent.verticalCenter
@@ -168,12 +165,8 @@ Item {
           anchors.centerIn: parent
           width: parent.width + 10; height: width; radius: width / 2
           color: "transparent"; border.width: 1; border.color: badge.color
+          // Steady, as still mode draws it: the breath ran forever with no record behind it (task 8b5eca2f).
           visible: row.index === 0
-          SequentialAnimation on opacity {
-            running: basin.animate && row.index === 0; loops: Animation.Infinite
-            NumberAnimation { from: 0.08; to: 0.5; duration: 1600; easing.type: Easing.InOutSine }
-            NumberAnimation { from: 0.5; to: 0.08; duration: 1600; easing.type: Easing.InOutSine }
-          }
         }
       }
 
