@@ -73,10 +73,11 @@ test("vessel liquid level is the lease left on the client clock", () => {
   const left = (Date.parse("2026-11-22T05:28:51.245Z") - FETCH) / 1000;
   let f = O.frame(scene, FETCH, 1920, 1080, M.tickScene);
   assert.equal(f.orbs[ORBS].task.id8, "a40d7440");
-  assert.ok(Math.abs(f.orbs[ORBS].task.lease - left / 2700) < 1e-9);
+  // Drawn in 1/64 steps, rounded up (orbs.js LEASE_STEPS).
+  assert.equal(f.orbs[ORBS].task.lease, Math.ceil(left / 2700 * 64) / 64);
   assert.equal(f.orbs[ORBS].task.held, true);
   f = O.frame(scene, FETCH + 20 * MIN, 1920, 1080, M.tickScene);
-  assert.ok(Math.abs(f.orbs[ORBS].task.lease - (left - 1200) / 2700) < 1e-9);
+  assert.equal(f.orbs[ORBS].task.lease, Math.ceil((left - 1200) / 2700 * 64) / 64);
   f = O.frame(scene, Date.parse("2026-11-22T05:29:00Z"), 1920, 1080, M.tickScene);
   assert.equal(f.orbs[ORBS].task.lease, 0);
   assert.equal(f.orbs[ORBS].task.held, false);
@@ -182,4 +183,31 @@ test("roles map to their own programs; ended sessions leave after 15 min", () =>
   assert.equal(f.orbs["d045e2e7-5063-4e42-80e9-c7f58de7fbd0"].liveness, "ended");
   const later = O.frame(scene, Date.parse("2026-11-22T05:04:40Z"), 1920, 1080, M.tickScene);
   assert.equal(later.orbs["d045e2e7-5063-4e42-80e9-c7f58de7fbd0"], undefined);
+});
+
+test("the 1 s tick changes drawn values only in visible steps, not every second (task 8b5eca2f)", () => {
+  // At fetch the fuse burns (orbs), a lease drains (orbs), a write glow decays (coord), a critic
+  // forms, an ember fades (install-fix) and a beam fades. Every one of them moves each second;
+  // drawn, each may step only as often as its step size allows over one minute of ticks:
+  // fuse 600 s / 120 steps = 5 s (12 a minute), the rest at most a few a minute.
+  const scene = sceneAtFetch();
+  const seen = {}, changes = {};
+  const note = (k, v) => { if (k in seen && seen[k] !== v) changes[k] = (changes[k] || 0) + 1; seen[k] = v; };
+  for (let s = 0; s <= 60; s++) {
+    const f = O.frame(scene, FETCH + s * 1000, 1920, 1080, M.tickScene);
+    for (const id of f.ids) {
+      const o = f.orbs[id];
+      for (const k of ["energy", "form", "ended", "endedFade", "fuse", "pulse"]) note(`${o.id8}.${k}`, o[k]);
+      if (o.task) note(`${o.id8}.lease`, o.task.lease);
+    }
+    for (const b of f.beams) note(`beam.${b.key}`, b.alpha);
+  }
+  const moved = Object.keys(changes);
+  for (const k of ["b8bbe543.fuse", "b8bbe543.lease", "de463c37.energy", "f4fe1f7e.form", "d045e2e7.endedFade"])
+    assert.ok(k in seen, `${k} drawn`);
+  for (const k of moved) {
+    const max = k.endsWith(".fuse") ? 13 : k.endsWith(".pulse") ? 30 : 4;
+    assert.ok(changes[k] <= max, `${k} changed ${changes[k]} times in 60 ticks (at most ${max})`);
+  }
+  assert.ok(changes["b8bbe543.fuse"] >= 10, "the fuse still burns down");
 });

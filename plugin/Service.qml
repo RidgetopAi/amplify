@@ -32,7 +32,7 @@ Item {
   readonly property string probeUrl: Quickshell.env("AMPLIFY_PROBE_URL") || ""
   // env-read: AMPLIFY_STILL=1 freezes shader time (deterministic screenshots).
   readonly property bool still: Quickshell.env("AMPLIFY_STILL") === "1"
-  // env-read: AMPLIFY_FPS=1 logs frames per second per screen every 5 s.
+  // env-read: AMPLIFY_FPS=1 logs the frames each window swapped per second, every 5 s.
   readonly property bool logFps: Quickshell.env("AMPLIFY_FPS") === "1"
   // env-read: AMPLIFY_TRACE=1 logs each moving item's drawn axes (tools/motion/follow.mjs).
   readonly property bool trace: Quickshell.env("AMPLIFY_TRACE") === "1"
@@ -146,7 +146,7 @@ Item {
     probe()
   }
 
-  OrbsLayer { id: orbsLayer; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace }
+  OrbsLayer { id: orbsLayer; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
   BasinFeed { id: basinFeed }
 
   Variants {
@@ -180,17 +180,18 @@ Item {
         anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 30 }
       }
 
-      FrameAnimation {
-        id: frames
-        running: root.logFps
-        property int count: 0
-        onTriggered: count++
+      // Counts the frames this window swaps (a FrameAnimation here would itself draw every frame).
+      property int swapped: 0
+      Connections {
+        target: win.contentItem.Window.window
+        enabled: root.logFps
+        function onFrameSwapped() { win.swapped++ }
       }
       Timer {
         interval: 5000; repeat: true; running: root.logFps
         onTriggered: {
-          console.log("amplify: fps screen=" + win.modelData.name + " " + (frames.count / 5).toFixed(1))
-          frames.count = 0
+          console.log("amplify: fps window=amplify screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1))
+          win.swapped = 0
         }
       }
 

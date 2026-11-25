@@ -12,6 +12,18 @@ var PULSE_SEC = 30;            // a heartbeat pulse ring lives this long
 var LOST_SEC = 10 * 60;        // explicit heartbeat age at which lost begins (22d73eeb)
 var WRITE_GLOW_SEC = 10 * 60;  // write-recency glow time constant
 var LINK_SHOW_SEC = 30 * 60;   // a beam fades out over this window
+// Values that drift with the client clock (lease, glow, forming, ember, fuse, beam
+// fade) are drawn in these steps, so the 1 s tick changes what is drawn only when the
+// record has moved it a visible amount: a window redraws (and an eased value tweens)
+// a few times a minute, not every second (task 8b5eca2f).
+var STEPS = 32;                // glow, forming, ember collapse and fade, beam fade
+var LEASE_STEPS = 64;          // vessel level: about 42 s of a 45 min lease per step
+var FUSE_STEPS = 120;          // fuse arc: 3 degrees, 5 s of the 10 min fuse per step
+// The spin clock (OrbField) steps when the fastest rim has turned this many px: a live
+// orb about twice a second (3 degrees), a lost one every 4-6 s. At 1 px the idle desktop
+// model in tools/headless-shot.sh (three outputs, one lost orb) drew twice as often: 2.3 %
+// of a core on llvmpipe, against 1.1 % at 2 px and the 2 % budget (decision 25eced40).
+var SPIN_STEP_PX = 2;
 
 // Liveness -> material. Each state has its own look (viewer contract 22d73eeb,
 // decision 23973614). spin is turns of the surface per minute of client time.
@@ -45,6 +57,8 @@ function ageSec(v, nowMs) {
 }
 
 function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+// x in [0, 1] to the nearest of n steps; up: the next step up, so a value above 0 stays above 0.
+function stepped(x, n, up) { return (up ? Math.ceil(x * n) : Math.round(x * n)) / n; }
 
 function material(liveness) { return MATERIAL[liveness] || MATERIAL.dormant; }
 
@@ -123,11 +137,11 @@ function orbProps(scene, session, nowMs) {
         sub: (session.role || "agent") + " · " + liveness + " · " + session.id8,
         url: session.url, threadUrl: session.threadUrl,
         spin: mat.spin, sat: mat.sat, light: mat.light, dorm: mat.dorm, lost: mat.lost,
-        energy: liveness === "live" && wrote !== null ? Math.exp(-Math.max(0, wrote) / WRITE_GLOW_SEC) : 0,
-        form: liveness === "forming" ? Math.max(0.12, clamp01((started || 0) / FORM_SEC)) : 1,
-        ended: liveness === "ended" ? clamp01((endedAge || 0) / ENDED_COLLAPSE_SEC) : 0,
-        endedFade: liveness === "ended" ? 1 - clamp01(((endedAge || 0) - ENDED_COLLAPSE_SEC) / (ENDED_SHOW_SEC - ENDED_COLLAPSE_SEC)) * 0.7 : 1,
-        fuse: explicitAge === null ? -1 : clamp01(1 - explicitAge / LOST_SEC),
+        energy: liveness === "live" && wrote !== null ? stepped(Math.exp(-Math.max(0, wrote) / WRITE_GLOW_SEC), STEPS) : 0,
+        form: liveness === "forming" ? Math.max(0.12, Math.floor(clamp01((started || 0) / FORM_SEC) * STEPS) / STEPS) : 1,
+        ended: liveness === "ended" ? stepped(clamp01((endedAge || 0) / ENDED_COLLAPSE_SEC), STEPS) : 0,
+        endedFade: liveness === "ended" ? 1 - stepped(clamp01(((endedAge || 0) - ENDED_COLLAPSE_SEC) / (ENDED_SHOW_SEC - ENDED_COLLAPSE_SEC)), STEPS) * 0.7 : 1,
+        fuse: explicitAge === null ? -1 : stepped(clamp01(1 - explicitAge / LOST_SEC), FUSE_STEPS, true),
         neverHeartbeat: explicitAge === null && hbAge === null,
         pulse: hbAge !== null && hbAge >= 0 && hbAge < PULSE_SEC ? hbAge / PULSE_SEC : 1,
         need: liveness === "lost" && held ? 1 : 0,
@@ -135,7 +149,7 @@ function orbProps(scene, session, nowMs) {
         task: task ? {
             id: task.id, id8: task.id8, url: task.url, lane: task.lane,
             color: LANE_COLOR[task.lane] || LANE_COLOR.claimed,
-            lease: lease === null ? 0 : lease, held: held,
+            lease: lease === null ? 0 : stepped(lease, LEASE_STEPS, true), held: held,
             left: held ? fmtLeft(leaseLeftSec(task, nowMs)) : "expired"
         } : null
     };
@@ -183,7 +197,7 @@ function beams(scene, nowMs, placed) {
         if (seen[key]) continue;   // newest row per direction (links are newest first)
         seen[key] = true;
         out.push({ key: key, from: l.from, to: l.to, kind: l.kind,
-                   alpha: 0.25 + 0.75 * (1 - age / LINK_SHOW_SEC) });
+                   alpha: 0.25 + 0.75 * stepped(1 - age / LINK_SHOW_SEC, STEPS, true) });
     }
     return out;
 }

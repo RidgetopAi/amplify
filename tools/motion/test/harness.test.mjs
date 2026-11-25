@@ -119,6 +119,10 @@ test("a traced part or axis the spec does not list fails", () => {
 test("a recreated item (its emit count restarts) is a new series, not merged into the old", () => {
     const text = log({ "c p a": [{ x: 1 }, { x: 2 }] }) + "\n" + log({ "c p a": [{ x: 9 }] });
     assert.deepEqual([...parse(text).keys()], ["c p a", "c p a#2"]);
+    // keyed: an item made again fails; the same item kept, or a new ident, passes (8b5eca2f).
+    const sp = { ...spec({ x: { kind: "none" } }), scenarios: { s: { keyed: ["c.p"] } } };
+    assert.equal(check(sp, "s", text).ok, false);
+    assert.equal(check(sp, "s", log({ "c p a": [{ x: 1 }, { x: 2 }, { x: 9 }] }) + "\n" + log({ "c p b": [{ x: 9 }] })).ok, true);
 });
 
 test("docs/motion.json matches the code: every animation claimed, every part hooked", () => {

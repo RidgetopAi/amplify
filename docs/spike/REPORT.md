@@ -154,11 +154,14 @@ Arch Qt 6, so you can also link it by hand:
 llvmpipe numbers mean nothing for this, so these must come from your machine. Set
 `AMPLIFY_FPS=1` in the shell's environment, or run the fallback with
 `AMPLIFY_FPS=1 quickshell -p plugin/` after removing the plugin, and read
-`amplify: fps` lines. For CPU, use `top -p $(pgrep -f omarchy-shell)` (or
+`amplify: fps window=<amplify|amplify-orbs> screen=<output> <fps>` lines: the frames
+each window swapped per second over the last 5 s (task 8b5eca2f; the counter used to
+be a FrameAnimation, which drew every frame itself, so it always read the refresh rate). For CPU, use `top -p $(pgrep -f omarchy-shell)` (or
 `pgrep quickshell` in the fallback), and for GPU use `nvtop`/`radeontop`/`intel_gpu_top`:
 
-1. **fps idle**: empty workspace, orbs visible, 60 s. Expect your refresh rate.
-   Record shell CPU % and GPU %.
+1. **fps idle**: empty workspace, orbs visible, 60 s. Expect 0 on every `amplify`
+   window at river flow 0, and on `amplify-orbs` windows about 2 for a live orb and
+   under 1 when only lost orbs turn (task 8b5eca2f). Record shell CPU % and GPU %.
 2. **fps busy**: drag a window across the orbs and play a video in another window.
    Does fps stay at refresh, and does it stutter the video?
 3. **fps focus**: the largest orb at full size on your largest or HiDPI

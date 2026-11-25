@@ -14,6 +14,8 @@ Item {
   property color foreground: "#cdd6f4"
   property bool animate: true
   property bool trace: false
+  // AMPLIFY_FPS=1 (Service.qml): log the frames each window swapped per second, every 5 s.
+  property bool logFps: false
 
   // The orbs' drawn shader programs on every screen, for the ready line (Service.qml).
   function shaders() {
@@ -48,6 +50,19 @@ Item {
         enabled: !win.drawn
         function onFrameSwapped() { win.drawn = field.GraphicsInfo.shaderType === GraphicsInfo.RhiShader }
       }
+      property int swapped: 0
+      Connections {
+        target: win.contentItem.Window.window
+        enabled: orbsLayer.logFps
+        function onFrameSwapped() { win.swapped++ }
+      }
+      Timer {
+        interval: 5000; repeat: true; running: orbsLayer.logFps
+        onTriggered: {
+          console.log("amplify: fps window=amplify-orbs screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1))
+          win.swapped = 0
+        }
+      }
 
       OrbField {
         id: field
@@ -56,6 +71,8 @@ Item {
         foreground: orbsLayer.foreground
         animate: orbsLayer.animate
         trace: orbsLayer.trace
+        // env-read: AMPLIFY_ORBS_FROM starts the replayed orbs' client clock at this ISO time (tools/headless-shot.sh idle check).
+        startAt: Quickshell.env("AMPLIFY_ORBS_FROM") || ""
       }
     }
   }

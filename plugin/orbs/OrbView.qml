@@ -8,7 +8,7 @@ Item {
   id: view
 
   property var orb: null
-  property real clock: 0          // shared client-clock seconds (surface motion)
+  property real clock: 0          // the field's spin clock, seconds (OrbField)
   property bool animate: true     // false: no smoothing (deterministic shots)
   property bool trace: false      // AMPLIFY_TRACE=1: log drawn axes (plugin/motion/Trace.qml)
   property bool mono: false       // flat silhouette, for the role-shape proof
@@ -55,7 +55,10 @@ Item {
     blending: true
     fragmentShader: Qt.resolvedUrl("../shaders/orb_" + (view.orb ? view.orb.role : "worker") + ".frag.qsb")
 
-    property real time: view.clock
+    // Surface shimmer (swirl, stutter, alarm and needs-you breathing) is held at the field's
+    // first clock value, as still mode draws it: no record drives it (task 8b5eca2f).
+    // The surface still turns with the spin angle.
+    property real time: 2.3
     property real angle: view.spinBase + view.clock * view.spinFrom
     property real sat: view.orb ? view.orb.sat : 0
     property real light: view.orb ? view.orb.light : 0
@@ -100,7 +103,7 @@ Item {
       anchors.fill: parent
       blending: true
       fragmentShader: Qt.resolvedUrl("../shaders/orbvessel.frag.qsb")
-      property real time: view.clock
+      property real time: 2.3   // meniscus held, as `time` above
       property real level: view.orb && view.orb.task ? view.orb.task.lease : 0
       property real held: view.orb && view.orb.task && view.orb.task.held ? 1 : 0
       property real wPx: width

@@ -9,7 +9,6 @@ Item {
   property var a: null        // from orb {x, y, r}
   property var b: null        // to orb {x, y, r}
   property real alpha: 1
-  property real clock: 0
   property bool trace: false
   property color hueFrom: "#89b4fa"
   property color hueTo: "#cdd6f4"
@@ -45,7 +44,7 @@ Item {
     anchors.fill: parent
     blending: true
     fragmentShader: Qt.resolvedUrl("../shaders/orbbeam.frag.qsb")
-    property real time: beam.clock
+    property real time: 2.3   // packet held: no record moves it (OrbView `time`)
     property real alpha: beam.alpha
     property real lenPx: beam.len
     property real hPx: beam.height
