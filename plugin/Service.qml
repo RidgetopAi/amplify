@@ -78,32 +78,56 @@ Item {
     function refreshTheme(arg: string): string { return root.refreshTheme(arg) }
   }
 
-  // "shader=<all> orbs=<compiled>/<programs> river=… basin=…" over every drawn
-  // ShaderEffect (per .qsb program), then the logs of failed ones. A program
-  // that fails to load reports Error on every effect that uses it. Qt 6 reports
-  // Compiled only for a program one effect uses: effects sharing a program stay
-  // Uncompiled while they draw, so a shared program counts as compiled unless
-  // one of its effects reports Error. shader=compiled only when all compiled.
-  function shaderReport(groups) {
-    var all = "compiled", parts = [], logs = []
+  // env-read: AMPLIFY_READY_MS sets when each screen's ready line is logged (default 1500 ms;
+  // tools/headless-shot.sh uses 0 to log it before the first frame, so it must read pending).
+  readonly property int readyMs: Number(Quickshell.env("AMPLIFY_READY_MS") || 1500)
+
+  // Each program's (.qsb URL's) status over every effect that uses it, on any screen
+  // (task f0e14f4c). Qt loads a program synchronously when an effect first uses it and
+  // caches it per URL for the whole process: only that first effect reports Compiled (or
+  // Error), and every later one, on this screen or another, stays Uncompiled while it
+  // draws. A program that fails is not cached, so every effect using it reports Error. So:
+  // error if any effect reports Error; compiled if one reports Compiled or sits in a
+  // window that has drawn a frame with RHI shaders (it was drawn from the cache: the
+  // effect that first loaded it may since be gone); otherwise pending.
+  function programs() {
+    var st = {}, wins = orbsLayer.windows().concat(windows.instances)
+    for (var w = 0; w < wins.length; w++) {
+      var fx = wins[w].shaders()
+      for (var i = 0; i < fx.length; i++) {
+        var url = fx[i].fragmentShader.toString(), s = fx[i].status
+        if (s === ShaderEffect.Error) st[url] = "error"
+        else if (st[url] === "error") continue
+        else if (s === ShaderEffect.Compiled || wins[w].drawn) st[url] = "compiled"
+        else if (!st[url]) st[url] = "pending"
+      }
+    }
+    return st
+  }
+
+  // "shader=<all> orbs=<compiled>/<programs> river=… basin=… [pending=<n>]" over the drawn
+  // effects of each group, then the logs of failed ones. rendered[g] is false while a
+  // window group g draws in has not drawn a frame: its programs are pending then, never
+  // compiled, whatever Qt reports. shader=error if any program failed, else pending if any
+  // is pending, else compiled.
+  function shaderReport(groups, rendered) {
+    var st = programs(), all = "compiled", parts = [], logs = [], pending = 0
     for (var g in groups) {
-      var progs = {}, n = 0, ok = 0
+      var seen = {}, n = 0, ok = 0
       for (var i = 0; i < groups[g].length; i++) {
         var fx = groups[g][i], url = fx.fragmentShader.toString()
-        if (!progs[url]) { progs[url] = { uses: 0, error: false, compiled: false }; n++ }
-        progs[url].uses++
-        if (fx.status === ShaderEffect.Error) { progs[url].error = true; if (fx.log) logs.push(g + ": " + fx.log) }
-        if (fx.status === ShaderEffect.Compiled) progs[url].compiled = true
-      }
-      for (var u in progs) {
-        var p = progs[u]
-        if (p.error) all = "error"
-        else if (p.compiled || p.uses > 1) ok++
-        else if (all !== "error") all = "uncompiled"
+        if (fx.status === ShaderEffect.Error && fx.log) logs.push(g + ": " + fx.log)
+        if (seen[url]) continue
+        seen[url] = true; n++
+        var s = st[url] === "compiled" && !rendered[g] ? "pending" : st[url]
+        if (s === "error") all = "error"
+        else if (s === "compiled") ok++
+        else { pending++; if (all !== "error") all = "pending" }
       }
       parts.push(g + "=" + ok + "/" + n)
     }
-    return "shader=" + all + " " + parts.join(" ") + (logs.length ? " " + logs.join(" ") : "")
+    return "shader=" + all + " " + parts.join(" ") + (pending ? " pending=" + pending : "")
+      + (logs.length ? " " + logs.join(" ") : "")
   }
 
   function probe() {
@@ -170,11 +194,37 @@ Item {
         }
       }
 
+      // The ready line, after readyMs; when it reads pending, an "amplify: rendered" line
+      // follows at the first frame after which nothing is pending any more.
+      function shaders() { return river.shaders().concat(basin.shaders()) }
+      // drawn: this window has shown a frame with RHI shaders (software rendering never does).
+      property bool drawn: false
+      property bool waiting: false
+      function report(what) {
+        return "amplify: " + what + " layer=" + root.layerName + " screen=" + win.modelData.name
+          + " size=" + win.width + "x" + win.height + " "
+          + root.shaderReport({ orbs: orbsLayer.shaders(), river: river.shaders(), basin: basin.shaders() },
+                              { orbs: orbsLayer.windows().every(function (w) { return w.drawn }), river: win.drawn, basin: win.drawn })
+      }
+      Connections {
+        target: win.contentItem.Window.window
+        enabled: !win.drawn || win.waiting
+        function onFrameSwapped() {
+          win.drawn = river.GraphicsInfo.shaderType === GraphicsInfo.RhiShader
+          if (!win.waiting) return
+          var line = win.report("rendered")
+          if (line.indexOf("shader=pending") >= 0) return
+          win.waiting = false
+          console.log(line)
+        }
+      }
       Timer {
-        interval: 1500; running: true
-        onTriggered: console.log("amplify: ready layer=" + root.layerName
-          + " screen=" + win.modelData.name + " size=" + win.width + "x" + win.height + " "
-          + root.shaderReport({ orbs: orbsLayer.shaders(), river: river.shaders(), basin: basin.shaders() }))
+        interval: root.readyMs; running: true
+        onTriggered: {
+          var line = win.report("ready")
+          win.waiting = line.indexOf("shader=pending") >= 0
+          console.log(line)
+        }
       }
     }
   }

@@ -21,6 +21,8 @@ Item {
     for (var i = 0; i < screens.instances.length; i++) out = out.concat(screens.instances[i].shaders())
     return out
   }
+  // Its windows, one per screen, each with shaders() and drawn (Service.qml's ready line).
+  function windows() { return screens.instances }
 
   Variants {
     id: screens
@@ -38,6 +40,14 @@ Item {
       WlrLayershell.layer: WlrLayer.Bottom
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
       mask: Region { regions: field.regions }
+
+      // drawn: this window has shown a frame with RHI shaders (software rendering never does).
+      property bool drawn: false
+      Connections {
+        target: win.contentItem.Window.window
+        enabled: !win.drawn
+        function onFrameSwapped() { win.drawn = field.GraphicsInfo.shaderType === GraphicsInfo.RhiShader }
+      }
 
       OrbField {
         id: field

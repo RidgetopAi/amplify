@@ -1472,8 +1472,8 @@
    "edits": [
     {
      "file": "plugin/Service.qml",
-     "from": "        if (p.error) all = \"error\"\n",
-     "to": "        if (p.error) ok++\n"
+     "from": "        if (s === \"error\") all = \"error\"\n",
+     "to": "        if (s === \"error\") ok++\n"
     }
    ],
    "gates": [
@@ -1685,8 +1685,8 @@
    "edits": [
     {
      "file": "plugin/Service.qml",
-     "from": "        if (p.error) all = \"error\"\n",
-     "to": "        if (p.error && g === \"orbs\") all = \"error\"\n"
+     "from": "        if (s === \"error\") all = \"error\"\n",
+     "to": "        if (s === \"error\" && g === \"orbs\") all = \"error\"\n"
     }
    ],
    "gates": [
@@ -1771,6 +1771,86 @@
    ],
    "gates": [
     "mutate"
+   ]
+  },
+  {
+   "id": "RP1-pending-reported-compiled",
+   "source": "f0e14f4c done-when 5",
+   "class": "service ready line",
+   "note": "a pending program counts as compiled, so a ready line logged before the first frame reads shader=compiled",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        else { pending++; if (all !== \"error\") all = \"pending\" }\n",
+     "to": "        else ok++\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RP2-broken-shader-reported-pending",
+   "source": "f0e14f4c done-when 5",
+   "class": "service ready line",
+   "note": "a program an effect reports Error for reads pending, so a broken shader reads shader=pending",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        if (s === ShaderEffect.Error) st[url] = \"error\"\n",
+     "to": "        if (s === ShaderEffect.Error) st[url] = \"pending\"\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RP3-cached-program-pending",
+   "source": "f0e14f4c done-when 1",
+   "class": "service ready line",
+   "note": "only an effect reporting Compiled counts, so effects drawing Qt's cached program (a second screen, a rebuilt orb) read pending (Brian's uncompiled screens)",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        else if (s === ShaderEffect.Compiled || wins[w].drawn) st[url] = \"compiled\"\n",
+     "to": "        else if (s === ShaderEffect.Compiled) st[url] = \"compiled\"\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RP4-undrawn-screen-compiled",
+   "source": "f0e14f4c done-when 3",
+   "class": "service ready line",
+   "note": "a screen that has not drawn a frame reports the status Qt gives its programs, so it can read compiled",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "        var s = st[url] === \"compiled\" && !rendered[g] ? \"pending\" : st[url]\n",
+     "to": "        var s = st[url]\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RP5-no-rendered-line",
+   "source": "f0e14f4c done-when 2",
+   "class": "service ready line",
+   "note": "a pending ready line is never followed by the rendered line",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "          win.waiting = false\n          console.log(line)\n",
+     "to": "          win.waiting = false\n"
+    }
+   ],
+   "gates": [
+    "headless"
    ]
   }
  ]
