@@ -12,7 +12,9 @@
 #      scene draws (orbs=5/5 river=1/1 basin=1/1) on a working GL context, the .qsb
 #      having been rebuilt from source; and, run again with each component's programs
 #      broken in turn, shader=error with that component at 0 (task 5afeee5f: G3, G4,
-#      G6, N2);
+#      G6, N2); on a second screen too, and logged before the first frame shader=pending
+#      then an "amplify: rendered" line reading compiled, a broken program error even
+#      then (task f0e14f4c);
 #   2. the uncovered orbs' centres are lit and accent-tinted, and nothing is
 #      drawn where the P0 placeholder orb was (0.28W, 0.5H);
 #   3. a covered orb's centre shows the app window, so the layer sits below windows;
@@ -173,6 +175,33 @@ for g in "${COMPS[@]}"; do
     || fail "ready line hides broken $g programs (want shader=error $(counts "$g"))"
   cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"
 done
+
+# Two screens (task f0e14f4c). Qt loads each program once per process, so only the first
+# screen's effects report Compiled; the second screen's draw the cached program and stay
+# Uncompiled. On a second output, every screen's ready line must still read compiled with
+# every program. Then, logged before the first frame (AMPLIFY_READY_MS=0), each screen's
+# ready line must read pending, never compiled, and an "amplify: rendered" line must follow
+# reading compiled; a broken program must read error even then, never pending.
+swaymsg create_output > /dev/null; sleep 1
+# screens <log> <what>: how many screens logged an "amplify: <what>" line, then each line.
+screens() { local l; l=$(grep -a "amplify: $2 " "$1" | sed 's/.*qml: //'); grep -c . <<< "$l"; echo "$l" | cut -c1-200; }
+# all2 <log> <what> <want>: true when exactly two screens logged <what>, each containing <want>.
+all2() { local l; l=$(grep -a "amplify: $2 " "$1"); (( $(grep -c . <<< "$l") == 2 && $(grep -c -- "$3" <<< "$l") == 2 )); }
+plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/two.log"
+screens "$RUN/two.log" ready | sed 's/^/two screens: /'
+all2 "$RUN/two.log" ready "shader=compiled $(counts)$" && pass "both screens report shader=compiled ($(counts))" \
+  || fail "a second screen's ready line is not shader=compiled $(counts)"
+AMPLIFY_READY_MS=0 plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/early.log"
+screens "$RUN/early.log" ready | sed 's/^/before the first frame: /'; screens "$RUN/early.log" rendered | sed 's/^/after it: /'
+all2 "$RUN/early.log" ready "shader=pending .* pending=[1-9]" && pass "before the first frame both screens report shader=pending" \
+  || fail "a ready line logged before the first frame is not shader=pending"
+all2 "$RUN/early.log" rendered "shader=compiled $(counts)$" && pass "once drawn both screens report shader=compiled ($(counts))" \
+  || fail "no rendered line reading shader=compiled $(counts) on both screens"
+AMPLIFY_READY_MS=0 plugin "$RUN/broken-river/plugin"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/early-broken.log"
+screens "$RUN/early-broken.log" ready | sed 's/^/broken river before the first frame: /'
+all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river reports shader=error before the first frame" \
+  || fail "a broken river reads other than shader=error before the first frame"
+cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" >> "$RUN/plugin-main.log"
 mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 
 grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
