@@ -14,6 +14,22 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
+// Most spans {ms, end} open at any one instant: a sweep over start and end events, ends
+// first at equal times, so a span that ends as another starts does not overlap it.
+const peak = (xs) => {
+    let open = 0, top = 0;
+    const ev = xs.flatMap((x) => [[x.ms, 1], [x.end, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [, d] of ev) top = Math.max(top, (open += d));
+    return top;
+};
+
+test("peak() counts spans open at once, not spans overlapping one span", () => {
+    // Each span overlaps the middle one, but the first ends before the last starts.
+    assert.equal(peak([{ ms: 0, end: 429 }, { ms: 179, end: 600 }, { ms: 516, end: 944 }]), 2);
+    assert.equal(peak([{ ms: 0, end: 500 }, { ms: 100, end: 600 }, { ms: 200, end: 300 }]), 3);
+    assert.equal(peak([{ ms: 0, end: 10 }, { ms: 10, end: 20 }]), 1);
+});
+
 const shotStub = (g) => `#!/usr/bin/env bash
 echo "start ${g} $(date +%s%3N) $PWD $SHOT_RUNTIME_DIR $(head -1 flags)" >> "$STUB_LOG"
 sleep "\${STUB_SLEEP:-0}"
@@ -144,10 +160,9 @@ test("mutate.sh -j 4: same table as -j 1, runs overlap in their own trees and ru
         spans.push({ ...s, end: e.ms });
     }
     const overlap = (a, b) => a.ms < b.end && b.ms < a.end;
-    const most = (xs) => Math.max(...xs.map((a) => xs.filter((b) => overlap(a, b)).length));
-    assert.ok(most(spans) > 1, "-j 4 runs gates at once");
+    assert.ok(peak(spans) > 1, "-j 4 runs gates at once");
     const render = spans.filter((x) => /shot|headless/.test(x.gate));
-    assert.ok(most(render) <= 2, "at most MUTATE_RENDER_JOBS render gates at once");
+    assert.ok(peak(render) <= 2, "at most MUTATE_RENDER_JOBS render gates at once");
     for (const h of render.filter((x) => x.gate === "headless"))
         assert.ok(!render.some((x) => x !== h && overlap(h, x)), "the headless gate renders alone");
     // Each gate has its own runtime dir; each run's tree carries only its own mutation.
