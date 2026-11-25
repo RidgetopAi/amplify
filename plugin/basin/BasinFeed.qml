@@ -1,8 +1,8 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
-// amp.js and mandrel.js are symlinks to data/: Quickshell refuses imports from
-// outside the config directory (they resolve to qrc:/qs-blackhole).
+// amp.js and mandrel.js are copies of data/ (tools/sync-shared.sh): Quickshell refuses
+// imports from outside the config directory (they resolve to qrc:/qs-blackhole).
 import "amp.js" as Amp
 import "mandrel.js" as Mandrel
 import "basin.js" as Basin
@@ -101,7 +101,7 @@ QtObject {
     // Mandrel scene when no one shares one: live polling, else the snapshot.
     FileView {
       id: snapshotFile
-      // Symlinked in: Quickshell blackholes paths outside the config directory.
+      // Copied in (tools/sync-shared.sh): Quickshell blackholes paths outside the config directory.
       path: Qt.resolvedUrl("amplify-snapshot.json").toString().replace(/^file:\/\//, "")
       printErrors: false
       onLoaded: if (!feed.scene && feed.config.mode !== "live") {

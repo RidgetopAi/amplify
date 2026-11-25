@@ -14,7 +14,7 @@ The punch lifecycle as a river (direction c755578f, lane mapping c1f75776). `Ser
 
 `river.js` holds the layout as pure functions (`layout`, `lease`, `tetherTone`, `transitions`, `placeMoorings`, `replaySceneAt`), tested by `node --test plugin/river/test/`. `shaders/river.frag` is the water; it compiles to `plugin/shaders/river.frag.qsb`.
 
-Quickshell resolves imports and URLs outside the config folder to `qrc:/qs-blackhole`. That is why `mandrel.js`, `amplify-snapshot.json`, and `river.frag.qsb` here are relative symlinks to `data/`, `fixtures/`, and `plugin/shaders/`.
+Quickshell resolves imports and URLs outside the config folder to `qrc:/qs-blackhole`. That is why `mandrel.js`, `amplify-snapshot.json`, `Trace.qml`, and `river.frag.qsb` here are copies of `data/`, `fixtures/`, `plugin/motion/`, and `plugin/shaders/` (not symlinks: `omarchy plugin validate` rejects those). Edit the source and run `tools/sync-shared.sh`; `node --test data/test/` fails while a copy differs from its source.
 
 ## Replay and preview
 

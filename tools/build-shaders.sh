@@ -2,6 +2,8 @@
 # Compile every shaders/*.frag and *.vert to plugin/shaders/<name>.qsb, and every
 # plugin/basin/*.frag to a .qsb beside it, with Qt's qsb.
 # The .qsb files are committed because `omarchy plugin add` runs no build step.
+# Then the plugin's copies of the compiled shaders (plugin/river/river.frag.qsb) are
+# refreshed from plugin/shaders by tools/sync-shared.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -25,3 +27,4 @@ for src in "$ROOT"/plugin/basin/*.frag; do
   count=$((count + 1))
 done
 (( count > 0 )) || { echo "build-shaders: no shaders found" >&2; exit 1; }
+cd "$ROOT" && "$ROOT/tools/sync-shared.sh" plugin/shaders/*.qsb

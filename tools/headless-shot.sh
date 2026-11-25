@@ -36,7 +36,7 @@ mkdir -p "$OUT"
 
 # 1. Shaders are always rebuilt here, orbs, river and basin alike, so a stale .qsb
 # cannot pass the check (G3: a broken plugin/basin/pool.frag passed on its committed .qsb).
-rm -f "$ROOT"/plugin/shaders/*.qsb "$ROOT"/plugin/basin/*.qsb
+rm -f "$ROOT"/plugin/shaders/*.qsb "$ROOT"/plugin/basin/*.qsb "$ROOT"/plugin/river/*.qsb
 "$ROOT/tools/build-shaders.sh"; built=$?
 
 RUN="$(mktemp -d)"
@@ -158,12 +158,13 @@ timeout 20 vncdo -s 127.0.0.1::5959 move "$((W - 28 - 250))" "$((H - 30 - 32))" 
 grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin row opens its record" || fail "basin click lost"
 
 # A broken program must turn the ready line to shader=error, for every component (G6):
-# the same plugin (a copy with data/ and fixtures/, which plugin/ links into) with each
-# component's programs truncated in turn must read shader=error with that component at 0.
+# the same plugin (a copy of plugin/ alone: it holds no links out) with each component's
+# programs truncated in turn must read shader=error with that component at 0. The river
+# loads its own copy, plugin/river/river.frag.qsb.
 kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/plugin-main.log"
-declare -A BREAK=([orbs]="plugin/shaders/orb*.qsb" [river]="plugin/shaders/river.frag.qsb" [basin]="plugin/basin/*.frag.qsb")
+declare -A BREAK=([orbs]="plugin/shaders/orb*.qsb" [river]="plugin/river/river.frag.qsb" [basin]="plugin/basin/*.frag.qsb")
 for g in "${COMPS[@]}"; do
-  B="$RUN/broken-$g"; mkdir "$B"; cp -a "$ROOT/plugin" "$ROOT/data" "$ROOT/fixtures" "$B/"
+  B="$RUN/broken-$g"; mkdir "$B"; cp -a "$ROOT/plugin" "$B/"
   for f in $B/${BREAK[$g]}; do head -c 64 "$ROOT/${f#"$B/"}" > "$f"; done
   plugin "$B/plugin"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
   bready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)

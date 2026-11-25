@@ -1,6 +1,6 @@
 # Amplify data layer
 
-`data/mandrel.js` turns the Mandrel Command REST responses into one scene model for the Current river and the Meridian orb. It has no dependencies. QML imports it as a `.pragma library` file (`import "../data/mandrel.js" as Mandrel`). Node loads the same file through `data/node.cjs`. The library does no env reads, networking, or timers of its own: the host passes in the clock, the transport, and the timers.
+`data/mandrel.js` turns the Mandrel Command REST responses into one scene model for the Current river and the Meridian orb. It has no dependencies. QML imports it as a `.pragma library` file through the plugin's copies of it (`plugin/{basin,orbs,river}/mandrel.js`, written by `tools/sync-shared.sh`; edit this file, never a copy). Node loads the same file through `data/node.cjs`. The library does no env reads, networking, or timers of its own: the host passes in the clock, the transport, and the timers.
 
 ## Config
 

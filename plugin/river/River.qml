@@ -169,7 +169,7 @@ Item {
         property size size: Qt.size(river.dw, 1080)
         property vector4d g0: Qt.vector4d(river.gateX(0), river.gateX(1), river.gateX(2), river.gateX(3))
         property vector4d g1: Qt.vector4d(river.gateX(4), river.gateX(5), river.gateX(6), 0)
-        fragmentShader: Qt.resolvedUrl("river.frag.qsb")   // symlink to plugin/shaders/river.frag.qsb
+        fragmentShader: Qt.resolvedUrl("river.frag.qsb")   // copy of plugin/shaders/river.frag.qsb
       }
     }
 

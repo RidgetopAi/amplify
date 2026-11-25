@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { check, parse } from "../follow.mjs";
 import { checkSpec } from "../spec.mjs";
 import { catalogue, plan } from "../apply.mjs";
@@ -153,4 +154,15 @@ test("the mutation catalogue applies to this tree and covers the river records",
                      "GA-basin-untraced-in-still", "GAb-basin-untraced-still-pool-fades", "N1-blank-capture-guard-off", "G3-broken-pool-frag", "G6-shader-error-only-for-orbs"])
         assert.ok(ids.includes(id), id);
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
+});
+
+test("a mutation of a shared source reaches the plugin's copies of it, as the symlinks did", (ctx) => {
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), "apply-test-"));
+    ctx.after(() => fs.rmSync(t, { recursive: true, force: true }));
+    for (const d of ["data", "fixtures", "plugin", "tools"]) fs.cpSync(path.join(root, d), path.join(t, d), { recursive: true });
+    const r = spawnSync(process.execPath, [path.join(root, "tools/motion/apply.mjs"), t, "L3-blocked-no-eddy"], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const src = fs.readFileSync(path.join(t, "data/mandrel.js"), "utf8");
+    assert.notEqual(src, fs.readFileSync(path.join(root, "data/mandrel.js"), "utf8"), "the source is mutated");
+    for (const c of ["basin", "orbs", "river"]) assert.equal(fs.readFileSync(path.join(t, "plugin", c, "mandrel.js"), "utf8"), src, `plugin/${c}/mandrel.js`);
 });

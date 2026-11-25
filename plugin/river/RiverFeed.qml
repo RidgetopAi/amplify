@@ -1,7 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
-import "mandrel.js" as Mandrel   // symlink to data/mandrel.js: Quickshell blackholes imports outside the config folder
+import "mandrel.js" as Mandrel   // copy of data/mandrel.js (tools/sync-shared.sh): Quickshell blackholes imports outside the config folder
 import "river.js" as R
 
 // A river's replay clock (each River owns one unless its host sets `feed`, so
@@ -14,7 +14,7 @@ Scope {
   id: feed
 
   // env-read: AMPLIFY_RIVER_FIXTURE replays this file instead of fixtures/amplify-snapshot.json.
-  // amplify-snapshot.json is a symlink to fixtures/amplify-snapshot.json.
+  // amplify-snapshot.json is a copy of fixtures/amplify-snapshot.json.
   readonly property string fixturePath: Quickshell.env("AMPLIFY_RIVER_FIXTURE")
     || decodeURIComponent(String(Qt.resolvedUrl("amplify-snapshot.json")).replace(/^file:\/\//, ""))
   // env-read: AMPLIFY_RIVER_AT freezes the replay clock at this ISO time (screenshots).

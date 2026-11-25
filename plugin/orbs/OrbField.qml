@@ -1,7 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
-import "mandrel.js" as Mandrel  // symlink to ../../data/mandrel.js: Quickshell blocks imports outside plugin/
+import "mandrel.js" as Mandrel  // copy of data/mandrel.js (tools/sync-shared.sh): Quickshell blocks imports outside plugin/
 import "orbs.js" as Orbs
 
 // Desktop orbs (task a40d7440): one orb per Mandrel session on the desktop

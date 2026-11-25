@@ -6,7 +6,7 @@ Every moving thing under `plugin/river/` and `shaders/river*`, with the Mandrel 
 rg -n "Animation|Behavior|Timer|callLater|rotation|uniform|phase" plugin/river/*.qml plugin/river/river.js shaders/river.frag
 ```
 
-(`plugin/river/mandrel.js` is a symlink to `data/mandrel.js`; its `timers.setTimeout` calls are the live SSE debounce and watchdog, which draw nothing.)
+(`plugin/river/mandrel.js` is a copy of `data/mandrel.js` (`tools/sync-shared.sh`); its `timers.setTimeout` calls are the live SSE debounce and watchdog, which draw nothing.)
 
 | # | file:line | What moves | Record that drives it | When it stops | Pivot | Gate |
 | --- | --- | --- | --- | --- | --- | --- |
