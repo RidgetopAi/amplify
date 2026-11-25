@@ -185,7 +185,8 @@
                 "river.tether.off": 2, "river.tether.length": 5, "river.rings.rotation": 1, "river.pass.opacity": 1, "river.pass.length": 1,
                 "river.pass.sweep": 1, "river.water.x": 1, "river.swirl.rotation": 1 } },
     "river-eddy": { "run": "shot.sh eddy: busy 04:23:17Z, flow 0, one blocked task", "want": { "river.swirl.rotation": 1 } },
-    "river-still": { "run": "shot.sh busy: AMPLIFY_STILL=1 at 04:01:47Z", "still": true, "want": {} },
+    "river-still": { "run": "shot.sh busy: AMPLIFY_STILL=1 at 04:01:47Z", "still": true, "want": {},
+      "traced": ["river.vessel", "river.gate", "river.tether", "river.water"] },
     "service": { "run": "plugin/orbs/test/shot.sh live: the whole plugin animated with AMPLIFY_TRACE=1",
       "want": { "orbs.clock.x": 1, "orbs.orb.rotation": 3, "basin.pool.x": 1, "basin.pool.opacity": 1,
                 "basin.pool.length": 1, "basin.row.y": 1, "basin.row.opacity": 1, "basin.row.halo": 1,
@@ -193,6 +194,7 @@
     "orbs-decay": { "run": "plugin/orbs/test/shot.sh motion: orbs sheet animated, client clock +20 min at 3 s (lost, dormant, needs-you, ended fade)",
       "want": { "orbs.orb.sat": 5, "orbs.orb.light": 5, "orbs.orb.dorm": 1, "orbs.orb.lost": 1, "orbs.orb.need": 1, "orbs.orb.ended": 1,
                 "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 } },
-    "service-still": { "run": "plugin/orbs/test/shot.sh layer: AMPLIFY_STILL=1 with AMPLIFY_TRACE=1", "still": true, "want": {} }
+    "service-still": { "run": "plugin/orbs/test/shot.sh layer: AMPLIFY_STILL=1 with AMPLIFY_TRACE=1", "still": true, "want": {},
+      "traced": ["river.water", "river.vessel", "orbs.orb", "orbs.clock", "basin.pool", "basin.row"] }
   }
 }

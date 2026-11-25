@@ -10,7 +10,7 @@ One spec, one trace, one check and one mutation list, shared by builder and crit
 | Follow check | `tools/motion/follow.mjs <scenario> <log>` | Checks every traced axis of a run against its spec row. Movers come from the data (`:to` changes, `:rate` non-zero, effects that exist), never from hand-named keys. A log with no trace lines fails. |
 | Pixels | `tools/motion/frames.mjs` | Frame-sequence checks that need the picture: still, region, eddy, flow, gold. |
 | Mutations | `tools/motion/mutations.json`, `tools/mutate.sh` | The catalogue and its runner. |
-| Tests | `tools/motion/test/` | The check catches each wrong path it exists to catch; the spec matches the code; every mutation still applies. |
+| Tests | `tools/motion/test/` | The check catches each wrong path it exists to catch; the spec matches the code; every mutation still applies; `mutate.test.mjs` runs `tools/mutate.sh` on stub gates (selection, early stop, exit status, `-j` isolation, leftovers killed). |
 
 ## Check kinds (spec `axes`)
 
@@ -22,7 +22,7 @@ One spec, one trace, one check and one mutation list, shared by builder and crit
 - `step`: drawn at its target at every sample (no animation by design).
 - `none`: not checked; `why` says why.
 
-Scenarios (`scenarios` in the spec) name the runs, set `still: true` for `AMPLIFY_STILL=1` (nothing may change between data steps) and set `want` floors on the number of movers per axis, so a check cannot pass with nothing moving. They run inside the existing gates: river `shot.sh` (river-settle, river-fx, river-eddy, river-still) and orbs `shot.sh motion` (service, service-still, orbs-decay).
+Scenarios (`scenarios` in the spec) name the runs, set `still: true` for `AMPLIFY_STILL=1` (nothing may change between data steps) and set `want` floors on the number of movers per axis, so a check cannot pass with nothing moving. A still scenario has no movers, so it names in `traced` every component (or `comp.part`) that runs in it, and each must log at least one traced item (GAP-A). They run inside the existing gates: river `shot.sh` (river-settle, river-fx, river-eddy, river-still) and orbs `shot.sh motion` (service, service-still, orbs-decay).
 
 ## Mutation catalogue
 

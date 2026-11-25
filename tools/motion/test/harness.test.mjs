@@ -33,7 +33,7 @@ function log(items) {
 const spring = { kind: "spring", min: 20, eps: 0.5, clear: 1, minBetween: 3, maxStep: 0.5, overshoot: 0.15, settle: 4 };
 const spec = (axes, want = {}, still = false) => ({
     rows: [{ id: "t", comp: "c", parts: [{ part: "p", axes }, { part: "q", axes: { x: { kind: "rides", with: "p", tol: 1 } } }] }],
-    scenarios: { s: { want, still } }
+    scenarios: { s: { want, still, ...(still && { traced: ["c"] }) } }
 });
 // Move from 0 to 100 through path (values after the target change), then hold.
 const move = (path, hold = 30) => [{ x: 0, "x:to": 0 }, { "x:to": 100 }, ...path.map((x) => ({ x })), ...Array(hold).fill({ x: 100 })];
@@ -98,6 +98,18 @@ test("a log with no trace lines fails, still or not (G1)", () => {
     assert.equal(check(realSpec, "river-still", untraced).ok, false, "river-still");
 });
 
+test("a still scenario fails when one component it names logs no trace, or it names none (GAP-A)", () => {
+    const two = { rows: [{ id: "t", comp: "c", parts: [{ part: "p", axes: { x: spring } }] }, { id: "u", comp: "d", parts: [{ part: "q", axes: { x: spring } }] }],
+                  scenarios: { s: { still: true, want: {}, traced: ["c", "d.q"] }, bare: { still: true, want: {} } } };
+    const held = [{ x: 0, "x:to": 0 }, { x: 0 }];
+    assert.equal(check(two, "s", log({ "c p a": held, "d q b": held })).ok, true, "both traced");
+    assert.equal(check(two, "s", log({ "c p a": held })).ok, false, "d untraced (only c logs)");
+    assert.equal(check(two, "s", log({ "d q b": held })).ok, false, "c untraced (only d logs)");
+    assert.equal(check(two, "bare", log({ "c p a": held, "d q b": held })).ok, false, "still scenario without traced");
+    for (const sc of ["service-still", "river-still"]) assert.ok(realSpec.scenarios[sc].traced.length, `${sc} names its components`);
+    assert.deepEqual(new Set(realSpec.scenarios["service-still"].traced.map((x) => x.split(".")[0])), new Set(["river", "orbs", "basin"]));
+});
+
 test("a traced part or axis the spec does not list fails", () => {
     assert.equal(run({ x: spring }, { "c z a": [{ x: 1 }] }).ok, false);
     assert.equal(run({ x: spring }, { "c p a": [{ x: 0, "x:to": 0, y: 3 }] }).ok, false);
@@ -132,12 +144,13 @@ test("the spec check fails when a row is deleted or an animation is added withou
 test("the mutation catalogue applies to this tree and covers the river records", () => {
     const all = catalogue(), ids = all.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, "ids unique");
-    const gates = new Set(["data", "orbs", "river", "motion", "spec", "river-shot", "orbs-shot", "headless"]);
+    const gates = new Set(["data", "orbs", "river", "motion", "spec", "mutate", "river-shot", "orbs-shot", "headless"]);
     for (const m of all) {
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);
     }
-    for (const id of ["K1-lease-tween-removed", "K2-hull-y-target", "K4-tether-y2-target", "K14-pass-ring-still-only", "X1-tether-voff-behavior-removed", "SP-row-deleted", "XG1-service-trace-off-in-still", "XG1b-untraced-still-pool-fades", "XG2-unlisted-animator"])
+    for (const id of ["K1-lease-tween-removed", "K2-hull-y-target", "K4-tether-y2-target", "K14-pass-ring-still-only", "X1-tether-voff-behavior-removed", "SP-row-deleted", "XG1-service-trace-off-in-still", "XG1b-untraced-still-pool-fades", "XG2-unlisted-animator",
+                     "GA-basin-untraced-in-still", "GAb-basin-untraced-still-pool-fades", "N1-blank-capture-guard-off", "G3-broken-pool-frag", "G6-shader-error-only-for-orbs"])
         assert.ok(ids.includes(id), id);
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
 });

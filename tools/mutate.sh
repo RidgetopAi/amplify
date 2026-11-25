@@ -28,7 +28,9 @@
 # 2.08 s), and the headless gate runs alone (it also drives wayvnc on a fixed port).
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
-# plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), river-shot
+# plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), mutate (node --test
+# tools/motion/test/mutate.test.mjs: this runner on stub gates; for mutations of this
+# file, which the whole motion gate would also fail on its own catalogue check), river-shot
 # (plugin/river/test/shot.sh), orbs-shot (plugin/orbs/test/shot.sh), headless
 # (tools/headless-shot.sh). The render gates need the stack in tools/headless-shot.sh
 # and HEADLESS_MESA without a GPU. A critic who finds a surviving mutation adds it to
@@ -65,9 +67,10 @@ gates_of() { node -e 'const m = require(process.argv[1]).mutations.find((x) => x
 declare -A CMD=(
   [data]="node --test data/test/" [orbs]="node --test plugin/orbs/test/" [river]="node --test plugin/river/test/"
   [motion]="node --test tools/motion/test/" [spec]="node tools/motion/spec.mjs"
+  [mutate]="node --test tools/motion/test/mutate.test.mjs"
   [river-shot]="plugin/river/test/shot.sh" [orbs-shot]="plugin/orbs/test/shot.sh" [headless]="tools/headless-shot.sh"
 )
-ORDER=(data orbs river motion spec headless orbs-shot river-shot)   # cheapest first
+ORDER=(data orbs river motion spec mutate headless orbs-shot river-shot)   # cheapest first
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
