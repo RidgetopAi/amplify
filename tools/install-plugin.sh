@@ -66,6 +66,11 @@ if [[ ${1:-} == --remove ]]; then
   exit 0
 fi
 
+# omarchy plugin validate rejects symlinks inside a plugin folder, so plugin/ holds
+# real copies of the files it shares with data/, fixtures/ and plugin/shaders
+# (tools/sync-shared.sh); refuse to install a copy that drifted or became a link.
+# Check before the shader build, which rewrites plugin/river/river.frag.qsb.
+"$ROOT/tools/sync-shared.sh" --check
 "$ROOT/tools/build-shaders.sh"
 omarchy plugin validate "$ROOT/plugin"
 mkdir -p "$(dirname "$DEST")"

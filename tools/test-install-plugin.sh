@@ -76,7 +76,11 @@ cat > "$WORK/bin/omarchy" <<'EOF'
 echo "omarchy $* timeout=${OMARCHY_SHELL_IPC_TIMEOUT:-2s}" >> "$STUB/calls"
 . "$STUBLIB"
 case "$1 $2" in
-  "plugin validate") exit 0 ;;
+  "plugin validate")  # omarchy-plugin-validate: a manifest, and no symlinks inside the folder
+    [[ -f $3/manifest.json ]] || { echo "omarchy-plugin-validate: $3/manifest.json not found" >&2; exit 1; }
+    l=$(find "$3" -type l | head -1)
+    [[ -z $l ]] || { echo "omarchy-plugin-validate: symlinks are not allowed inside a plugin folder: $l" >&2; exit 1; }
+    exit 0 ;;
   "plugin list")  # asks the shell (listPlugins)
     ipc || exit 1
     if visible; then json='[{"id":"ridgetopai.amplify","enabled":false}]'; else json='[]'; fi
@@ -121,7 +125,7 @@ chmod +x "$WORK/bin/"*
 # with the same name reuses its state.
 run() {
   STUB="$WORK/$1"; mkdir -p "$STUB/home" "$STUB/tree"
-  [[ -d $STUB/tree/tools ]] || cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$STUB/tree/"
+  [[ -d $STUB/tree/tools ]] || cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$ROOT/data" "$ROOT/fixtures" "$STUB/tree/"
   : > "$STUB/calls"; rm -f "$STUB/result"
   out=$(STUB="$STUB" STUBLIB="$WORK/stub.sh" DELAY="$2" WATCHER="${WATCHER:-off}" RELOAD="${RELOAD:-2}" \
     RESCAN="${RESCAN:-ok}" ENABLE="${ENABLE:-ok}" HOME="$STUB/home" PATH="$WORK/bin:$PATH" QSB="$WORK/bin/qsb" \
@@ -139,6 +143,34 @@ run delayed 1
   && pass "delayed: enable called once, only after the plugin is listed" \
   || fail "delayed: enable results were [$(tr '\n' ' ' 2>/dev/null < "$STUB/result")] (want: enabled)"
 [[ -L $STUB/home/.config/omarchy/plugins/ridgetopai.amplify ]] && pass "delayed: plugin linked" || fail "delayed: plugin not linked"
+# The stub validate rejects symlinks inside the plugin folder, as Omarchy's does
+# (task af4b39ff): this fresh install passed it, and the installed folder holds none.
+[[ $(count 'plugin validate') == 1 ]] && pass "delayed: validate ran and passed" || fail "delayed: validate calls: $(count 'plugin validate')"
+links=$(find "$STUB/home/.config/omarchy/plugins/ridgetopai.amplify/" -type l)
+[[ -z $links ]] && pass "delayed: no symlinks inside the installed plugin folder" || fail "delayed: symlinks in the installed plugin: $links"
+
+# 1b. A symlink reintroduced inside plugin/, in place of a shared copy (as
+#     river.frag.qsb and mandrel.js were) or anywhere else: the drift check
+#     (tools/sync-shared.sh --check) stops install before the shader build (which
+#     would rewrite river.frag.qsb), validate, linking or enabling.
+for where in qsb js other; do
+  STUB="$WORK/symlink-$where"; mkdir -p "$STUB/tree"
+  cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$ROOT/data" "$ROOT/fixtures" "$STUB/tree/"
+  case $where in
+    qsb) rm "$STUB/tree/plugin/river/river.frag.qsb"; ln -s ../shaders/river.frag.qsb "$STUB/tree/plugin/river/river.frag.qsb"; want="plugin/river/river.frag.qsb is a symlink" ;;
+    js) rm "$STUB/tree/plugin/river/mandrel.js"; ln -s ../../data/mandrel.js "$STUB/tree/plugin/river/mandrel.js"; want="plugin/river/mandrel.js is a symlink" ;;
+    other) ln -s ../shaders/river.frag.qsb "$STUB/tree/plugin/river/water.qsb"; want="symlinks inside plugin/: plugin/river/water.qsb" ;;
+  esac
+  run "symlink-$where" 1
+  [[ $rc != 0 && $out == *"$want"* ]] && pass "symlink ($where): install fails ($rc): $want" \
+    || fail "symlink ($where): install exited $rc: $out"
+  [[ $(count 'plugin validate') == 0 && ! -e $STUB/home/.config/omarchy/plugins/ridgetopai.amplify && ! -s $STUB/result ]] \
+    && pass "symlink ($where): not validated, linked or enabled" || fail "symlink ($where): validated, linked or enabled after the failed check"
+done
+# The stub validate itself rejects a symlink, as omarchy-plugin-validate does.
+v=$(STUB="$STUB" STUBLIB="$WORK/stub.sh" DELAY=1 WATCHER=off HOME="$STUB/home" "$WORK/bin/omarchy" plugin validate "$STUB/tree/plugin" 2>&1)
+[[ $? != 0 && $v == *"symlinks are not allowed inside a plugin folder: $STUB/tree/plugin/river/water.qsb"* ]] \
+  && pass "stub: validate rejects a symlink inside the plugin folder" || fail "stub: validate on a folder with a symlink: $v"
 
 # 2. Plugin never appears: install fails loudly and never calls enable.
 run never never 1
@@ -214,7 +246,7 @@ fi
 #    times out although its scan lands: rescan once (10 s timeout), then the
 #    poll decides.
 STUB="$WORK/stale"; mkdir -p "$STUB/home/.config/omarchy/plugins" "$STUB/tree"
-cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$STUB/tree/"
+cp -r "$ROOT/plugin" "$ROOT/shaders" "$ROOT/tools" "$ROOT/data" "$ROOT/fixtures" "$STUB/tree/"
 ln -s "$STUB/tree/plugin" "$STUB/home/.config/omarchy/plugins/ridgetopai.amplify"
 RESCAN=timeout run stale 1
 [[ $rc == 0 ]] && pass "stale: install exits 0 although rescan did not answer" || fail "stale: install exited $rc: $out"

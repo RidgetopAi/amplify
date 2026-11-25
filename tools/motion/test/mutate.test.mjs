@@ -49,7 +49,7 @@ log("end");
 if (fs.readFileSync("flags", "utf8").includes("${g}-bad")) process.exit(1);
 `;
 
-// A scratch repo with the real mutate.sh and apply.mjs, stub gates and this catalogue.
+// A scratch repo with the real mutate.sh, apply.mjs and sync-shared.sh, stub gates and this catalogue.
 // The tree is removed, and whatever its gates left running killed, when the test ends, pass or fail.
 function tree(ctx, mutations, flags = "ok\n") {
     const t = fs.mkdtempSync(path.join(os.tmpdir(), "mutate-test-"));
@@ -59,6 +59,7 @@ function tree(ctx, mutations, flags = "ok\n") {
     fs.copyFileSync(path.join(root, "tools/mutate.sh"), path.join(t, "tools/mutate.sh"));
     fs.chmodSync(path.join(t, "tools/mutate.sh"), 0o755);
     fs.copyFileSync(path.join(root, "tools/motion/apply.mjs"), path.join(t, "tools/motion/apply.mjs"));
+    fs.copyFileSync(path.join(root, "tools/sync-shared.sh"), path.join(t, "tools/sync-shared.sh"));
     put("tools/motion/mutations.json", JSON.stringify({ mutations }));
     put("flags", flags);
     put(".gitignore", "stub.log\nout/\n");

@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const catalogue = () => JSON.parse(fs.readFileSync(path.join(here, "mutations.json"), "utf8")).mutations;
@@ -45,7 +46,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     for (const [f, s] of Object.entries(files)) {
         const p = path.join(tree, f);
         const mode = fs.statSync(p).mode;   // keep a mutated script executable
-        fs.rmSync(p, { force: true });   // a symlinked file gets its own copy, so the target stays unmutated
+        fs.rmSync(p, { force: true });
         fs.writeFileSync(p, s, { mode });
     }
+    // An edited shared source (data/mandrel.js, ...) reaches the plugin's copies of it,
+    // as it would after tools/sync-shared.sh; an edit to a copy itself stays drift.
+    execFileSync("bash", [path.join(tree, "tools", "sync-shared.sh"), ...Object.keys(files)], { stdio: "inherit" });
 }
