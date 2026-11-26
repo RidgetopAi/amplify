@@ -18,9 +18,13 @@
 //       along the river curve (17 depths across the band) the change f1 - f0
 //       reappears in f2 - f1 shifted by however far the streaks travelled
 //       (still terrain, hulls and labels cancel in the differences). Prints
-//       the shift s (-60..60 px) where the two changes correlate best, and the
+//       the shift s (-240..240 px) where the two changes correlate best, and the
 //       correlation there and at -s; exit 1 unless s >= 3 (content moved left
 //       to right, downstream), the peak is at least 0.5 and -s stays under 0.2.
+//       The range covers the water at 90 px/s between grabs up to 2.6 s apart:
+//       under load grim takes 0.3-0.9 s a frame, so frames asked for 0.2 s apart
+//       land 60-100 px of travel apart (task 1f323acc; a ±60 px search clipped
+//       the peak there). Every shift is scored over the same columns.
 //   node tools/motion/frames.mjs gold <cx,cy> <f.png>
 //       The critic PASS ring drawn around (cx, cy): pixels of the ring's gold
 //       (bright, red > green > blue, red - blue >= 40) on the ring at p = 0.5
@@ -104,14 +108,15 @@ if (cmd === "still") {
         }
         rows.push([d1, d2]);
     }
+    const S = 240;
     const corr = (s) => {
         let xy = 0, xx = 0, yy = 0;
         for (const [d1, d2] of rows)
-            for (let x = 80; x < a.w - 80; x++) { const p = d1[x], q = d2[x + s]; xy += p * q; xx += p * p; yy += q * q; }
+            for (let x = S + 20; x < a.w - S - 20; x++) { const p = d1[x], q = d2[x + s]; xy += p * q; xx += p * p; yy += q * q; }
         return xx && yy ? xy / Math.sqrt(xx * yy) : 0;
     };
     let best = 0, top = -2;
-    for (let s = -60; s <= 60; s++) { const r = corr(s); if (r > top) { top = r; best = s; } }
+    for (let s = -S; s <= S; s++) { const r = corr(s); if (r > top) { top = r; best = s; } }
     const back = corr(-best);
     console.log(`streaks moved ${best} px (correlation ${top.toFixed(2)}; at ${-best} px ${back.toFixed(2)})`);
     process.exit(best >= 3 && top >= 0.5 && back < 0.2 ? 0 : 1);
