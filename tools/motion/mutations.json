@@ -1949,20 +1949,20 @@
    ]
   },
   {
-   "id": "OF2-orb-energy-tween-on-driver",
+   "id": "OF2-orb-form-tween-on-driver",
    "source": "118f6917 critic case",
-   "class": "orbs-orb energy live",
-   "note": "main deb12ecf's energy tween back: a NumberAnimation Behavior on the energy uniform (fed by the record directly), with its spec anchor; between spin steps it draws every frame",
+   "class": "orbs-orb form live",
+   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "    property real energy: energyE.value\n",
-     "to": "    property real energy: view.orb ? view.orb.energy : 0\n    Behavior on energy { enabled: view.animate; NumberAnimation { duration: 800 } }\n"
+     "from": "    property real form: formE.value\n",
+     "to": "    property real form: view.orb ? view.orb.form : 1\n    Behavior on form { enabled: view.animate; NumberAnimation { duration: 800 } }\n"
     },
     {
      "file": "docs/motion.json",
      "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
-     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on energy\" }]"
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on form\" }]"
     }
    ],
    "gates": [

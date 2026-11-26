@@ -224,7 +224,9 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 #    (no river change until 00:28Z, 148 s of replay), orbs idle as above: over 30 s no
 #    amplify window swaps a single frame (a once-a-second caption or clock would);
 #  - live orbs spinning (the orbs' replay from its capture, river frozen at flow 0): over
-#    10 s each amplify-orbs window draws no more than its clock: at most 8.6 steps/s
+#    20 s (client time about 7-27 s, which holds a lease step at 9 s, the forming orb's form
+#    step at 17 s and lease steps at 21 and 25 s, so eases run in it) each amplify-orbs
+#    window draws no more than its clock: at most 8.6 steps/s
 #    (125 ms), at most 9 frames/s in any 5 s, and at most one frame a second more than
 #    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
 swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
@@ -278,7 +280,7 @@ screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
   && pass "idle, river replay running at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
   || fail "idle, river replay running at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
 
-out=$(fpsrun "$RUN/live-orbs.log" 10 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z)
+out=$(fpsrun "$RUN/live-orbs.log" 20 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
 echo "  live orbs: Quickshell at $pct % of one core"
 # Per 5 s line: frames/s over 9, steps/s over 8.6, or frames/s over steps/s + 1 (when logged).
