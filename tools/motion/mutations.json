@@ -488,16 +488,22 @@
    "id": "O7-clock-at-flow-0",
    "source": "05a122b0 O7",
    "class": "river row 1 stop",
-   "note": "",
+   "note": "the water clock keeps stepping at flow 0 (aa5e593d: a Timer with interval 0 never fires, so the step interval is mutated too)",
    "edits": [
     {
      "file": "plugin/river/River.qml",
      "from": "readonly property bool flowing: animate && visible && speed > 0",
      "to": "readonly property bool flowing: animate && visible"
+    },
+    {
+     "file": "plugin/river/river.js",
+     "from": "1000 * WATER_STEP_PX / speed) : 0;",
+     "to": "1000 * WATER_STEP_PX / speed) : WATER_MIN_STEP_MS;"
     }
    ],
    "gates": [
-    "river-shot"
+    "river-shot",
+    "headless"
    ]
   },
   {
