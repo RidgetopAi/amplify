@@ -15,6 +15,13 @@ export function plan(tree, mut) {
     const files = {}, stale = [];
     const read = (f) => files[f] ?? fs.readFileSync(path.join(tree, f), "utf8");
     for (const e of mut.edits) {
+        // { file, truncate: n }: keep the file's first n bytes (a binary such as a committed .qsb).
+        if (e.truncate !== undefined) {
+            const b = fs.readFileSync(path.join(tree, e.file));
+            if (b.length <= e.truncate) stale.push(`${e.file}: ${b.length} bytes, not over ${e.truncate}`);
+            else files[e.file] = b.subarray(0, e.truncate);
+            continue;
+        }
         const s = read(e.file), n = s.split(e.from).length - 1;
         if (n !== 1) { stale.push(`${e.file}: "${e.from.slice(0, 60)}" matches ${n} times`); continue; }
         files[e.file] = s.replace(e.from, () => e.to);

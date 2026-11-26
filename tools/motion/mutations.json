@@ -1,5 +1,5 @@
 {
- "about": "Shared mutation catalogue (task e0cabe57). tools/mutate.sh applies each mutation to a scratch copy of the working tree, runs its gates, and prints RED (some gate failed, the mutation is caught) or GREEN (it survives). Each edit replaces `from` with `to` exactly once (a missing or repeated `from` is STALE). deleteRow removes that docs/motion.json row. Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test, plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), mutate (tools/motion/test/mutate.test.mjs), river-shot, orbs-shot, headless (the render scripts). Critics add the mutations they find here.",
+ "about": "Shared mutation catalogue (task e0cabe57). tools/mutate.sh applies each mutation to a scratch copy of the working tree, runs its gates, and prints RED (some gate failed, the mutation is caught) or GREEN (it survives). Each edit replaces `from` with `to` exactly once (a missing or repeated `from` is STALE), or with `truncate: n` keeps the file's first n bytes. deleteRow removes that docs/motion.json row. Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test, plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), qsb (tools/build-shaders.sh --check), mutate (tools/motion/test/mutate.test.mjs), river-shot, orbs-shot, headless (the render scripts). Critics add the mutations they find here.",
  "mutations": [
   {
    "id": "K1-lease-tween-removed",
@@ -2481,6 +2481,132 @@
      "file": "plugin/orbs/OrbView.qml",
      "from": "\"../shaders/orb_\" + (view.orb ? view.orb.role : \"worker\")",
      "to": "\"../shaders/orb_\" + (view.orb && view.orb.role !== \"critic\" ? view.orb.role : \"worker\")"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "QG1-beam-qsb-truncated",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97)",
+   "class": "committed qsb",
+   "note": "the committed orbbeam.frag.qsb is cut to 64 bytes: every render gate rebuilds it from source first, but omarchy plugin add ships it as committed",
+   "edits": [
+    {
+     "file": "plugin/shaders/orbbeam.frag.qsb",
+     "truncate": 64
+    }
+   ],
+   "gates": [
+    "qsb"
+   ]
+  },
+  {
+   "id": "QG2-beam-source-not-rebuilt",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97)",
+   "class": "committed qsb",
+   "note": "shaders/orbbeam.frag changes and its committed .qsb is not rebuilt, so the plugin ships the old program",
+   "edits": [
+    {
+     "file": "shaders/orbbeam.frag",
+     "from": "float glow = exp(-d * d / 40.0) * 0.22;",
+     "to": "float glow = exp(-d * d / 40.0) * 0.3;"
+    }
+   ],
+   "gates": [
+    "qsb"
+   ]
+  },
+  {
+   "id": "QG3-pool-source-not-rebuilt",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97)",
+   "class": "committed qsb",
+   "note": "plugin/basin/pool.frag changes and the .qsb beside it is not rebuilt",
+   "edits": [
+    {
+     "file": "plugin/basin/pool.frag",
+     "from": "    fragColor = vec4(col, a) * qt_Opacity;\n",
+     "to": "    fragColor = vec4(col, a) * qt_Opacity * 0.9;\n"
+    }
+   ],
+   "gates": [
+    "qsb"
+   ]
+  },
+  {
+   "id": "QG4-river-copy-truncated",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97)",
+   "class": "committed qsb",
+   "note": "the river's own copy plugin/river/river.frag.qsb (what quickshell -p plugin/river loads) is cut to 64 bytes",
+   "edits": [
+    {
+     "file": "plugin/river/river.frag.qsb",
+     "truncate": 64
+    }
+   ],
+   "gates": [
+    "qsb"
+   ]
+  },
+  {
+   "id": "PC1-critic-body-magenta",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97), HM4",
+   "class": "orbs programs colour",
+   "note": "the critic body draws magenta at its own alpha: its centre still changes, so only a colour check catches it",
+   "edits": [
+    {
+     "file": "shaders/orbbody.glsl",
+     "from": "    fragColor = vec4(col, al) * qt_Opacity;\n",
+     "to": "    fragColor = vec4(col, al) * qt_Opacity;\n#if ROLE == 2\n    fragColor = vec4(al, 0.0, al, al) * qt_Opacity;\n#endif\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PC2-critic-body-black-quad",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97), HM6",
+   "class": "orbs programs shape",
+   "note": "the critic body fills its whole quad opaque black",
+   "edits": [
+    {
+     "file": "shaders/orbbody.glsl",
+     "from": "    fragColor = vec4(col, al) * qt_Opacity;\n",
+     "to": "    fragColor = vec4(col, al) * qt_Opacity;\n#if ROLE == 2\n    fragColor = vec4(0.0, 0.0, 0.0, 1.0) * qt_Opacity;\n#endif\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PC3-beam-fills-quad-white",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97), HM7",
+   "class": "orbs programs shape",
+   "note": "the beam fills its whole 24 px quad opaque white",
+   "edits": [
+    {
+     "file": "shaders/orbbeam.frag",
+     "from": "    fragColor = vec4(c * a, a) * qt_Opacity;\n",
+     "to": "    fragColor = vec4(1.0) * qt_Opacity;\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PC4-beam-drawn-red",
+   "source": "179bbd77 (critic gaps G3, G1 of verdict dbb2ea97)",
+   "class": "orbs programs colour",
+   "note": "the beam draws its line in red, not its orbs' tints",
+   "edits": [
+    {
+     "file": "shaders/orbbeam.frag",
+     "from": "vec3 c = mix(hueFrom.rgb, hueTo.rgb, x);",
+     "to": "vec3 c = vec3(1.0, 0.25, 0.2);"
     }
    ],
    "gates": [

@@ -237,12 +237,12 @@ done
 # the app window away) against the same scene with every orbs program broken (drawing
 # nothing). A count alone (orbs=5/5) passes a program that compiles but draws nothing.
 ORBS_PROGS="orb_coord orb_critic orb_worker orbbeam orbvessel"
-plugin "$RUN/broken-orbs/plugin"; grim "$RUN/no-orbs.png"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+plugin "$RUN/broken-orbs/plugin"; grim "$RUN/no-orbs.png"; shot_stop "$QS"
 cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"
-# moved <x> <y>: true when the 9x9 box centred on x,y changes between the two captures: some
-# pixel's summed RGB difference (0-765) is over 24; prints the largest.
+# moved <x> <y> [n]: true when the n x n box (default 9) centred on x,y changes between the
+# two captures: some pixel's summed RGB difference (0-765) is over 24; prints the largest.
 moved() {
-  local d box="9x9+$(($1 - 4))+$(($2 - 4))"
+  local d n=${3:-9}; local box="${n}x$n+$(($1 - n / 2))+$(($2 - n / 2))"
   d=$(magick "$RUN/headless-uncovered.png[$box]" "$RUN/no-orbs.png[$box]" -compose difference -composite \
     -separate -evaluate-sequence add -format "%[fx:int(255*maxima)]" info:)
   echo "${d:-0}"; (( ${d:-0} > 24 ))
@@ -266,6 +266,61 @@ for p in $ORBS_PROGS; do
   [[ $st == compiled ]] && (( n > 0 )) && [[ -z $bad ]] && pass "orbs program $p compiles and draws ($n effects)" \
     || fail "orbs program $p does not compile and draw (${st:-not drawn}; $n on screen; drawing nothing at:${bad:- -})"
 done
+# Colour and shape (task 179bbd77, critic gap G1 of verdict dbb2ea97): a change at the centre
+# also passes a program that draws the wrong colour or fills its whole quad. Each critic body
+# must draw its calipers (orbbody.glsl ROLE 2: arcs at 1.2 radii, left and right of its centre)
+# in the critic's lavender and leave the corners of its quad unchanged (0.8 of the way out on
+# each diagonal, past its halo). Each beam must light its axis at its centre in its blue, and
+# leave the pixels 10 px either side of the axis unchanged (its quad is 24 px high; its glow
+# there is under the change threshold). Lavender and blue: lit (blue over 80), blue at least
+# 1.3 times red, and not magenta (green within 30 of red).
+# peak <x> <y> <w> <h>: "r g b" (0-255) of the brightest pixel of the w x h box centred on x,y
+# in headless-uncovered.png (the calipers and the beam's core are a pixel or two wide).
+peak() {
+  magick "$RUN/headless-uncovered.png" -crop "$3x$4+$(($1 - $3 / 2))+$(($2 - $4 / 2))" +repage -depth 8 txt:- \
+    | awk -F'[(),]' 'NR > 1 && $3 + $4 + $5 >= m { m = $3 + $4 + $5; p = $3 " " $4 " " $5 } END { print p }'
+}
+# tinted <r g b>: true when the pixel is lit blue (or lavender), not white, grey or magenta.
+tinted() { local r g b; read -r r g b <<< "$1"; (( b > 80 && 10 * b >= 13 * r && g + 30 > r )); }
+# The critic's radius in pixels (plugin/orbs/orbs.js layout: 39 units, a unit 1/1920 of the width or 1/1080 of the height).
+CR=$(awk -v w=$W -v h=$H 'BEGIN { u = w / 1920 < h / 1080 ? w / 1920 : h / 1080; printf "%d", 39 * u + 0.5 }')
+arm=$(( CR * 12 / 10 )) corner=$(( CR * 19 * 8 / 100 ))
+n=0
+for c in $(grep -E " orbs orb_critic\.frag\.qsb " <<< "$progs" | head -1 | sed 's/.* at //'); do
+  x=${c%,*} y=${c#*,}
+  (( x >= 0 && x < W && y >= 0 && y < H )) || continue
+  n=$((n + 1)) bad="" info=""
+  for dx in -$arm $arm; do
+    t=$(peak $((x + dx)) "$y" 5 3); tinted "$t" || bad+=" caliper $((x + dx)),$y ($t)"; info+=" caliper $t;"
+  done
+  for dx in -$corner $corner; do for dy in -$corner $corner; do
+    d=$(moved $((x + dx)) $((y + dy)) 3) && bad+=" corner $((x + dx)),$((y + dy)) changed by $d"; info+=" corner $d;"
+  done; done
+  echo "critic body at $c (radius $CR):$info"
+  [[ -z $bad ]] && pass "critic body at $c draws lavender calipers and leaves its quad's corners alone" \
+    || fail "critic body at $c draws the wrong colour or shape:$bad"
+done
+(( n > 0 )) || fail "no critic body on screen to check its colour"
+# The beams from the trace, as drawn: "<centre x> <centre y> <cos> <sin>" of each shown beam
+# (Beam.qml: x, y the start of its axis, turned by rotation about it, length long).
+beams=$(awk 'sub(/.*amplify: trace /, "") && $1 == "orbs" && $2 == "beam" { v[$3, $4] = $5; id[$3] = 1 }
+  END { for (i in id) if (v[i, "opacity"] > 0) { t = v[i, "rotation"] * atan2(0, -1) / 180
+    printf "%.0f %.0f %.4f %.4f\n", v[i, "x"] + v[i, "length"] / 2 * cos(t), v[i, "y"] + v[i, "length"] / 2 * sin(t), cos(t), sin(t) } }' "$RUN/plugin-main.log")
+n=0
+while read -r x y co si; do
+  [[ -n $x ]] && (( x >= 0 && x < W && y >= 0 && y < H )) || continue
+  n=$((n + 1)) bad=""
+  t=$(peak "$x" "$y" 3 3); tinted "$t" || bad+=" axis $x,$y ($t)"
+  info="axis $t;"
+  for s in -1 1; do
+    read -r px py <<< "$(awk -v x="$x" -v y="$y" -v s="$s" -v c="$co" -v k="$si" 'BEGIN { printf "%.0f %.0f", x - s * 10 * k, y + s * 10 * c }')"
+    d=$(moved "$px" "$py" 1) && bad+=" off-axis $px,$py changed by $d"; info+=" off-axis $px,$py $d;"
+  done
+  echo "beam at $x,$y: $info"
+  [[ -z $bad ]] && pass "beam at $x,$y draws a blue line along its axis, not its whole quad" \
+    || fail "beam at $x,$y draws the wrong colour or shape:$bad"
+done <<< "$beams"
+(( n > 0 )) || fail "no beam on screen to check its colour"
 
 # Two screens (task f0e14f4c). Qt loads each program once per process, so only the first
 # screen's effects report Compiled; the second screen's draw the cached program and stay
