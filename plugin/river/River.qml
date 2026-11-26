@@ -557,8 +557,11 @@ Item {
       y: 40
       // The scene time of the river's last drawn change (shownAt), not the replay clock: the
       // clock's minute changed every second and redrew an idle river at 1 fps (task 118f6917).
+      // Worded as a change time, so it does not read as the replay clock (task 844a60aa).
       text: (river.feed && river.feed.label ? river.feed.label : "")
-        + (river.shownAt ? "  ·  " + new Date(river.shownAt).toISOString().slice(0, 16).replace("T", " ") + "Z" : "")
+        + (river.shownAt ? "  ·  changed " + new Date(river.shownAt).toISOString().slice(0, 16).replace("T", " ") + "Z" : "")
+      // AMPLIFY_TRACE=1: the caption as drawn, for the one-capture check (tools/headless-shot.sh).
+      onTextChanged: if (river.trace && text !== "") console.log("amplify: caption river " + text)
       color: "#7d8799"
       font { family: river.mono; pixelSize: 11; letterSpacing: 1.6 }
     }

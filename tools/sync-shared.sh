@@ -15,7 +15,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SHARED=(
   "data/mandrel.js plugin/basin/mandrel.js plugin/orbs/mandrel.js plugin/river/mandrel.js"
   "data/amp/amp.js plugin/basin/amp.js"
-  "fixtures/amplify-snapshot.json plugin/basin/amplify-snapshot.json plugin/river/amplify-snapshot.json"
+  "fixtures/amplify-snapshot.json plugin/basin/amplify-snapshot.json plugin/orbs/amplify-snapshot.json plugin/river/amplify-snapshot.json"
   "plugin/motion/Trace.qml plugin/basin/Trace.qml plugin/orbs/Trace.qml plugin/river/Trace.qml"
   "plugin/shaders/river.frag.qsb plugin/river/river.frag.qsb"
 )

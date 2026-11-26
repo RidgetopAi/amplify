@@ -9,7 +9,7 @@ import "plugin/orbs"
 // Proof sheets for task a40d7440, rendered by plugin/orbs/test/shot.sh, which
 // copies this file to the repo root first: Quickshell only resolves imports
 // inside the folder of the shell file, and the sheet needs data/ and plugin/.
-// Every orb here is a real session from plugin/orbs/fixtures/orbs-snapshot.json
+// Every orb here is a real session from fixtures/test/orbs-states.json
 // at a stated client-clock time; nothing is posed by hand.
 //   AMPLIFY_ORBS_SHEET=roles   coord / worker / critic silhouettes, untitled, never-heartbeat
 //   AMPLIFY_ORBS_SHEET=states  the desktop at fetch time and 20 min later on the client clock
@@ -51,7 +51,7 @@ ShellRoot {
   function clockLabel(ms) { return new Date(ms).toISOString().slice(11, 19) + "Z" }
 
   FileView {
-    path: Qt.resolvedUrl("plugin/orbs/fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
+    path: Qt.resolvedUrl("fixtures/test/orbs-states.json").toString().replace(/^file:\/\//, "")
     onLoaded: root.snap = JSON.parse(text())
   }
 
@@ -130,7 +130,7 @@ ShellRoot {
       trace: Quickshell.env("AMPLIFY_TRACE") === "1"
       fixedOffsetMs: 0
       accent: root.accent; foreground: root.fg
-      snapshotPath: Qt.resolvedUrl("plugin/orbs/fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
+      snapshotPath: Qt.resolvedUrl("fixtures/test/orbs-states.json").toString().replace(/^file:\/\//, "")
       Timer {
         interval: 3000; running: root.sheet === "motion"
         onTriggered: { decay.fixedOffsetMs = 20 * 60000; decay.tick(); console.log("amplify: orbs motion clock +20 min") }
@@ -156,7 +156,7 @@ ShellRoot {
             fixedOffsetMs: modelData.off
             accent: root.accent; foreground: root.fg
             showLabel: false
-            snapshotPath: Qt.resolvedUrl("plugin/orbs/fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
+            snapshotPath: Qt.resolvedUrl("fixtures/test/orbs-states.json").toString().replace(/^file:\/\//, "")
           }
           Text {
             x: 16; y: 12

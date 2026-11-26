@@ -49,6 +49,7 @@ Scope {
 
   function load(text) {
     fixture = JSON.parse(text)
+    console.log("amplify: replay river " + Mandrel.replaySource(fixture))
     fromMs = Date.parse(fixture.meta.replay_from)
     toMs = Date.parse(fixture.meta.captured_at)
     if (freezeAt) {

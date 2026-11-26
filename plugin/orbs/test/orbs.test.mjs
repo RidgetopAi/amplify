@@ -1,6 +1,6 @@
 // node --test plugin/orbs/test/
 // Desktop-orb mapping (task a40d7440) against the real capture in
-// plugin/orbs/fixtures/orbs-snapshot.json. Expected values come from the
+// fixtures/test/orbs-states.json (test only, never shipped). Expected values come from the
 // viewer contract thresholds (22d73eeb) and the captured timestamps, not from
 // the code under test.
 import test from "node:test";
@@ -11,7 +11,7 @@ import fs from "node:fs";
 const require = createRequire(import.meta.url);
 const { M } = require("../../../data/node.cjs");
 const O = require("./load.cjs");
-const snap = JSON.parse(fs.readFileSync(new URL("../fixtures/orbs-snapshot.json", import.meta.url)));
+const snap = JSON.parse(fs.readFileSync(new URL("../../../fixtures/test/orbs-states.json", import.meta.url)));
 const FETCH = Date.parse(snap.meta.captured_at);           // 04:55:40Z
 const MIN = 60000;
 

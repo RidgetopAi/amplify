@@ -27,7 +27,11 @@ Item {
   property real fixedOffsetMs: -1
   // Replay: the client clock starts at this ISO time instead of the capture, then runs on.
   property string startAt: ""
-  property string snapshotPath: Qt.resolvedUrl("fixtures/orbs-snapshot.json").toString().replace(/^file:\/\//, "")
+  // The replayed capture: amplify-snapshot.json is a copy of fixtures/amplify-snapshot.json
+  // (tools/sync-shared.sh), the one snapshot the river and basin replay too (task 844a60aa).
+  // env-read: AMPLIFY_ORBS_FIXTURE replays this file instead (tests: fixtures/test/orbs-states.json, never shipped).
+  property string snapshotPath: Quickshell.env("AMPLIFY_ORBS_FIXTURE")
+    || Qt.resolvedUrl("amplify-snapshot.json").toString().replace(/^file:\/\//, "")
   property int refetchSec: 30
   property bool showLabel: true
 
@@ -62,6 +66,8 @@ Item {
   readonly property string label: !scene ? "" : (scene.meta.mode === "replay"
       ? "REPLAYED SNAPSHOT · " + (scene.meta.label || "") + " · client clock +" + Math.round((nowMs - fetchMs) / 60000) + " min"
       : "live · " + (scene.meta.baseUrl || ""))
+  // AMPLIFY_TRACE=1: the caption as drawn, for the one-capture check (tools/headless-shot.sh).
+  onLabelChanged: if (trace && label !== "") console.log("amplify: caption orbs " + label)
 
   function hueFor(role) {
     if (role === "coord") return Qt.tint(foreground, Qt.rgba(1, 1, 1, 0.25))
@@ -83,7 +89,9 @@ Item {
 
   function sceneFromSnapshot(snap) {
     var r = snap.responses
+    console.log("amplify: replay orbs " + Mandrel.replaySource(snap))
     fetchMs = Date.parse(snap.meta.captured_at)
+    nowMs = fetchMs   // so the caption never reads the clock from before the snapshot
     startReal = Date.now() - (startAt ? Date.parse(startAt) - fetchMs : 0)
     scene = Mandrel.buildScene({
       sessions: r["/api/sessions"], tasks: r["/api/tasks"], contexts: r["/api/contexts"],

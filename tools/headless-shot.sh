@@ -79,8 +79,11 @@ export QT_QPA_PLATFORM=wayland
 quickshell -p "$ROOT/tools/harness" > "$RUN/harness.log" 2>&1 & PIDS+=($!)
 sleep 2
 # plugin [dir]: start the plugin (default plugin/), still and traced, and wait for its ready line.
+# Its orbs replay the test-only fixtures/test/orbs-states.json (every role, a beam, orbs on
+# both halves), unless ORBS_FIXTURE= (the shipped capture, the one-capture check below).
+ORBS_FIXTURE="$ROOT/fixtures/test/orbs-states.json"
 plugin() {
-  AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
+  AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_ORBS_FIXTURE="$ORBS_FIXTURE" \
     quickshell -p "${1:-$ROOT/plugin}" > "$RUN/plugin.log" 2>&1 & QS=$!; PIDS+=($QS)
   for _ in $(seq 100); do grep -aq "amplify: ready" "$RUN/plugin.log" && break; sleep 0.1; done
   sleep 1
@@ -207,13 +210,27 @@ AMPLIFY_READY_MS=0 plugin "$RUN/broken-river/plugin"; kill "$QS" 2>/dev/null; wa
 screens "$RUN/early-broken.log" ready | sed 's/^/broken river before the first frame: /'
 all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river reports shader=error before the first frame" \
   || fail "a broken river reads other than shader=error before the first frame"
-cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" >> "$RUN/plugin-main.log"
+# One capture (task 844a60aa): the shipped plugin's orbs, river and basin each log the snapshot
+# they replay (data/mandrel.js replaySource) and, traced, each caption they draw. All must name
+# one capture, every caption its captured time, and the river's time must read as its last change.
+ORBS_FIXTURE= plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/one.log"
+srcs=$(grep -aoE "amplify: replay (orbs|river|basin) .*" "$RUN/one.log" | sort -u)
+caps=$(grep -aoE "amplify: caption (orbs|river) .*" "$RUN/one.log")
+sed 's/^/  /' <<< "$srcs"; sort -u <<< "$caps" | head -4 | sed 's/^/  /'
+want=$(sed -E 's/.* captured ([^ ]+) .*/\1/; s/\.000Z$/Z/' <<< "$srcs" | sort -u)
+[[ $(awk '{ print $3 }' <<< "$srcs" | sort -u | tr '\n' ' ') == "basin orbs river " && $(sed -E 's/^amplify: replay [a-z]+ //' <<< "$srcs" | sort -u | grep -c .) == 1 \
+   && $(awk '{ print $3 }' <<< "$caps" | sort -u | tr '\n' ' ') == "orbs river " && $(grep -oE "captured [^ ]+" <<< "$caps" | sort -u) == "captured $want" \
+   && -n $(grep "  ·  changed " <<< "$caps") && -z $(grep -E "^amplify: caption river .*  ·  [0-9]" <<< "$caps") ]] \
+  && pass "one capture: orbs, river and basin replay the same snapshot, every caption reads captured $want, the river's time reads 'changed'" \
+  || fail "components or captions disagree on the capture (want one replay source and 'captured ${want:-?}' in every caption, river time as 'changed')"
+cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" "$RUN/one.log" >> "$RUN/plugin-main.log"
 mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 
 # Idle CPU on a model of Brian's desktop (task 8b5eca2f): three outputs (1920x1080,
 # 1920x1080, 2560x1440), the whole plugin animated (orbs, river and basin on every screen,
-# six windows), replaying with nothing changing: the river frozen at flow 0 (04:30Z), the
-# orbs' client clock from 05:24:10Z (one lost orb turning, three leases draining, the rest
+# six windows), replaying the shipped capture with nothing changing: the river frozen at flow 0
+# (04:30Z), the orbs' client clock from 04:38:18Z, capture + 38 min (one lost orb turning, its
+# lease draining in 42 s steps, the last at 04:38:16Z, so none falls in the window; the rest
 # dormant), basin rows from the amp capture. After 6 s to settle, over 10 s: Quickshell
 # under 2 % of one core (decision 25eced40); no amplify window swaps a frame; each
 # amplify-orbs window swaps under one frame a second, the lost orb's turn (AMPLIFY_FPS=1
@@ -224,8 +241,8 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 #    (no river change until 00:28Z, 148 s of replay), orbs idle as above: over 30 s no
 #    amplify window swaps a single frame (a once-a-second caption or clock would);
 #  - live orbs spinning (the orbs' replay from its capture, river frozen at flow 0): over
-#    20 s (client time about 7-27 s, which holds a lease step at 9 s, the forming orb's form
-#    step at 17 s and lease steps at 21 and 25 s, so eases run in it) each amplify-orbs
+#    20 s (client time about 7-27 s, with a live coord and two forming workers whose leases
+#    step, so eases run in it) each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
 #    (125 ms), at most 9 frames/s in any 5 s, and at most one frame a second more than
 #    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
@@ -254,7 +271,7 @@ showfps() { awk -v n="$1" '{ v[$1 " " $2] = v[$1 " " $2] " " $3 ($4 == "-" ? "" 
 screens3() { (( $(awk -v w="$1" '$1 == w { s[$2] = 1 } END { print length(s) }' <<< "$2") == 3 )); }
 qmlerr() { grep -acE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$1"; }
 
-out=$(fpsrun "$RUN/idle.log" 10 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z)
+out=$(fpsrun "$RUN/idle.log" 10 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T04:38:18Z)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out")
 sizes=$(grep -ao "amplify: ready .* size=[0-9x]*" "$RUN/idle.log" | sed 's/.*screen=//' | sort | tr '\n' ' ')
 echo "idle: screens $sizes"
@@ -272,7 +289,7 @@ screens3 amplify-orbs "$fps" && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
   && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on 3 screens, under 1)" \
   || fail "idle: an orbs window draws faster than its records move (worst $worst fps; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no))"
 
-out=$(fpsrun "$RUN/idle-river.log" 30 AMPLIFY_RIVER_FROM=2026-11-21T22:00:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z)
+out=$(fpsrun "$RUN/idle-river.log" 30 AMPLIFY_RIVER_FROM=2026-11-21T22:00:00Z AMPLIFY_ORBS_FROM=2026-11-22T04:38:18Z)
 fps=$(tail -n +2 <<< "$out"); showfps "river running" "$fps"
 frames=$(awk '$1 == "amplify" { f += $3 * 5 } END { printf "%d", f + 0.5 }' <<< "$fps")
 rerr=$(qmlerr "$RUN/idle-river.log")

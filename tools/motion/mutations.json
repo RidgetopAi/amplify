@@ -1994,8 +1994,8 @@
    "edits": [
     {
      "file": "plugin/river/River.qml",
-     "from": "+ (river.shownAt ? \"  ·  \" + new Date(river.shownAt)",
-     "to": "+ (river.feed ? \"  ·  \" + new Date(river.feed.nowMs)"
+     "from": "+ (river.shownAt ? \"  ·  changed \" + new Date(river.shownAt)",
+     "to": "+ (river.feed ? \"  ·  changed \" + new Date(river.feed.nowMs)"
     }
    ],
    "gates": [
@@ -2012,6 +2012,70 @@
      "file": "plugin/river/River.qml",
      "from": "if (key !== shownKey) { shownKey = key; shownAt = feed.nowMs }",
      "to": "shownKey = key; shownAt = feed.nowMs"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OS1-orbs-other-snapshot",
+   "source": "844a60aa critic case",
+   "class": "one capture",
+   "note": "the orbs replay a different capture than the river and basin: the orbs' copy of the shared snapshot drifts to the old orbs capture time (04:55:40Z), so its records, clock and state differ",
+   "edits": [
+    {
+     "file": "plugin/orbs/amplify-snapshot.json",
+     "from": "\"captured_at\": \"2026-11-22T04:00:17.000Z\"",
+     "to": "\"captured_at\": \"2026-11-22T04:55:40.000Z\""
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OS2-orbs-default-not-shared",
+   "source": "844a60aa",
+   "class": "one capture",
+   "note": "OrbField's default snapshot is another file in plugin/ (the river's staged busy frames), not a copy of the shared capture",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "|| Qt.resolvedUrl(\"amplify-snapshot.json\")",
+     "to": "|| Qt.resolvedUrl(\"../river/test/busy-frames.json\")"
+    }
+   ],
+   "gates": [
+    "data"
+   ]
+  },
+  {
+   "id": "CC1-caption-other-captured-time",
+   "source": "844a60aa critic case",
+   "class": "one capture",
+   "note": "the river's caption shows a different captured time: the replay driver labels each scene with the replay clock as its capture",
+   "edits": [
+    {
+     "file": "plugin/river/RiverFeed.qml",
+     "from": "readonly property string label: scene ? scene.meta.label : \"\"",
+     "to": "readonly property string label: scene ? \"REPLAYED SNAPSHOT · Mandrel project amplify, captured \" + new Date(nowMs).toISOString().slice(0, 19) + \"Z\" : \"\""
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "G3-river-caption-not-change",
+   "source": "0d8e0859 G3, 844a60aa",
+   "class": "river caption",
+   "note": "the river caption's time is not worded as its last change, so it reads as the replay clock",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "\"  ·  changed \" + new Date(river.shownAt)",
+     "to": "\"  ·  \" + new Date(river.shownAt)"
     }
    ],
    "gates": [
