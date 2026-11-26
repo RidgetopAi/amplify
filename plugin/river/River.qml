@@ -56,9 +56,14 @@ Item {
     if (model.count > arr.length) model.remove(arr.length, model.count - arr.length)
   }
 
+  // Scene time at which the layout last changed what the river draws (the replay caption).
+  property real shownAt: 0
+  property string shownKey: ""
   onLayChanged: refresh()
   function refresh() {
     if (!lay) return
+    var key = JSON.stringify(lay)
+    if (key !== shownKey) { shownKey = key; shownAt = feed.nowMs }
     // Gates keyed by lane, so a lane that widens slides its gate (row 2).
     sync(gates, lay.gates.map(function (g) {
       return { key: g.lane, lane: g.lane, label: g.label, color: g.color, gx: g.x, count: g.count,
@@ -550,8 +555,10 @@ Item {
       visible: river.feed && river.feed.scene && river.feed.scene.meta.mode === "replay"
       anchors.horizontalCenter: parent.horizontalCenter
       y: 40
+      // The scene time of the river's last drawn change (shownAt), not the replay clock: the
+      // clock's minute changed every second and redrew an idle river at 1 fps (task 118f6917).
       text: (river.feed && river.feed.label ? river.feed.label : "")
-        + (river.feed ? "  ·  " + new Date(river.feed.nowMs).toISOString().slice(0, 16).replace("T", " ") + "Z" : "")
+        + (river.shownAt ? "  ·  " + new Date(river.shownAt).toISOString().slice(0, 16).replace("T", " ") + "Z" : "")
       color: "#7d8799"
       font { family: river.mono; pixelSize: 11; letterSpacing: 1.6 }
     }
