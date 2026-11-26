@@ -224,3 +224,16 @@ test("shot_wait gives up after its timeout, returns 1 and says what it waited fo
     assert.match(r.stderr, /timed out after 1 s waiting for a line that never comes/);
     assert.ok(r.secs >= 0.9 && r.secs < 5, `took ${r.secs} s`);
 });
+
+// shot_stop (task 859896c9): a TERM that lands before the launch's exec is lost, so the stop
+// is bounded. A process that ignores TERM stands in for one whose TERM was lost.
+test("shot_stop reaps a process at once on TERM, and one that survives TERM within 5 s by SIGKILL", () => {
+    const quick = shotWait(`sleep 30 & p=$!; shot_stop $p; kill -0 $p 2>/dev/null && echo alive || echo gone`);
+    assert.match(quick.stdout, /^gone$/m);
+    assert.ok(quick.secs < 2, `a plain TERM took ${quick.secs} s`);
+    const deaf = shotWait(`bash -c 'trap "" TERM; exec sleep 30' & p=$!; sleep 0.2; shot_stop $p; kill -0 $p 2>/dev/null && echo alive || echo gone`);
+    assert.notEqual(deaf.status, null, "shot_stop never returned (no SIGKILL after the grace)");
+    assert.match(deaf.stdout, /^gone$/m);
+    assert.match(deaf.stderr, /timed out after 5 s waiting for process \d+ to exit on SIGTERM \(sending SIGKILL\)/);
+    assert.ok(deaf.secs >= 4.9 && deaf.secs < 8, `took ${deaf.secs} s`);
+});

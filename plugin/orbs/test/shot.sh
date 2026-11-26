@@ -32,7 +32,10 @@ PIDS=()
 SHEET="$ROOT/.orbs-sheet-$$.qml"
 LOGS="$(mktemp -d "${TMPDIR:-/tmp}/orbs-shot-logs.XXXXXX")"
 . "$ROOT/tools/shot-reap.sh"; shot_tag "$RUN"
+# Only this shell cleans up: a launch TERMed before its exec runs these traps in the forked
+# child (task 859896c9), which would tear down this run's compositor and run dir mid-run.
 cleanup() {
+  [[ $BASHPID == "$$" ]] || return
   kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null
   cp "$RUN"/*.log "$LOGS/" 2>/dev/null && echo "shot: logs in $LOGS"; rm -rf "$RUN" "$SHEET"
 }
@@ -71,7 +74,7 @@ motion_check() {
       AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z \
       quickshell -p "$ROOT/plugin" > "$RUN/motion-$sc.log" 2>&1 & local qs=$!
     # Measurement window: the trace the follow check reads (from launch; its want floors count on it).
-    sleep "$secs"; kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
+    sleep "$secs"; shot_stop "$qs"
     local out; out=$(node "$ROOT/tools/motion/follow.mjs" "$sc" "$RUN/motion-$sc.log")
     report_motion "$sc" "$out" $? || bad=1
     if grep -E "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/motion-$sc.log"; then
@@ -80,7 +83,7 @@ motion_check() {
   # orbs-decay: the orbs sheet animated, its client clock jumping +20 min at 3 s.
   AMPLIFY_ORBS_SHEET=motion AMPLIFY_TRACE=1 quickshell -p "$SHEET" > "$RUN/motion-decay.log" 2>&1 & local qs=$!
   # Measurement window: the clock jumps at 3 s, and the longest ease (1.6 s) settles well within 8 s.
-  sleep 8; kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
+  sleep 8; shot_stop "$qs"
   out=$(node "$ROOT/tools/motion/follow.mjs" orbs-decay "$RUN/motion-decay.log")
   report_motion orbs-decay "$out" $? || bad=1
   if grep -E "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/motion-decay.log"; then
@@ -96,9 +99,14 @@ layer_check() {
   # AMPLIFY_RIVER_AT freezes it (river row 9), which this check would read as orbs moving.
   AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
     quickshell -p "$ROOT/plugin" > "$RUN/layer.log" 2>&1 & local qs=$! bad=0
-  # The ready line follows every window's first frame (it reads compiled only then).
+  # The ready line follows every window's first frame (it reads compiled only then). The
+  # captures are taken only once it is in the log, checked again after the wait (task
+  # 859896c9): captures of a plugin still loading show no orbs and pass trivially.
   readyin() { grep -q "amplify: ready" "$1"; }
   shot_wait 30 "the plugin's ready line" readyin "$RUN/layer.log"
+  if ! readyin "$RUN/layer.log"; then
+    echo "shot: layer plugin not ready, no captures taken"; shot_stop "$qs"; return 1
+  fi
   # Measurement window: four captures 0.5 s apart. Still mode may change the picture at a
   # data step (1 Hz: the shipped capture's forming orb steps its form, about 900 px), so the
   # check takes the quietest of the three 0.5 s windows: a step once a second dirties at most
@@ -117,8 +125,7 @@ layer_check() {
   awk -v m="$m" -v l="${STILL_LIMIT:-200}" 'BEGIN { exit !(m <= l) }' \
     || { echo "shot: layer orbs move under AMPLIFY_STILL=1"; bad=1; }
   if orbs_warnings "$RUN/layer.log"; then echo "shot: layer logged binding warnings from plugin/orbs (above)"; bad=1; fi
-  grep -q "amplify: ready" "$RUN/layer.log" || { echo "shot: layer plugin never reported ready"; bad=1; }
-  kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
+  shot_stop "$qs"
   return $bad
 }
 
@@ -133,6 +140,6 @@ for sheet in ${1:-roles states layer motion}; do
   if grep -E "ERROR|TypeError|ReferenceError|is not|Cannot" "$RUN/$sheet.log" || orbs_warnings "$RUN/$sheet.log"; then
     echo "shot: $sheet logged errors (above)"; fails=$((fails + 1))
   fi
-  kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
+  shot_stop "$qs"
 done
 exit "$fails"
