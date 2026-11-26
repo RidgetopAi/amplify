@@ -237,3 +237,25 @@ test("shot_stop reaps a process at once on TERM, and one that survives TERM with
     assert.match(deaf.stderr, /timed out after 5 s waiting for process \d+ to exit on SIGTERM \(sending SIGKILL\)/);
     assert.ok(deaf.secs >= 4.9 && deaf.secs < 8, `took ${deaf.secs} s`);
 });
+
+// The render gates' cleanup guard (task 859896c9): a launch TERMed before its exec runs the
+// gate's traps in the forked child, so cleanup() must do nothing outside the gate's own shell
+// ($BASHPID != $$), or that child tears down the run's compositor and run dir mid-run. Each
+// gate's own cleanup() is called in a subshell (another $BASHPID, the gate's $$), then in
+// the gate's shell, where it must still remove the run dir.
+test("each render gate's cleanup runs only in the gate's own shell, never in a forked child", () => {
+    for (const gate of ["tools/headless-shot.sh", "plugin/orbs/test/shot.sh"]) {
+        const lines = fs.readFileSync(path.join(root, gate), "utf8").split("\n");
+        const at = lines.findIndex((l) => l.startsWith("cleanup() {"));
+        assert.ok(at >= 0, `${gate} defines cleanup()`);
+        const end = lines.findIndex((l, i) => i >= at && /(^|; )\}$/.test(l));
+        const def = lines.slice(at, end + 1).join("\n");
+        const r = spawnSync("bash", ["-c", `RUN=$(mktemp -d) LOGS=$(mktemp -d); SHEET="$RUN.qml" PIDS=()
+shot_reap() { :; }
+${def}
+( cleanup ); [[ -d $RUN ]] && echo "child kept" || echo "child removed"
+cleanup > /dev/null; [[ -d $RUN ]] && echo "gate kept" || echo "gate removed"; rm -rf "$RUN" "$LOGS"`], { encoding: "utf8", timeout: 15000 });
+        assert.match(r.stdout, /^child kept$/m, `${gate}: cleanup() in a forked child removed the run dir`);
+        assert.match(r.stdout, /^gate removed$/m, `${gate}: cleanup() in the gate's shell left the run dir`);
+    }
+});

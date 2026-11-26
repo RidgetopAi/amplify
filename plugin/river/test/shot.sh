@@ -106,7 +106,7 @@ start() {
 at() { sleep "$(awk -v t0="$T0" -v s="$1" -v now="$(date +%s.%N)" 'BEGIN { d = t0 + s - now; print (d > 0 ? d : 0) }')"; }
 grab() { grim "$RUN/$NAME-$1.png"; }
 stop() {
-  kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+  shot_stop "$QS"
   cp "$RUN/$NAME.log" "$LOGS/river-$NAME.log"
   grep -h "amplify:\|WARN\|ERROR\|rror" "$RUN/$NAME.log" | grep -v "river lanes\|amplify: trace\|river tether" | sed "s/^/  [$NAME] /"
   grep -h "river lanes" "$RUN/$NAME.log" | tail -1 | sed "s/^/  [$NAME] /"

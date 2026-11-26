@@ -50,9 +50,11 @@ Item {
         enabled: !win.drawn
         function onFrameSwapped() { win.drawn = field.GraphicsInfo.shaderType === GraphicsInfo.RhiShader }
       }
-      // With the field's clock steps per second, so a frame drawn between steps shows (task 118f6917).
+      // With the field's clock steps per second, so a frame drawn between steps shows (task 118f6917),
+      // and the window's measured length in ms (a late timer under load runs it past 5 s, task 85e35a5d).
       property int swapped: 0
       property int stepsAt: 0
+      property real windowAt: Date.now()
       Connections {
         target: win.contentItem.Window.window
         enabled: orbsLayer.logFps
@@ -61,9 +63,10 @@ Item {
       Timer {
         interval: 5000; repeat: true; running: orbsLayer.logFps
         onTriggered: {
+          var t = Date.now()
           console.log("amplify: fps window=amplify-orbs screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1)
-                      + " steps=" + ((field.steps - win.stepsAt) / 5).toFixed(1))
-          win.swapped = 0; win.stepsAt = field.steps
+                      + " steps=" + ((field.steps - win.stepsAt) / 5).toFixed(1) + " ms=" + Math.round(t - win.windowAt))
+          win.swapped = 0; win.stepsAt = field.steps; win.windowAt = t
         }
       }
 
