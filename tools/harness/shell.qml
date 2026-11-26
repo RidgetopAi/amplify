@@ -12,6 +12,7 @@ ShellRoot {
     model: Quickshell.screens
 
     PanelWindow {
+      id: wall
       required property var modelData
       screen: modelData
       anchors { top: true; bottom: true; left: true; right: true }
@@ -31,10 +32,19 @@ ShellRoot {
         anchors.fill: parent
         onClicked: mouse => console.log("harness: wallpaper click " + Math.round(mouse.x) + "," + Math.round(mouse.y))
       }
+
+      // tools/headless-shot.sh waits for each window's first frame instead of a fixed sleep.
+      property bool drawn: false
+      Connections {
+        target: wall.contentItem.Window.window
+        enabled: !wall.drawn
+        function onFrameSwapped() { wall.drawn = true; console.log("harness: wallpaper drawn " + wall.modelData.name) }
+      }
     }
   }
 
   FloatingWindow {
+    id: cover
     title: "amplify-cover"
     color: "#e8e3d8"
     implicitWidth: 640
@@ -45,6 +55,13 @@ ShellRoot {
       text: "application window"
       color: "#3b3a36"
       font.pixelSize: 28
+    }
+
+    property bool drawn: false
+    Connections {
+      target: cover.contentItem.Window.window
+      enabled: !cover.drawn
+      function onFrameSwapped() { cover.drawn = true; console.log("harness: cover drawn") }
     }
   }
 }

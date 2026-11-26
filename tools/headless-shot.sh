@@ -31,6 +31,10 @@
 #      Screenshots are taken in a scratch directory
 #      and copied to docs/spike only when every check passed, so a failed or
 #      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
+# Runs are isolated (task 87f71d95): the compositor, its sockets and wayvnc's socket live in
+# this run's own dirs, so two runs at once (tools/mutate.sh, tools/headless-pair.sh) never
+# touch each other. Every wait is a bounded wait on something observable (shot_wait in
+# tools/shot-reap.sh); the only sleeps are check 6's settle and measurement windows.
 # Exit status is the number of failed checks (0 = all passed).
 #
 # Needs: sway, grim, wayvnc, vncdo (vncdotool), quickshell, qsb, ImageMagick (magick). With no GPU, point
@@ -71,22 +75,37 @@ default_floating_border none
 for_window [title="amplify-cover"] floating enable, resize set $((W / 2)) $H, move absolute position $((W / 2)) 0
 EOF
 sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
-for _ in $(seq 50); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && ls "$XDG_RUNTIME_DIR"/sway-ipc.* >/dev/null 2>&1 && break; sleep 0.1; done
+swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1 && ls "$XDG_RUNTIME_DIR"/sway-ipc.* >/dev/null 2>&1; }
+shot_wait 10 "sway's sockets" swayup
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
 export SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* | head -1)"
 export QT_QPA_PLATFORM=wayland
 
 quickshell -p "$ROOT/tools/harness" > "$RUN/harness.log" 2>&1 & PIDS+=($!)
-sleep 2
-# plugin [dir]: start the plugin (default plugin/), still and traced, and wait for its ready line.
+# The harness is up once its wallpaper and its app window have each drawn a frame and sway
+# has floated the window over the right half.
+harnessup() { grep -q "harness: wallpaper drawn" "$RUN/harness.log" && grep -q "harness: cover drawn" "$RUN/harness.log" \
+  && swaymsg -t get_tree | grep -q '"name": "amplify-cover"'; }
+shot_wait 20 "the harness's first frames" harnessup
+# plugin [dir]: start the plugin (default plugin/), still and traced, and wait until it has
+# settled: each of the $SCREENS screens logged its ready line, and each ready line that read
+# pending was followed by its rendered line (a broken program reads error, never pending).
 # Its orbs replay the test-only fixtures/test/orbs-states.json (every role, a beam, orbs on
 # both halves), unless ORBS_FIXTURE= (the shipped capture, the one-capture check below).
 ORBS_FIXTURE="$ROOT/fixtures/test/orbs-states.json"
+SCREENS=1
+settled() {
+  local l="$RUN/plugin.log"
+  (( $(grep -ac "amplify: ready " "$l") >= SCREENS \
+     && $(grep -a "amplify: ready " "$l" | grep -c "shader=pending") <= $(grep -ac "amplify: rendered " "$l") ))
+}
 plugin() {
+  # Emptied here, not by the launch's own redirection: that runs in the forked child, and
+  # under load the first check could read the last run's ready line before it.
+  : > "$RUN/plugin.log"
   AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_ORBS_FIXTURE="$ORBS_FIXTURE" \
     quickshell -p "${1:-$ROOT/plugin}" > "$RUN/plugin.log" 2>&1 & QS=$!; PIDS+=($QS)
-  for _ in $(seq 100); do grep -aq "amplify: ready" "$RUN/plugin.log" && break; sleep 0.1; done
-  sleep 1
+  shot_wait 30 "the plugin's ready lines (${1:-plugin/})" settled
 }
 plugin
 
@@ -151,10 +170,22 @@ read -r OID OX OY <<< "$(tail -1 <<< "$uncovered")"
 # The headless backend has no input devices. wayvnc holds one virtual pointer
 # for the whole session (one-shot tools such as wlrctl add and remove a device
 # per call, which races the client binding wl_pointer), and vncdo drives it.
-wayvnc 127.0.0.1 5959 > "$RUN/wayvnc.log" 2>&1 & PIDS+=($!)
-sleep 1
-timeout 20 vncdo -s 127.0.0.1::5959 move "$OX" "$OY" pause 0.3 click 1 pause 0.3 \
-  move "$((W / 2 - 40))" "$((H - 60))" pause 0.3 click 1 pause 0.5
+# Its endpoint is a unix socket in this run's own dir (task 87f71d95), so runs at once
+# (tools/mutate.sh, tools/headless-pair.sh) never drive each other's compositor; it is up
+# once vncdo connects to it, and it must still be running then: a wayvnc that could not
+# listen exits, and the connection reached some other run's server.
+VNC="$RUN/vnc.sock"
+wayvnc -u "$VNC" > "$RUN/wayvnc.log" 2>&1 & VNCPID=$!; PIDS+=($VNCPID)
+vncup() { timeout 5 vncdo -s "$VNC" pause 0 >/dev/null 2>&1; }
+shot_wait 20 "wayvnc on $VNC" vncup
+kill -0 "$VNCPID" 2>/dev/null && pass "wayvnc serves this run's compositor on its own endpoint ($VNC)" \
+  || fail "wayvnc is not running on this run's endpoint $VNC ($(head -c 200 "$RUN/wayvnc.log" | tr '\n' ' '))"
+# The pauses between a move and its click are input pacing (the client sees the pointer
+# enter before the button); after the clicks, wait for what they log.
+timeout 20 vncdo -s "$VNC" move "$OX" "$OY" pause 0.3 click 1 pause 0.3 \
+  move "$((W / 2 - 40))" "$((H - 60))" pause 0.3 click 1
+clicked() { grep -aq "amplify: orb open http" "$RUN/plugin.log" && grep -q "harness: wallpaper click" "$RUN/harness.log"; }
+shot_wait 5 "both clicks' log lines" clicked
 grep -aq "amplify: orb open http" "$RUN/plugin.log" && pass "click on orb $OID opens its record ($(grep -ao "amplify: orb open .*" "$RUN/plugin.log" | head -1))" \
   || fail "click on orb $OID lost"
 grep -q "harness: wallpaper click" "$RUN/harness.log" && pass "click on empty desktop passes through the mask" \
@@ -163,9 +194,17 @@ grep -q "harness: wallpaper click" "$RUN/harness.log" && pass "click on empty de
 # The basin sits under the app window (lower right); move the window away, then
 # click the basin's last row (Service.qml: right 28, bottom 30; rows 64 px high).
 swaymsg '[title="amplify-cover"] move scratchpad' > /dev/null
-sleep 0.5
-grim "$RUN/headless-uncovered.png"
-timeout 20 vncdo -s 127.0.0.1::5959 move "$((W - 28 - 250))" "$((H - 30 - 32))" pause 0.3 click 1 pause 0.5
+# Gone once the window's middle no longer shows its colour (232 227 216) in a capture.
+uncovered() {
+  local r g b
+  grim "$RUN/headless-uncovered.png" || return 1
+  read -r r g b <<< "$(magick "$RUN/headless-uncovered.png" -format "%[fx:int(255*p{$((W * 3 / 4)),$((H / 4))}.r)] %[fx:int(255*p{$((W * 3 / 4)),$((H / 4))}.g)] %[fx:int(255*p{$((W * 3 / 4)),$((H / 4))}.b)]" info:)"
+  ! (( r > 220 && g > 215 && b > 205 && b < 225 ))
+}
+shot_wait 10 "the app window to leave the screen" uncovered
+timeout 20 vncdo -s "$VNC" move "$((W - 28 - 250))" "$((H - 30 - 32))" pause 0.3 click 1
+basinclick() { grep -aq "amplify: basin open http" "$RUN/plugin.log"; }
+shot_wait 5 "the basin click's log line" basinclick
 grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin row opens its record" || fail "basin click lost"
 
 # A broken program must turn the ready line to shader=error, for every component (G6):
@@ -191,7 +230,9 @@ done
 # every program. Then, logged before the first frame (AMPLIFY_READY_MS=0), each screen's
 # ready line must read pending, never compiled, and an "amplify: rendered" line must follow
 # reading compiled; a broken program must read error even then, never pending.
-swaymsg create_output > /dev/null; sleep 1
+# outputs <n>: true when sway lists n outputs.
+outputs() { (( $(swaymsg -t get_outputs | grep -c '"name": "HEADLESS-') == $1 )); }
+swaymsg create_output > /dev/null; shot_wait 10 "a second output" outputs 2; SCREENS=2
 # screens <log> <what>: how many screens logged an "amplify: <what>" line, then each line.
 screens() { local l; l=$(grep -a "amplify: $2 " "$1" | sed 's/.*qml: //'); grep -c . <<< "$l"; echo "$l" | cut -c1-200; }
 # all2 <log> <what> <want>: true when exactly two screens logged <what>, each containing <want>.
@@ -248,7 +289,8 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 #    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
 swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
 swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
-swaymsg create_output > /dev/null; swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null; sleep 1
+swaymsg create_output > /dev/null; shot_wait 10 "a third output" outputs 3
+swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null
 # fpsrun <log> <seconds> <env...>: the plugin animated with AMPLIFY_FPS=1 on these outputs; after
 # 6 s to settle, samples Quickshell's CPU over <seconds>, then prints its percent of one core
 # and, one per line, "<window> <screen> <fps> <steps/s or ->" logged inside that span.
@@ -256,7 +298,10 @@ fpsrun() {
   local log=$1 secs=$2; shift 2
   env AMPLIFY_FPS=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" "$@" \
     quickshell -p "$ROOT/plugin" > "$log" 2>&1 & QS=$!; PIDS+=($QS)
-  for _ in $(seq 100); do grep -aq "amplify: ready" "$log" && break; sleep 0.1; done
+  readyin() { grep -aq "amplify: ready" "$1"; }
+  shot_wait 30 "the plugin's ready line" readyin "$log"
+  # Settle window (6 s from the ready line), then the measurement window (<seconds>): both
+  # are part of the check (the live-orbs span is placed on the replay's eases), not waits.
   sleep 6
   local clk c0 c1 l0; clk=$(getconf CLK_TCK) c0=$(awk '{ print $14 + $15 }' "/proc/$QS/stat") l0=$(wc -l < "$log")
   sleep "$secs"

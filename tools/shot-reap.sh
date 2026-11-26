@@ -17,3 +17,16 @@ shot_reap() {
   for ((i = 0; i < 30; i++)); do kill -0 "${pids[@]}" 2>/dev/null || return 0; sleep 0.1; done
   kill -9 "${pids[@]}" 2>/dev/null
 }
+# shot_wait <seconds> <what> <command...>: the gates' readiness wait (task 87f71d95). Runs
+# <command> every 50 ms until it succeeds (returns 0), or, once <seconds> have passed,
+# prints "shot: timed out after <seconds> s waiting for <what>" to stderr and returns 1.
+# Gates wait on what they can observe (a log line, a socket, an output, a pixel) instead
+# of sleeping a fixed time; only measurement and settle windows sleep, each commented.
+shot_wait() {
+  local s=$1 what=$2 end; shift 2
+  end=$(( ${EPOCHREALTIME/./} + s * 1000000 ))
+  until "$@"; do
+    (( ${EPOCHREALTIME/./} < end )) || { echo "shot: timed out after $s s waiting for $what" >&2; return 1; }
+    sleep 0.05
+  done
+}

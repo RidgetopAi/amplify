@@ -1605,8 +1605,8 @@
    "edits": [
     {
      "file": "tools/headless-shot.sh",
-     "from": "grim \"$RUN/headless-uncovered.png\"\n",
-     "to": "grim \"$RUN/headless-uncovered.png\"; magick -size ${W}x${H} xc:black \"$RUN/headless-uncovered.png\"\n"
+     "from": "shot_wait 10 \"the app window to leave the screen\" uncovered\n",
+     "to": "shot_wait 10 \"the app window to leave the screen\" uncovered\nmagick -size ${W}x${H} xc:black \"$RUN/headless-uncovered.png\"\n"
     }
    ],
    "gates": [
@@ -1984,6 +1984,315 @@
    ],
    "gates": [
     "headless"
+   ]
+  },
+  {
+   "id": "G1-sat-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb sat pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased sat uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; sat does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real sat: satE.value\n",
+     "to": "    property real sat: satE.value\n    Behavior on sat { enabled: view.animate; NumberAnimation { duration: 1200 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on sat\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-light-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb light pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased light uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; light does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real light: lightE.value\n",
+     "to": "    property real light: lightE.value\n    Behavior on light { enabled: view.animate; NumberAnimation { duration: 1200 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on light\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-dorm-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb dorm pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased dorm uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; dorm does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real dorm: dormE.value\n",
+     "to": "    property real dorm: dormE.value\n    Behavior on dorm { enabled: view.animate; NumberAnimation { duration: 1600 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on dorm\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-lost-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb lost pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased lost uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; lost does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real lost: lostE.value\n",
+     "to": "    property real lost: lostE.value\n    Behavior on lost { enabled: view.animate; NumberAnimation { duration: 900 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on lost\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-need-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb need pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased need uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; need does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real need: needE.value\n",
+     "to": "    property real need: needE.value\n    Behavior on need { enabled: view.animate; NumberAnimation { duration: 900 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on need\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-ended-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb ended pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased ended uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; ended does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real ended: endedE.value\n",
+     "to": "    property real ended: endedE.value\n    Behavior on ended { enabled: view.animate; NumberAnimation { duration: 1500 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on ended\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-energy-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb energy pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased energy uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; energy does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real energy: energyE.value\n",
+     "to": "    property real energy: energyE.value\n    Behavior on energy { enabled: view.animate; NumberAnimation { duration: 800 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on energy\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "G1-level-tween-on-driver",
+   "source": "0d8e0859 G1, 87f71d95",
+   "class": "orbs-orb length pace",
+   "note": "a frame-rate Behavior NumberAnimation on the eased level uniform, with its spec anchor: it still reaches each step's value, but draws every frame between steps; level does not change in the headless live-orbs window, so only the orbs-decay pace check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "      property real level: levelE.value\n",
+     "to": "      property real level: levelE.value\n      Behavior on level { enabled: view.animate; NumberAnimation { duration: 900 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on level\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "W1-wait-returns-early",
+   "source": "87f71d95 critic case",
+   "class": "gate readiness wait",
+   "note": "shot_wait returns at once, before its condition (the ready line) holds",
+   "edits": [
+    {
+     "file": "tools/shot-reap.sh",
+     "from": "  until \"$@\"; do\n",
+     "to": "  until true; do\n"
+    }
+   ],
+   "gates": [
+    "motion"
+   ]
+  },
+  {
+   "id": "W1b-headless-skips-ready-wait",
+   "source": "87f71d95 critic case",
+   "class": "gate readiness wait",
+   "note": "headless-shot.sh's plugin() returns before the ready line: the capture and the ready-line checks run on a plugin still starting",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "shot_wait 30 \"the plugin's ready lines (${1:-plugin/})\" settled\n",
+     "to": "shot_wait 30 \"the plugin's ready lines (${1:-plugin/})\" true\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "W1c-ready-wait-reads-last-log",
+   "source": "87f71d95 (found under load)",
+   "class": "gate readiness wait",
+   "note": "plugin() leaves the log to the launch's redirection and reads the last run's ready line before the child empties it; with the log appended instead of emptied (so the race always loses) every later run's wait returns at once",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "  : > \"$RUN/plugin.log\"\n  AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR=\"$ROOT/tools/harness/theme\" AMPLIFY_ORBS_FIXTURE=\"$ORBS_FIXTURE\" \\\n    quickshell -p \"${1:-$ROOT/plugin}\" > \"$RUN/plugin.log\"",
+     "to": "  AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR=\"$ROOT/tools/harness/theme\" AMPLIFY_ORBS_FIXTURE=\"$ORBS_FIXTURE\" \\\n    quickshell -p \"${1:-$ROOT/plugin}\" >> \"$RUN/plugin.log\""
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "W2-wait-timeout-never-fires",
+   "source": "87f71d95 critic case",
+   "class": "gate readiness wait",
+   "note": "shot_wait's timeout never fires: a condition that never holds hangs the gate",
+   "edits": [
+    {
+     "file": "tools/shot-reap.sh",
+     "from": "    (( ${EPOCHREALTIME/./} < end )) || { echo \"shot: timed out after $s s waiting for $what\" >&2; return 1; }\n",
+     "to": "    (( ${EPOCHREALTIME/./} < end )) || true\n"
+    }
+   ],
+   "gates": [
+    "motion"
+   ]
+  },
+  {
+   "id": "W3-gate-timeout-off",
+   "source": "87f71d95",
+   "class": "mutate gate timeout",
+   "note": "mutate.sh runs gates without a time limit: a wait that never ends hangs the whole catalogue",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "timeout -k 10 \"$GATE_TIMEOUT\" ",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "X1-headless-shared-vnc-port",
+   "source": "87f71d95 critic case, 0d8e0859 G4",
+   "class": "headless isolation",
+   "note": "two concurrent headless runs share one wayvnc port (the main fixed 127.0.0.1:5959): the second cannot listen and drives the first's compositor; one run alone passes",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "VNC=\"$RUN/vnc.sock\"\n",
+     "to": "VNC=127.0.0.1::5959\n"
+    },
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "wayvnc -u \"$VNC\"",
+     "to": "wayvnc 127.0.0.1 5959"
+    }
+   ],
+   "gates": [
+    "headless-pair"
+   ]
+  },
+  {
+   "id": "X2-headless-renders-alone",
+   "source": "0d8e0859 G4, 87f71d95",
+   "class": "mutate scheduling",
+   "note": "main's scheduling back: each headless gate holds every render slot, so the catalogue's headless runs go one at a time",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "  [[ $g == headless ]] && render_slot 1\n",
+     "to": "  [[ $g == headless ]] && render_slot \"$RENDER\"\n"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "X3-orbs-shot-shares-slots",
+   "source": "87f71d95",
+   "class": "mutate scheduling",
+   "note": "orbs-shot takes one render slot: it renders beside other gates, and its first eases (judged in the plugin's first second) jump when another render starts beside it",
+   "edits": [
+    {
+     "file": "tools/mutate.sh",
+     "from": "  [[ $g == orbs-shot ]] && render_slot \"$RENDER\"\n",
+     "to": "  [[ $g == orbs-shot ]] && render_slot 1\n"
+    }
+   ],
+   "gates": [
+    "mutate"
    ]
   },
   {

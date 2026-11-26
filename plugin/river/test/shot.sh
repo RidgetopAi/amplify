@@ -83,7 +83,8 @@ fi
 
 printf 'output HEADLESS-1 resolution %sx%s position 0 0\ndefault_border none\n' "$W" "$H" > "$RUN/sway.cfg"
 sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
-for _ in $(seq 50); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 0.1; done
+swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1; }
+shot_wait 10 "sway's socket" swayup || exit 1
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
 export QT_QPA_PLATFORM=wayland
 
@@ -96,10 +97,12 @@ start() {
   local pat=$3
   NAME=$1; RUNS+=("$1")
   env "${@:4}" quickshell -p "$2" > "$RUN/$NAME.log" 2>&1 & QS=$!
-  for _ in $(seq 200); do grep -q "$pat" "$RUN/$NAME.log" && break; sleep 0.1; done
+  logged() { grep -q "$1" "$2"; }
+  shot_wait 20 "$pat in the $NAME run" logged "$pat" "$RUN/$NAME.log" || fail "$NAME: never logged \"$pat\""
   T0=$(date +%s.%N)
 }
-# at <seconds>: sleep until that long after start saw its ready pattern.
+# at <seconds>: sleep until that long after start saw its ready pattern. Every `at` below is
+# a capture time or measurement window the checks define (frames over 3 s, settled by 5 s, ...).
 at() { sleep "$(awk -v t0="$T0" -v s="$1" -v now="$(date +%s.%N)" 'BEGIN { d = t0 + s - now; print (d > 0 ? d : 0) }')"; }
 grab() { grim "$RUN/$NAME-$1.png"; }
 stop() {

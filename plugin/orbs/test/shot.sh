@@ -13,8 +13,8 @@
 # between data steps.
 # The layer check runs the real plugin (Service.qml mounts OrbsLayer) with
 # AMPLIFY_STILL=1 and fails when quickshell warns "Unable to assign" from
-# plugin/orbs, or when the orbs move: two captures 0.5 s apart may differ only
-# by the 1 Hz data tick (critic defect 11cd84cc, D1).
+# plugin/orbs, or when the orbs move: of three 0.5 s windows, one at least must be still,
+# as only the 1 Hz data tick may change the picture (critic defect 11cd84cc, D1).
 # Same stack as tools/headless-shot.sh: sway (headless, pixman), quickshell,
 # grim, and Mesa llvmpipe through HEADLESS_MESA when there is no GPU.
 # Exit status is the number of sheets or checks that failed.
@@ -55,7 +55,8 @@ if [[ -n ${HEADLESS_MESA:-} ]]; then
 fi
 printf 'output HEADLESS-1 resolution %sx%s position 0 0\ndefault_border none\n' "$W" "$H" > "$RUN/sway.cfg"
 sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
-for _ in $(seq 50); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 0.1; done
+swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1; }
+shot_wait 10 "sway's socket" swayup || exit 1
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")" QT_QPA_PLATFORM=wayland
 
 # Quickshell resolves imports only inside the shell file's folder, so the sheet runs from the repo root.
@@ -69,6 +70,7 @@ motion_check() {
     AMPLIFY_STILL=$still AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
       AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z \
       quickshell -p "$ROOT/plugin" > "$RUN/motion-$sc.log" 2>&1 & local qs=$!
+    # Measurement window: the trace the follow check reads (from launch; its want floors count on it).
     sleep "$secs"; kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
     local out; out=$(node "$ROOT/tools/motion/follow.mjs" "$sc" "$RUN/motion-$sc.log")
     report_motion "$sc" "$out" $? || bad=1
@@ -77,6 +79,7 @@ motion_check() {
   done
   # orbs-decay: the orbs sheet animated, its client clock jumping +20 min at 3 s.
   AMPLIFY_ORBS_SHEET=motion AMPLIFY_TRACE=1 quickshell -p "$SHEET" > "$RUN/motion-decay.log" 2>&1 & local qs=$!
+  # Measurement window: the clock jumps at 3 s, and the longest ease (1.6 s) settles well within 8 s.
   sleep 8; kill "$qs" 2>/dev/null; wait "$qs" 2>/dev/null
   out=$(node "$ROOT/tools/motion/follow.mjs" orbs-decay "$RUN/motion-decay.log")
   report_motion orbs-decay "$out" $? || bad=1
@@ -93,13 +96,25 @@ layer_check() {
   # AMPLIFY_RIVER_AT freezes it (river row 9), which this check would read as orbs moving.
   AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
     quickshell -p "$ROOT/plugin" > "$RUN/layer.log" 2>&1 & local qs=$! bad=0
-  for _ in $(seq 100); do grep -q "amplify: ready" "$RUN/layer.log" && break; sleep 0.1; done
-  sleep "${SHOT_WAIT:-4}"
-  grim "$RUN/still-a.png"; sleep 0.5; grim "$RUN/still-b.png"
-  local moved
-  moved=$(magick compare -metric AE -fuzz 2% "$RUN/still-a.png" "$RUN/still-b.png" null: 2>&1 | cut -d' ' -f1)
-  echo "shot: layer AMPLIFY_STILL=1, $moved px changed in 0.5 s (limit ${STILL_LIMIT:-200})"
-  [[ $moved =~ ^[0-9.e+]+$ ]] && awk -v m="$moved" -v l="${STILL_LIMIT:-200}" 'BEGIN { exit !(m <= l) }' \
+  # The ready line follows every window's first frame (it reads compiled only then).
+  readyin() { grep -q "amplify: ready" "$1"; }
+  shot_wait 30 "the plugin's ready line" readyin "$RUN/layer.log"
+  # Measurement window: four captures 0.5 s apart. Still mode may change the picture at a
+  # data step (1 Hz: the shipped capture's forming orb steps its form, about 900 px), so the
+  # check takes the quietest of the three 0.5 s windows: a step once a second dirties at most
+  # two of them, motion between steps (the defect, 11cd84cc D1) all three. A single pair was
+  # phase-locked to the data tick (the ready line comes 1.5 s after load) and failed about
+  # one run in two once the orbs replayed the shipped capture (task 87f71d95).
+  local k moved=() m
+  for k in 0 1 2 3; do (( k )) && sleep 0.5; grim "$RUN/still-$k.png"; done
+  for k in 1 2 3; do
+    m=$(magick compare -metric AE -fuzz 2% "$RUN/still-$((k - 1)).png" "$RUN/still-$k.png" null: 2>&1 | cut -d' ' -f1)
+    [[ $m =~ ^[0-9.e+]+$ ]] || m=999999
+    moved+=("$m")
+  done
+  m=$(printf '%s\n' "${moved[@]}" | sort -g | head -1)
+  echo "shot: layer AMPLIFY_STILL=1, ${moved[*]} px changed in three 0.5 s windows, quietest $m (limit ${STILL_LIMIT:-200})"
+  awk -v m="$m" -v l="${STILL_LIMIT:-200}" 'BEGIN { exit !(m <= l) }' \
     || { echo "shot: layer orbs move under AMPLIFY_STILL=1"; bad=1; }
   if orbs_warnings "$RUN/layer.log"; then echo "shot: layer logged binding warnings from plugin/orbs (above)"; bad=1; fi
   grep -q "amplify: ready" "$RUN/layer.log" || { echo "shot: layer plugin never reported ready"; bad=1; }
@@ -112,7 +127,8 @@ for sheet in ${1:-roles states layer motion}; do
   if [[ $sheet == layer ]]; then layer_check || fails=$((fails + 1)); continue; fi
   if [[ $sheet == motion ]]; then motion_check || fails=$((fails + 1)); continue; fi
   AMPLIFY_ORBS_SHEET=$sheet quickshell -p "$SHEET" > "$RUN/$sheet.log" 2>&1 & qs=$!
-  sleep "${SHOT_WAIT:-4}"
+  drawnin() { grep -q "amplify: sheet drawn" "$1"; }
+  shot_wait 30 "the $sheet sheet's first frame with its snapshot" drawnin "$RUN/$sheet.log" || fails=$((fails + 1))
   if grim "$OUT/orbs-$sheet.png"; then echo "shot: wrote docs/shots/orbs-$sheet.png"; else fails=$((fails + 1)); fi
   if grep -E "ERROR|TypeError|ReferenceError|is not|Cannot" "$RUN/$sheet.log" || orbs_warnings "$RUN/$sheet.log"; then
     echo "shot: $sheet logged errors (above)"; fails=$((fails + 1))

@@ -149,7 +149,7 @@ test("the spec check fails when a row is deleted or an animation is added withou
 test("the mutation catalogue applies to this tree and covers the river records", () => {
     const all = catalogue(), ids = all.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, "ids unique");
-    const gates = new Set(["data", "orbs", "river", "motion", "spec", "mutate", "river-shot", "orbs-shot", "headless"]);
+    const gates = new Set(["data", "orbs", "river", "motion", "spec", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair"]);
     for (const m of all) {
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);
@@ -158,6 +158,20 @@ test("the mutation catalogue applies to this tree and covers the river records",
                      "GA-basin-untraced-in-still", "GAb-basin-untraced-still-pool-fades", "N1-blank-capture-guard-off", "G3-broken-pool-frag", "G6-shader-error-only-for-orbs"])
         assert.ok(ids.includes(id), id);
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
+});
+
+// Critic gap G1 (verdict 0d8e0859): a frame-rate tween on an eased orb axis the live-orbs
+// window never changes survived every gate. Every eased orbs-orb axis carries a pace floor
+// (follow.mjs), and the catalogue tweens each on Qt's driver (form: OF2).
+test("every eased orb axis is paced in the spec and tweened on the driver in the catalogue", () => {
+    const spec = JSON.parse(fs.readFileSync(path.join(root, "docs/motion.json"), "utf8"));
+    const axes = spec.rows.find((r) => r.id === "orbs-orb").parts.find((p) => p.part === "orb").axes;
+    const eased = Object.keys(axes).filter((a) => axes[a].kind === "tween");
+    assert.deepEqual(eased.sort(), ["dorm", "ended", "energy", "form", "length", "light", "lost", "need", "sat"]);
+    for (const a of eased) assert.ok(axes[a].pace >= 100, `orbs.orb.${a} has no pace floor`);
+    const ids = catalogue().map((m) => m.id);
+    for (const a of ["sat", "light", "dorm", "lost", "need", "ended", "energy", "level"]) assert.ok(ids.includes(`G1-${a}-tween-on-driver`), a);
+    assert.ok(ids.includes("OF2-orb-form-tween-on-driver"));
 });
 
 test("a mutation of a shared source reaches the plugin's copies of it, as the symlinks did", (ctx) => {

@@ -80,10 +80,24 @@ ShellRoot {
   }
 
   PanelWindow {
+    id: sheetWin
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Bottom
     WlrLayershell.namespace: "amplify-orbs-sheet"
+
+    // "amplify: sheet drawn <sheet>" once a frame synced after the snapshot loaded has been
+    // swapped: at the first frame swapped with it loaded, one more frame is asked for, and
+    // that one logs (shot.sh waits for it instead of a fixed sleep, task 87f71d95).
+    property int framesWithSnap: 0
+    Connections {
+      target: sheetWin.contentItem.Window.window
+      enabled: !!root.snap && sheetWin.framesWithSnap < 2
+      function onFrameSwapped() {
+        if (++sheetWin.framesWithSnap === 1) sheetWin.contentItem.Window.window.update()
+        else console.log("amplify: sheet drawn " + root.sheet)
+      }
+    }
     color: "#05080b"
 
     Text {
