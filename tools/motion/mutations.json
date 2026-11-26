@@ -2243,6 +2243,38 @@
    ]
   },
   {
+   "id": "CR1d-layer-ready-wait-early",
+   "source": "86444bbd G2, 859896c9",
+   "class": "gate readiness wait",
+   "note": "orbs layer_check's ready wait returns at once: the four captures land on a plugin still loading (no orbs drawn, quietest window 0 px) and passed trivially",
+   "edits": [
+    {
+     "file": "plugin/orbs/test/shot.sh",
+     "from": "  shot_wait 30 \"the plugin's ready line\" readyin \"$RUN/layer.log\"\n",
+     "to": "  shot_wait 30 \"the plugin's ready line\" true\n"
+    }
+   ],
+   "gates": [
+    "orbs-shot"
+   ]
+  },
+  {
+   "id": "W4-stop-never-kills",
+   "source": "86444bbd G1, 859896c9",
+   "class": "gate stop",
+   "note": "shot_stop never escalates to SIGKILL: a TERM lost before the launch's exec leaves the gate in wait until MUTATE_GATE_TIMEOUT (W1b's 1200 s hang)",
+   "edits": [
+    {
+     "file": "tools/shot-reap.sh",
+     "from": "|| kill -9 \"$1\" 2>/dev/null\n",
+     "to": "|| true\n"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
    "id": "X1-headless-shared-vnc-port",
    "source": "87f71d95 critic case, 0d8e0859 G4",
    "class": "headless isolation",

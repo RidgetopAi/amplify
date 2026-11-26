@@ -53,7 +53,9 @@ rm -f "$ROOT"/plugin/shaders/*.qsb "$ROOT"/plugin/basin/*.qsb "$ROOT"/plugin/riv
 
 RUN="$(mktemp -d)"
 . "$ROOT/tools/shot-reap.sh"; shot_tag "$RUN"
-cleanup() { kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null; rm -rf "$RUN"; }
+# Only this shell cleans up: a launch TERMed before its exec runs these traps in the forked
+# child (task 859896c9), which tore down this run's compositor and run dir mid-run.
+cleanup() { [[ $BASHPID == "$$" ]] || return; kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null; rm -rf "$RUN"; }
 PIDS=()
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -211,12 +213,12 @@ grep -aq "amplify: basin open http" "$RUN/plugin.log" && pass "click on a basin 
 # the same plugin (a copy of plugin/ alone: it holds no links out) with each component's
 # programs truncated in turn must read shader=error with that component at 0. The river
 # loads its own copy, plugin/river/river.frag.qsb.
-kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/plugin-main.log"
+shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/plugin-main.log"
 declare -A BREAK=([orbs]="plugin/shaders/orb*.qsb" [river]="plugin/river/river.frag.qsb" [basin]="plugin/basin/*.frag.qsb")
 for g in "${COMPS[@]}"; do
   B="$RUN/broken-$g"; mkdir "$B"; cp -a "$ROOT/plugin" "$B/"
   for f in $B/${BREAK[$g]}; do head -c 64 "$ROOT/${f#"$B/"}" > "$f"; done
-  plugin "$B/plugin"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+  plugin "$B/plugin"; shot_stop "$QS"
   bready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
   echo "broken $g log: ${bready#*qml: }" | cut -c1-200
   [[ $bready == *"shader=error $(counts "$g")"* ]] && pass "broken $g programs report shader=error ($(counts "$g"))" \
@@ -237,24 +239,24 @@ swaymsg create_output > /dev/null; shot_wait 10 "a second output" outputs 2; SCR
 screens() { local l; l=$(grep -a "amplify: $2 " "$1" | sed 's/.*qml: //'); grep -c . <<< "$l"; echo "$l" | cut -c1-200; }
 # all2 <log> <what> <want>: true when exactly two screens logged <what>, each containing <want>.
 all2() { local l; l=$(grep -a "amplify: $2 " "$1"); (( $(grep -c . <<< "$l") == 2 && $(grep -c -- "$3" <<< "$l") == 2 )); }
-plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/two.log"
+plugin; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/two.log"
 screens "$RUN/two.log" ready | sed 's/^/two screens: /'
 all2 "$RUN/two.log" ready "shader=compiled $(counts)$" && pass "both screens report shader=compiled ($(counts))" \
   || fail "a second screen's ready line is not shader=compiled $(counts)"
-AMPLIFY_READY_MS=0 plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/early.log"
+AMPLIFY_READY_MS=0 plugin; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/early.log"
 screens "$RUN/early.log" ready | sed 's/^/before the first frame: /'; screens "$RUN/early.log" rendered | sed 's/^/after it: /'
 all2 "$RUN/early.log" ready "shader=pending .* pending=[1-9]" && pass "before the first frame both screens report shader=pending" \
   || fail "a ready line logged before the first frame is not shader=pending"
 all2 "$RUN/early.log" rendered "shader=compiled $(counts)$" && pass "once drawn both screens report shader=compiled ($(counts))" \
   || fail "no rendered line reading shader=compiled $(counts) on both screens"
-AMPLIFY_READY_MS=0 plugin "$RUN/broken-river/plugin"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/early-broken.log"
+AMPLIFY_READY_MS=0 plugin "$RUN/broken-river/plugin"; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/early-broken.log"
 screens "$RUN/early-broken.log" ready | sed 's/^/broken river before the first frame: /'
 all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river reports shader=error before the first frame" \
   || fail "a broken river reads other than shader=error before the first frame"
 # One capture (task 844a60aa): the shipped plugin's orbs, river and basin each log the snapshot
 # they replay (data/mandrel.js replaySource) and, traced, each caption they draw. All must name
 # one capture, every caption its captured time, and the river's time must read as its last change.
-ORBS_FIXTURE= plugin; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null; cp "$RUN/plugin.log" "$RUN/one.log"
+ORBS_FIXTURE= plugin; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/one.log"
 srcs=$(grep -aoE "amplify: replay (orbs|river|basin) .*" "$RUN/one.log" | sort -u)
 caps=$(grep -aoE "amplify: caption (orbs|river) .*" "$RUN/one.log")
 sed 's/^/  /' <<< "$srcs"; sort -u <<< "$caps" | head -4 | sed 's/^/  /'
@@ -305,7 +307,7 @@ fpsrun() {
   sleep 6
   local clk c0 c1 l0; clk=$(getconf CLK_TCK) c0=$(awk '{ print $14 + $15 }' "/proc/$QS/stat") l0=$(wc -l < "$log")
   sleep "$secs"
-  c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+  c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); shot_stop "$QS"
   awk -v t=$((c1 - c0)) -v k="$clk" -v s="$secs" 'BEGIN { printf "%.1f\n", t / k / s * 100 }'
   tail -n +"$((l0 + 1))" "$log" | grep -aoE "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*( steps=[0-9.]*)?" \
     | sed 's/amplify: fps window=//; s/ screen=/ /; s/ steps=/ /' | awk '{ print $1, $2, $3, ($4 == "" ? "-" : $4) }'

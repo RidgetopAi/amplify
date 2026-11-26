@@ -30,3 +30,16 @@ shot_wait() {
     sleep 0.05
   done
 }
+# shot_stop <pid>: TERM a process the gate started, then reap it, bounded (task 859896c9). A
+# TERM sent right after the launch can reach the forked bash child before it execs, while it
+# still has the gate's traps (its EXIT trap alone makes bash catch TERM). Mostly the child
+# runs them and exits (so a gate's cleanup must run only in the gate's own shell); now and
+# then the exec drops the caught signal, the program runs on, and a bare `wait` blocks until
+# mutate.sh's gate timeout (W1b did: 1200 s every catalogue run). A process still running 5 s
+# after the TERM gets SIGKILL, which no handler can take. Gone: a zombie, or already reaped.
+shot_gone() { local s; read -r s 2>/dev/null < "/proc/$1/stat" || return 0; s=${s##*) }; [[ ${s%% *} == Z ]]; }
+shot_stop() {
+  kill "$1" 2>/dev/null
+  shot_wait 5 "process $1 to exit on SIGTERM (sending SIGKILL)" shot_gone "$1" || kill -9 "$1" 2>/dev/null
+  wait "$1" 2>/dev/null
+}
