@@ -33,6 +33,12 @@ Scope {
   // env-read: AMPLIFY_SCENE_STEP=<virtual s> steps the replayed scene time that far each second, up to the capture (tests of scene changes, which live refetches make).
   readonly property real stepSec: Number(Quickshell.env("AMPLIFY_SCENE_STEP") || 0)
   property int refetchSec: 30
+  // env-read: AMPLIFY_TRACE=1 logs this clock's id when it is made and at each live fetch (the one-clock check, tools/headless-shot.sh).
+  readonly property bool trace: Quickshell.env("AMPLIFY_TRACE") === "1"
+  // This clock's id (its address while it lives). Traced, every component names the clock it
+  // follows in its "amplify: scene" line, so a check sees one clock, not only one time.
+  readonly property string clockId: String(clock).replace(/^.*\(0x0*([0-9a-fA-F]+).*$/, "$1")
+  Component.onCompleted: if (trace) console.log("amplify: clock " + clockId + " made " + (live ? "live" : "replay"))
 
   property var snapshot: null    // replay: the parsed capture
   property var scene: null       // the scene at nowMs: the capture rewound to it (replay) or the latest fetch (live)
@@ -60,6 +66,7 @@ Scope {
     running: clock.live; repeat: true; triggeredOnStart: true
     interval: clock.refetchSec * 1000
     onTriggered: {
+      if (clock.trace) console.log("amplify: clock " + clock.clockId + " fetch")
       var fetch = Mandrel.fetcherFor(clock.config, Mandrel.xhrTransport(), null)
       Mandrel.loadScene(fetch, { baseUrl: clock.config.baseUrl, mode: "live" }).then(function (s) {
         clock.fetchMs = Date.now(); clock.nowMs = clock.fetchMs; clock.scene = s

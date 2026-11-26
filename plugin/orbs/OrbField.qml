@@ -37,6 +37,8 @@ Item {
   }
   readonly property var src: field.sceneClock && field.snapshotPath === "" ? field.sceneClock : own.item
   property bool showLabel: true
+  // The screen this field is drawn on (OrbsLayer), which keys its traced lines: "orbs@<screen>".
+  property string screenName: ""
 
   property var scene: null
   property real fetchMs: 0
@@ -62,8 +64,10 @@ Item {
   // The one caption (Mandrel.sceneCaption) for the moment the orbs show.
   readonly property string label: scene && nowMs && src && src.scene ? Mandrel.sceneCaption(src.scene, nowMs) : ""
   // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
-  onLabelChanged: if (trace && label !== "") console.log("amplify: caption orbs " + label)
-  onNowMsChanged: if (trace && scene) console.log("amplify: scene orbs at " + new Date(nowMs).toISOString())
+  // Each line names the screen, and the scene line the clock followed (SceneClock.clockId).
+  readonly property string traceKey: "orbs" + (screenName ? "@" + screenName : "")
+  onLabelChanged: if (trace && label !== "") console.log("amplify: caption " + traceKey + " " + label)
+  onNowMsChanged: if (trace && scene) console.log("amplify: scene " + traceKey + " at " + new Date(nowMs).toISOString() + " clock " + (src ? src.clockId : "none"))
 
   function hueFor(role) {
     if (role === "coord") return Qt.tint(foreground, Qt.rgba(1, 1, 1, 0.25))

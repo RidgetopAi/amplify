@@ -11,6 +11,9 @@ Item {
   property bool animate: true
   // AMPLIFY_TRACE=1: the pool and each row log their drawn axes (plugin/motion/Trace.qml).
   property bool trace: false
+  // The screen this basin is drawn on (Service.qml), which keys its traced lines: "basin@<screen>".
+  property string screenName: ""
+  readonly property string traceKey: "basin" + (screenName ? "@" + screenName : "")
   property int maxRows: 5
   readonly property alias hitItem: list
   readonly property int count: feed.rows.length
@@ -98,10 +101,11 @@ Item {
       wrapMode: Text.Wrap
       color: "#7d8799"; opacity: 0.85; font.family: basin.mono; font.pixelSize: 10; font.letterSpacing: 1.0
       // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
-      onTextChanged: if (basin.trace && caption.text !== "") console.log("amplify: caption basin " + caption.text)
+      onTextChanged: if (basin.trace && caption.text !== "") console.log("amplify: caption " + basin.traceKey + " " + caption.text)
     }
     readonly property real shownMs: basin.feed.activeScene ? basin.feed.now : 0
-    onShownMsChanged: if (basin.trace && shownMs) console.log("amplify: scene basin at " + new Date(shownMs).toISOString())
+    onShownMsChanged: if (basin.trace && shownMs) console.log("amplify: scene " + basin.traceKey + " at " + new Date(shownMs).toISOString()
+                                                     + " clock " + (basin.feed.sceneClock ? basin.feed.sceneClock.clockId : "none"))
   }
 
   ListView {

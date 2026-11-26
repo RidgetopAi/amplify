@@ -295,27 +295,41 @@ screens "$RUN/early-broken.log" ready | sed 's/^/broken river before the first f
 all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river reports shader=error before the first frame" \
   || fail "a broken river reads other than shader=error before the first frame"
 # One capture on one clock (tasks 844a60aa, 679fbbc5): the shipped plugin's orbs, river and basin
-# each log the snapshot they replay (data/mandrel.js replaySource) and, traced, the scene time
-# they are drawn at ("amplify: scene <comp> at <ISO>") and the caption they draw. All must replay
-# one capture, be drawn at one moment, the capture (replay holds there), and draw one caption
+# each log the snapshot they replay (data/mandrel.js replaySource) and, traced, on each of the two
+# screens, the scene time they are drawn at and the clock they follow ("amplify: scene
+# <comp>@<screen> at <ISO> clock <id>") and the caption they draw ("amplify: caption
+# <comp>@<screen> <text>"); each scene clock logs "amplify: clock <id> made" (SceneClock.qml).
+# Read per component per screen, the last line of each: all must replay one capture, the
+# service must make one clock and every component on every screen must follow it (a river
+# left on its own clock holds at the same capture, so equal times alone pass it: defect
+# a5d1ffa7), be drawn at one moment, the capture (replay holds there), and draw one caption
 # (Mandrel.sceneCaption) naming that moment: "REPLAYED SNAPSHOT · <label> · as of <moment> ·
 # last activity <time>", to the minute.
 ORBS_FIXTURE= plugin; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/one.log"
 srcs=$(grep -aoE "amplify: replay (orbs|river|basin) .*" "$RUN/one.log" | sort -u)
-# latest <what>: "<comp><TAB><value>" of each component's last "amplify: <what> <comp> <value>" line.
-latest() { grep -aoE "amplify: $1 (orbs|river|basin) .*" "$RUN/one.log" | sed -E "s/^amplify: $1 //" \
+clocks=$(grep -aoE "amplify: clock [^ ]+ made .*" "$RUN/one.log" | awk '{ print $3 }' | sort -u)
+# latest <what>: "<comp>@<screen><TAB><value>" of each key's last "amplify: <what> <comp>@<screen> <value>" line.
+latest() { grep -aoE "amplify: $1 (orbs|river|basin)(@[^ ]+)? .*" "$RUN/one.log" | sed -E "s/^amplify: $1 //" \
   | awk '{ i = index($0, " "); v[substr($0, 1, i - 1)] = substr($0, i + 1) } END { for (c in v) print c "\t" v[c] }' | sort; }
 moments=$(latest scene) caps=$(latest caption)
-sed 's/^/  /' <<< "$srcs"; sed 's/^/  scene /' <<< "$moments"; sed 's/^/  caption /' <<< "$caps"
+sed 's/^/  /' <<< "$srcs"; sed 's/^/  clock made /' <<< "$clocks"; sed 's/^/  scene /' <<< "$moments"; sed 's/^/  caption /' <<< "$caps"
 want=$(sed -E 's/.* captured ([^ ]+) .*/\1/' <<< "$srcs" | sort -u)
 wantmin="$(date -u -d "$want" +'%Y-%m-%d %H:%M' 2>/dev/null)Z"
+# Every component on every screen sway lists: "basin@HEADLESS-1 basin@HEADLESS-2 orbs@… river@… ".
+keys=$(for c in basin orbs river; do swaymsg -t get_outputs | grep -oE '"name": "HEADLESS-[0-9]+"' | cut -d'"' -f4 | sed "s/^/$c@/"; done | sort | tr '\n' ' ')
 comps() { cut -f1 <<< "$1" | tr '\n' ' '; }
-[[ $(awk '{ print $3 }' <<< "$srcs" | sort -u | tr '\n' ' ') == "basin orbs river " && $(sed -E 's/^amplify: replay [a-z]+ //' <<< "$srcs" | sort -u | grep -c .) == 1 \
-   && $(comps "$moments") == "basin orbs river " && $(cut -f2 <<< "$moments" | sort -u) == "at $want" \
-   && $(comps "$caps") == "basin orbs river " && $(cut -f2 <<< "$caps" | sort -u | grep -c .) == 1 \
+[[ $(awk '{ print $3 }' <<< "$srcs" | sort -u | tr '\n' ' ') == "basin orbs river " && $(sed -E 's/^amplify: replay [a-z]+ //' <<< "$srcs" | sort -u | grep -c .) == 1 ]] \
+  && pass "one capture: orbs, river and basin replay one snapshot ($want)" \
+  || fail "orbs, river and basin do not replay one snapshot (sources: $(cut -d' ' -f3- <<< "$srcs" | tr '\n' ';'))"
+[[ $(grep -c . <<< "$clocks") == 1 && $(comps "$moments") == "$keys" \
+   && $(sed -E 's/.* clock //' <<< "$moments" | sort -u) == "$clocks" ]] \
+  && pass "one clock: the service makes one scene clock ($clocks) and $keys each follow it" \
+  || fail "not one clock: $(grep -c . <<< "$clocks") made (${clocks//$'\n'/ }), followed by: $(awk -F'\t' '{ sub(/.* clock /, "", $2); printf "%s=%s ", $1, $2 }' <<< "$moments")(want every one of $keys on one)"
+[[ $(comps "$moments") == "$keys" && $(cut -f2 <<< "$moments" | sed -E 's/ clock .*//' | sort -u) == "at $want" \
+   && $(comps "$caps") == "$keys" && $(cut -f2 <<< "$caps" | sort -u | grep -c .) == 1 \
    && $(cut -f2 <<< "$caps" | head -1) =~ ^REPLAYED\ SNAPSHOT\ ·\ .+\ ·\ as\ of\ $wantmin\ ·\ last\ activity\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}Z$ ]] \
-  && pass "one clock: orbs, river and basin replay one snapshot, are drawn at its capture $want and draw one caption (as of $wantmin)" \
-  || fail "orbs, river and basin disagree on the moment or caption (want one replay source, every scene at ${want:-?}, one caption 'REPLAYED SNAPSHOT · … · as of $wantmin · last activity …')"
+  && pass "one moment: $keys are drawn at the capture $want and draw one caption (as of $wantmin)" \
+  || fail "components or screens disagree on the moment or caption (want $keys each at ${want:-?}, one caption 'REPLAYED SNAPSHOT · … · as of $wantmin · last activity …')"
 cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" "$RUN/one.log" >> "$RUN/plugin-main.log"
 mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 

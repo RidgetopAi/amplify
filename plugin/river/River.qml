@@ -21,9 +21,14 @@ Item {
   property var sceneClock: null
   property var feed: ownFeed
   RiverFeed { id: ownFeed; sceneClock: river.sceneClock }
-  // AMPLIFY_TRACE=1: the scene time the river is drawn at, for the one-clock check (tools/headless-shot.sh).
+  // The screen this river is drawn on (Service.qml), which keys its traced lines: "river@<screen>".
+  property string screenName: ""
+  readonly property string traceKey: "river" + (screenName ? "@" + screenName : "")
+  // AMPLIFY_TRACE=1: the scene time the river is drawn at and the clock it follows
+  // (SceneClock.clockId), for the one-clock check (tools/headless-shot.sh).
   readonly property real shownMs: feed ? feed.nowMs : 0
-  onShownMsChanged: if (trace && shownMs) console.log("amplify: scene river at " + new Date(shownMs).toISOString())
+  onShownMsChanged: if (trace && shownMs) console.log("amplify: scene " + traceKey + " at " + new Date(shownMs).toISOString()
+                                                       + " clock " + (feed && feed.src ? feed.src.clockId : "none"))
   property bool animate: true
   // Trace mode (AMPLIFY_TRACE=1, shot.sh): each moving item makes a Trace
   // (plugin/motion/Trace.qml) that logs what it draws as it changes, with the
@@ -558,7 +563,7 @@ Item {
       // activity, to the minute, the same text the orbs and basin draw.
       text: river.feed ? river.feed.caption : ""
       // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
-      onTextChanged: if (river.trace && text !== "") console.log("amplify: caption river " + text)
+      onTextChanged: if (river.trace && text !== "") console.log("amplify: caption " + river.traceKey + " " + text)
       color: "#7d8799"
       font { family: river.mono; pixelSize: 11; letterSpacing: 1.6 }
     }

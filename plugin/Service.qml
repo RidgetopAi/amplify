@@ -149,9 +149,12 @@ Item {
 
   // The one scene clock (task 679fbbc5, decision cfce981b): orbs, every screen's river and the
   // basin are built from its scene time and draw its caption, in replay and live.
-  Shared.SceneClock { id: sceneClock }
-  OrbsLayer { id: orbsLayer; sceneClock: sceneClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
-  BasinFeed { id: basinFeed; sceneClock: sceneClock }
+  // Its id must not be `sceneClock`: inside OrbsLayer, BasinFeed and River that name resolves
+  // to their own sceneClock property (null), and each screen's river made its own clock and,
+  // live, its own fetch (defect a5d1ffa7).
+  Shared.SceneClock { id: sharedClock }
+  OrbsLayer { id: orbsLayer; sceneClock: sharedClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
+  BasinFeed { id: basinFeed; sceneClock: sharedClock }
 
   Variants {
     id: windows
@@ -174,11 +177,12 @@ Item {
       // own click handling.
       mask: Region { item: basin.hitItem }
 
-      River { id: river; anchors.fill: parent; sceneClock: sceneClock; animate: !root.still; trace: root.trace }
+      River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }
 
       Basin {
         id: basin
         feed: basinFeed
+        screenName: win.modelData.name
         animate: !root.still
         trace: root.trace
         anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 30 }

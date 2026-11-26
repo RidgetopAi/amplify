@@ -77,6 +77,7 @@ Item {
         animate: orbsLayer.animate
         trace: orbsLayer.trace
         sceneClock: orbsLayer.sceneClock
+        screenName: win.modelData.name
       }
     }
   }

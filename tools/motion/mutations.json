@@ -1088,7 +1088,7 @@
    "edits": [
     {
      "file": "plugin/Service.qml",
-     "from": "      River { id: river; anchors.fill: parent; sceneClock: sceneClock; animate: !root.still; trace: root.trace }\n",
+     "from": "      River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }\n",
      "to": ""
     }
    ],
@@ -2425,6 +2425,38 @@
      "file": "data/SceneClock.qml",
      "from": "running: clock.live && clock.scene !== null",
      "to": "running: clock.scene !== null"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OC5-river-not-given-shared-clock",
+   "source": "679fbbc5 defect a5d1ffa7",
+   "class": "one clock",
+   "note": "the shadowed binding restored: inside the PanelWindow delegate River's sceneClock binds its own (null) property, so each screen's river makes its own clock (live: its own fetch); replay holds both clocks at the capture, so only the clock it follows differs",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "River { id: river; anchors.fill: parent; sceneClock: sharedClock;",
+     "to": "River { id: river; anchors.fill: parent; sceneClock: sceneClock;"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OC6-orbs-not-given-shared-clock",
+   "source": "679fbbc5 defect a5d1ffa7",
+   "class": "one clock",
+   "note": "the same shadowing for the orbs: OrbsLayer binds its own (null) sceneClock, so every screen's orb field makes its own clock",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "OrbsLayer { id: orbsLayer; sceneClock: sharedClock;",
+     "to": "OrbsLayer { id: orbsLayer; sceneClock: sceneClock;"
     }
    ],
    "gates": [
