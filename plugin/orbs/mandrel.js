@@ -661,6 +661,51 @@ function replayFetcher(snapshot, clock) {
     };
 }
 
+// The scene of a replayed snapshot at virtual time ms: its responses rewound to ms (a
+// frames fixture, such as plugin/river/test/busy-frames.json, uses the last frame at or
+// before ms), labelled as a replay.
+function replayScene(snapshot, ms) {
+    var snap = snapshot;
+    if (snapshot.frames) {
+        var f = snapshot.frames[0];
+        for (var i = 0; i < snapshot.frames.length; i++)
+            if (toMs(snapshot.frames[i].at) <= ms) f = snapshot.frames[i];
+        snap = { meta: snapshot.meta, responses: f.responses };
+    }
+    return buildScene(replayResponses(snap, ms), {
+        now: ms, mode: "replay", label: "REPLAYED SNAPSHOT · " + (snapshot.meta.label || ""),
+        baseUrl: snapshot.meta.base_url || "", projectId: snapshot.meta.project_id || null,
+        fetchedAt: snapshot.meta.captured_at
+    });
+}
+
+// ---------------------------------------------------------------- scene time
+
+// The last write a scene shows at time atMs: the newest session activity, task update or
+// record at or before atMs, as ms (null when there is none).
+function lastActivityMs(scene, atMs) {
+    var at = toMs(atMs), best = null;
+    function see(v) { var m = toMs(v); if (m !== null && m <= at && (best === null || m > best)) best = m; }
+    (scene.sessions || []).forEach(function (s) { see(s.lastActivityAt); });
+    (scene.tasks || []).forEach(function (t) { see(t.updatedAt || t.createdAt); });
+    (scene.latest || []).forEach(function (r) { see(r.at); });
+    return best;
+}
+
+function minuteOf(ms) { return new Date(ms).toISOString().slice(0, 16).replace("T", " ") + "Z"; }
+
+// The one caption (task 679fbbc5, decision cfce981b): orbs, river and basin all draw this
+// for the scene clock's scene and the moment they show, so they read the same text:
+//   REPLAYED SNAPSHOT · <label> · as of <moment> · last activity <time>
+//   LIVE · <base url> · as of <moment> · last activity <time>
+// To the minute, so a live caption changes (and redraws) at most once a minute.
+function sceneCaption(scene, atMs) {
+    if (!scene || !scene.meta) return "";
+    var m = scene.meta, at = toMs(atMs), last = lastActivityMs(scene, at);
+    return (m.mode === "replay" ? m.label : "LIVE · " + (m.baseUrl || "")) +
+        " · as of " + minuteOf(at) + " · last activity " + (last === null ? "none" : minuteOf(last));
+}
+
 // Replay driver: plays the snapshot from meta.replay_from to meta.captured_at at
 // speed virtual seconds per real second, emitting a scene every stepMs.
 function createReplayDriver(snapshot, o) {
@@ -672,14 +717,8 @@ function createReplayDriver(snapshot, o) {
     var stepMs = o.stepMs || 1000;
     var loop = o.loop !== false;
     var virt = from, handle = null, running = false;
-    var label = "REPLAYED SNAPSHOT · " + (snapshot.meta.label || "") ;
 
-    function sceneAt(ms) {
-        return buildScene(replayResponses(snapshot, ms), {
-            now: ms, mode: "replay", label: label, baseUrl: snapshot.meta.base_url || "",
-            projectId: snapshot.meta.project_id || null
-        });
-    }
+    function sceneAt(ms) { return replayScene(snapshot, ms); }
     function step() {
         if (!running) return;
         var scene = sceneAt(virt);

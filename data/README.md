@@ -19,6 +19,9 @@ The data layer reads only `MANDREL_URL` and `MANDREL_VIEWER_TOKEN` (`resolveConf
   - `needsYou[]`: tasks blocked on a human, open decisions, and lost sessions, oldest first.
 - `tickScene(scene, now)` re-derives liveness on the client clock between refetches (run it once per animation tick).
 - `createEventStream({config, transport, timers, onChange, debounceMs, heartbeatTimeoutMs})` runs `POST /api/events/ticket`, then `GET /api/events?ticket=`. Each entity event schedules one debounced `onChange` (refetch). Silence longer than `heartbeatTimeoutMs` drops the stream and reconnects with a fresh ticket.
+- `replayScene(snapshot, ms)` is the snapshot rewound to virtual time `ms` (a frames fixture uses its last frame at or before `ms`), labelled `REPLAYED SNAPSHOT · <label>`.
+- `sceneCaption(scene, at)` is the one caption orbs, river and basin draw: `REPLAYED SNAPSHOT · <label> · as of <moment> · last activity <time>` (live: `LIVE · <base url> · …`), to the minute; `lastActivityMs(scene, at)` is the newest session activity, task update or record at or before `at`.
+- `SceneClock.qml` (copied into each component by `tools/sync-shared.sh`) is the one scene clock Service.qml hands the orbs, rivers and basin: replay holds at `meta.captured_at` (`AMPLIFY_SCENE_AT` holds it elsewhere); live, one refetch every 30 s for all three and the scene time stepped to the wall clock once a second.
 - `createReplayDriver(snapshot, {timers, speed, stepMs, onScene})` plays the snapshot from `meta.replay_from` to `meta.captured_at`, then loops. Its scenes carry `meta.mode: "replay"` and a `REPLAYED SNAPSHOT` label.
 
 ## Liveness (viewer contract 22d73eeb)

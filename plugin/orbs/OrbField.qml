@@ -7,11 +7,10 @@ import "orbs.js" as Orbs
 // Desktop orbs (task a40d7440): one orb per Mandrel session on the desktop
 // layer, lease vessels under claim holders, and beams for activity links.
 //
-// Data: live when MANDREL_URL + MANDREL_VIEWER_TOKEN are set (refetch every
-// refetchSec); otherwise the snapshot below is treated as the last fetch and
-// the client clock runs forward from its capture time (replay). Either way the
-// scene is re-ticked once a second (Mandrel.tickScene), so liveness, lease and
-// heartbeat fuse decay on the client clock between refetches.
+// Data and time come from the scene clock (SceneClock.qml, task 679fbbc5), the one the river
+// and basin read: live, its latest fetch at the wall clock; replay, the capture as the last
+// fetch, held at its capture time. Each time the clock moves, the scene is ticked to it
+// (Mandrel.tickScene), so liveness, lease and heartbeat fuse show that moment.
 Item {
   id: field
 
@@ -23,27 +22,24 @@ Item {
   // AMPLIFY_TRACE=1: each orb and beam logs its drawn axes (plugin/motion/Trace.qml).
   property bool trace: false
   property bool mono: false
-  // For shots: a fixed client clock, as ms since the snapshot's capture.
+  // Test sheets only (plugin/orbs/test/shell.qml): the moment as ms after the capture,
+  // instead of the clock's.
   property real fixedOffsetMs: -1
-  // Replay: the client clock starts at this ISO time instead of the capture, then runs on.
-  property string startAt: ""
-  // The replayed capture: amplify-snapshot.json is a copy of fixtures/amplify-snapshot.json
-  // (tools/sync-shared.sh), the one snapshot the river and basin replay too (task 844a60aa).
-  // env-read: AMPLIFY_ORBS_FIXTURE replays this file instead (tests: fixtures/test/orbs-states.json, never shipped).
-  property string snapshotPath: Quickshell.env("AMPLIFY_ORBS_FIXTURE")
-    || Qt.resolvedUrl("amplify-snapshot.json").toString().replace(/^file:\/\//, "")
-  property int refetchSec: 30
+  // The scene clock every component reads (Service.qml through OrbsLayer). Unset, or with a
+  // fixture of its own, the field makes its own clock on that file.
+  property var sceneClock: null
+  // env-read: AMPLIFY_ORBS_FIXTURE replays this file instead of the shared capture (tests: fixtures/test/orbs-states.json, never shipped).
+  property string snapshotPath: Quickshell.env("AMPLIFY_ORBS_FIXTURE") || ""
+  LazyLoader {
+    id: own
+    active: !field.sceneClock || field.snapshotPath !== ""
+    SceneClock { snapshotPath: field.snapshotPath }
+  }
+  readonly property var src: field.sceneClock && field.snapshotPath === "" ? field.sceneClock : own.item
   property bool showLabel: true
-
-  // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (data layer config; replay when unset or mdl_).
-  readonly property var config: Mandrel.resolveConfig({
-    MANDREL_URL: Quickshell.env("MANDREL_URL") || "",
-    MANDREL_VIEWER_TOKEN: Quickshell.env("MANDREL_VIEWER_TOKEN") || ""
-  })
 
   property var scene: null
   property real fetchMs: 0
-  property real startReal: Date.now()
   property real nowMs: 0
   property var frame: ({ ids: [], orbs: {}, beams: [] })
   property var ids: []
@@ -63,11 +59,11 @@ Item {
   property var beamKeys: []
   property real clock: 2.3
   readonly property list<QtObject> regions: hitRegions.instances
-  readonly property string label: !scene ? "" : (scene.meta.mode === "replay"
-      ? "REPLAYED SNAPSHOT · " + (scene.meta.label || "") + " · client clock +" + Math.round((nowMs - fetchMs) / 60000) + " min"
-      : "live · " + (scene.meta.baseUrl || ""))
-  // AMPLIFY_TRACE=1: the caption as drawn, for the one-capture check (tools/headless-shot.sh).
+  // The one caption (Mandrel.sceneCaption) for the moment the orbs show.
+  readonly property string label: scene && nowMs && src && src.scene ? Mandrel.sceneCaption(src.scene, nowMs) : ""
+  // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
   onLabelChanged: if (trace && label !== "") console.log("amplify: caption orbs " + label)
+  onNowMsChanged: if (trace && scene) console.log("amplify: scene orbs at " + new Date(nowMs).toISOString())
 
   function hueFor(role) {
     if (role === "coord") return Qt.tint(foreground, Qt.rgba(1, 1, 1, 0.25))
@@ -75,11 +71,23 @@ Item {
     return accent
   }
 
+  // The orbs' eases start with this field's window's first frame (OrbView framed): the shared
+  // clock's scene is ready before it, and an enter ease started then ran half way while the
+  // window was still starting up, unseen. The step clock runs for the longest ease from it.
+  property bool framed: false
+  property real framedMs: 0
+  Connections {
+    target: field.Window.window
+    enabled: !field.framed
+    function onFrameSwapped() {
+      field.framedMs = Date.now(); field.framed = true
+      field.easeUntil = Math.max(field.easeUntil, field.framedMs + 1600)
+    }
+  }
+
   function tick() {
     if (!scene) return
-    nowMs = fixedOffsetMs >= 0 ? fetchMs + fixedOffsetMs
-          : config.mode === "live" ? Date.now()
-          : fetchMs + (Date.now() - startReal)
+    nowMs = fixedOffsetMs >= 0 ? fetchMs + fixedOffsetMs : src.nowMs
     var f = Orbs.frame(scene, nowMs, width, height, Mandrel.tickScene)
     if (f.ids.join() !== ids.join()) ids = f.ids
     var bk = f.beams.map(function (b) { return b.key })
@@ -87,47 +95,28 @@ Item {
     frame = f
   }
 
-  function sceneFromSnapshot(snap) {
-    var r = snap.responses
-    console.log("amplify: replay orbs " + Mandrel.replaySource(snap))
-    fetchMs = Date.parse(snap.meta.captured_at)
-    nowMs = fetchMs   // so the caption never reads the clock from before the snapshot
-    startReal = Date.now() - (startAt ? Date.parse(startAt) - fetchMs : 0)
+  // Replay: the capture as the last fetch (server liveness as read), ticked to the clock's
+  // moment, or before the capture the clock's scene (the capture rewound to it); live: the
+  // clock's fetch.
+  function rebuild() {
+    var c = src
+    if (!c || !c.scene) return
+    fetchMs = c.fetchMs
+    if (!scene && !c.live) console.log("amplify: replay orbs " + Mandrel.replaySource(c.snapshot))
+    if (c.live || c.nowMs < c.fetchMs) { scene = c.scene; tick(); return }
+    var snap = c.snapshot, r = snap.responses
     scene = Mandrel.buildScene({
       sessions: r["/api/sessions"], tasks: r["/api/tasks"], contexts: r["/api/contexts"],
       decisions: r["/api/decisions"], projects: r["/api/projects"], sessionDetails: r["/api/sessions/:id"]
-    }, { now: fetchMs, mode: "replay", label: snap.meta.label, baseUrl: snap.meta.base_url,
+    }, { now: fetchMs, mode: "replay", label: "REPLAYED SNAPSHOT · " + (snap.meta.label || ""), baseUrl: snap.meta.base_url,
          projectId: snap.meta.project_id, fetchedAt: snap.meta.captured_at })
     tick()
   }
-
-  function refetch() {
-    var fetch = Mandrel.fetcherFor(config, Mandrel.xhrTransport(), null)
-    Mandrel.loadScene(fetch, { baseUrl: config.baseUrl, mode: "live" }).then(function (s) {
-      fetchMs = Date.now(); scene = s; tick()
-    }, function (e) { console.log("amplify: orbs refetch failed " + e) })
-  }
-
-  FileView {
-    path: field.config.mode === "live" ? "" : field.snapshotPath
-    printErrors: true
-    onLoaded: {
-      try { field.sceneFromSnapshot(JSON.parse(text())) }
-      catch (e) { console.log("amplify: orbs snapshot unreadable " + e) }
-    }
-  }
-  Timer { id: refetchTimer
-    running: field.config.mode === "live"; repeat: true; triggeredOnStart: true
-    interval: field.refetchSec * 1000
-    onTriggered: field.refetch()
-  }
-  Timer { id: tickTimer
-    running: field.fixedOffsetMs < 0; repeat: true; interval: 1000
-    onTriggered: {
-      // Replay loops after 45 min of client time, back to the capture.
-      if (field.config.mode !== "live" && Date.now() - field.startReal > 45 * 60000) field.startReal = Date.now()
-      field.tick()
-    }
+  onSrcChanged: rebuild()
+  Connections {
+    target: field.src
+    function onSceneChanged() { field.rebuild() }
+    function onNowMsChanged() { field.tick() }
   }
   onWidthChanged: tick()
   onHeightChanged: tick()
@@ -204,6 +193,8 @@ Item {
       y: orb ? orb.y - height / 2 : 0
       clock: field.clock
       stepMs: field.stepMs
+      framed: field.framed
+      framedMs: field.framedMs
       onEased: until => field.easeUntil = Math.max(field.easeUntil, until)
       animate: field.animate
       trace: field.trace

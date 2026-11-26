@@ -172,6 +172,19 @@ test("snapshot fixture is real amplify data labelled as a replayed snapshot", ()
     assert.match(scene.meta.label, /^REPLAYED SNAPSHOT · Mandrel project amplify/);
 });
 
+// One caption (task 679fbbc5): the moment shown and the newest write at or before it, which
+// for the capture is the 03:52:50Z context (read off the raw fixture, not the scene).
+test("sceneCaption names the moment and its last activity, in replay and live", () => {
+    const cap = Date.parse(snap.meta.captured_at);
+    assert.equal(M.sceneCaption(M.replayScene(snap, cap), cap),
+        "REPLAYED SNAPSHOT · Mandrel project amplify, captured 2026-11-22T04:00:17Z · as of 2026-11-22 04:00Z · last activity 2026-11-22 03:52Z");
+    const live = M.replayScene(snap, cap);
+    live.meta.mode = "live";
+    assert.equal(M.sceneCaption(live, cap + 61 * 60000),
+        "LIVE · https://brian.mandrel.ridgetopai.net · as of 2026-11-22 05:01Z · last activity 2026-11-22 03:52Z");
+    assert.equal(M.sceneCaption(null, cap), "");
+});
+
 test("replay rewinds the snapshot to a virtual time", () => {
     const d = M.createReplayDriver(snap, { timers: manualTimers() });
     const at = d.sceneAt(Date.parse("2026-11-22T02:58:00.000Z"));

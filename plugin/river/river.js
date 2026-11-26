@@ -223,19 +223,7 @@ function flowSpeed(flow) {
 // a frames fixture ({meta, frames: [{at, responses}]}, latest frame at or
 // before ms). M is the data layer (data/mandrel.js), passed in so Node and
 // QML share this code.
-function replaySceneAt(M, fixture, ms) {
-    var snap = fixture;
-    if (fixture.frames) {
-        var f = fixture.frames[0];
-        for (var i = 0; i < fixture.frames.length; i++)
-            if (toMs(fixture.frames[i].at) <= ms) f = fixture.frames[i];
-        snap = { meta: fixture.meta, responses: f.responses };
-    }
-    return M.buildScene(M.replayResponses(snap, ms), {
-        now: ms, mode: "replay", label: "REPLAYED SNAPSHOT · " + (fixture.meta.label || ""),
-        baseUrl: fixture.meta.base_url || "", projectId: fixture.meta.project_id || null
-    });
-}
+function replaySceneAt(M, fixture, ms) { return M.replayScene(fixture, ms); }
 
 // ---------------------------------------------------------------- transitions
 

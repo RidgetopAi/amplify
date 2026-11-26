@@ -39,9 +39,10 @@ test("sync-shared.sh --check fails on a drifted copy and on a symlink", (ctx) =>
     assert.match(r.stderr, /symlinks inside plugin\/: plugin\/river\/extra\.qsb/);
 });
 
-// One replay snapshot (task 844a60aa): every snapshot a shipped component replays by
-// default (Qt.resolvedUrl("<file>.json") outside plugin/*/test/) is a copy of the shared
-// capture, so orbs, river and basin show the same capture; the orbs' test-only fixture
+// One replay snapshot (task 844a60aa) on one clock (task 679fbbc5): the only shipped reader of
+// a snapshot by default (Qt.resolvedUrl("<file>.json") outside plugin/*/test/) is the scene
+// clock, whose copies read copies of the shared capture, so orbs, river and basin show the same
+// capture; the orbs' test-only fixture
 // (fixtures/test/orbs-states.json) is never referenced from shipped code.
 test("every shipped replay reads a copy of fixtures/amplify-snapshot.json", () => {
     const shared = fs.readFileSync(path.join(ROOT, "fixtures", "amplify-snapshot.json"));
@@ -58,7 +59,7 @@ test("every shipped replay reads a copy of fixtures/amplify-snapshot.json", () =
             readers.push(path.basename(f));
         }
     }
-    assert.deepEqual([...new Set(readers)].sort(), ["BasinFeed.qml", "OrbField.qml", "RiverFeed.qml"]);
+    assert.deepEqual([...new Set(readers)].sort(), ["SceneClock.qml"]);
     const { M } = require("../node.cjs");
     const src = (f) => M.replaySource(JSON.parse(fs.readFileSync(path.join(ROOT, "fixtures", f), "utf8")));
     assert.match(src("amplify-snapshot.json"), /^captured 2026-11-22T04:00:17\.000Z sessions 12 tasks \d+ records [0-9a-f]{8}$/);

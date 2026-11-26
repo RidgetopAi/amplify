@@ -5,6 +5,7 @@ import QtQuick
 import "orbs"
 import "river"
 import "basin"
+import "basin" as Shared   // SceneClock.qml: one copy per component dir (tools/sync-shared.sh), named here once
 
 // Amplify service. Loaded two ways from the same file:
 //  - inside omarchy-shell as a third-party `service` plugin (manifest.json),
@@ -146,8 +147,11 @@ Item {
     probe()
   }
 
-  OrbsLayer { id: orbsLayer; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
-  BasinFeed { id: basinFeed }
+  // The one scene clock (task 679fbbc5, decision cfce981b): orbs, every screen's river and the
+  // basin are built from its scene time and draw its caption, in replay and live.
+  Shared.SceneClock { id: sceneClock }
+  OrbsLayer { id: orbsLayer; sceneClock: sceneClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
+  BasinFeed { id: basinFeed; sceneClock: sceneClock }
 
   Variants {
     id: windows
@@ -170,7 +174,7 @@ Item {
       // own click handling.
       mask: Region { item: basin.hitItem }
 
-      River { id: river; anchors.fill: parent; animate: !root.still; trace: root.trace }
+      River { id: river; anchors.fill: parent; sceneClock: sceneClock; animate: !root.still; trace: root.trace }
 
       Basin {
         id: basin

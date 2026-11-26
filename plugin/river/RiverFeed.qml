@@ -1,43 +1,41 @@
 import Quickshell
-import Quickshell.Io
 import QtQuick
 import "mandrel.js" as Mandrel   // copy of data/mandrel.js (tools/sync-shared.sh): Quickshell blackholes imports outside the config folder
 import "river.js" as R
 
-// A river's replay clock (each River owns one unless its host sets `feed`, so
-// every screen runs its own copy of the same fixture). Plays a fixture through the data
-// layer (data/mandrel.js buildScene) and reports lane changes between
-// successive scenes, which River.qml draws as critic PASS rings and REJECT eddies.
-// Live mode (SSE + refetch) will set `scene` the same way; replay is the
-// only source until the viewer token exists (viewer contract 22d73eeb).
+// The river's scenes on the scene clock (SceneClock.qml, task 679fbbc5): builds the river
+// at the clock's moment through the data layer (Mandrel.replayScene, or the clock's live
+// fetch) and reports lane changes between successive scenes, which River.qml draws as
+// critic PASS rings and REJECT eddies. The river never runs a clock of its own:
+//  - replay: the clock holds, so the river builds the minute before the moment and then the
+//    moment, once, and the lane changes of that minute show;
+//  - live: each refetch is the next scene, and nowMs follows the clock between them.
 Scope {
   id: feed
 
-  // env-read: AMPLIFY_RIVER_FIXTURE replays this file instead of fixtures/amplify-snapshot.json.
-  // amplify-snapshot.json is a copy of fixtures/amplify-snapshot.json.
-  readonly property string fixturePath: Quickshell.env("AMPLIFY_RIVER_FIXTURE")
-    || decodeURIComponent(String(Qt.resolvedUrl("amplify-snapshot.json")).replace(/^file:\/\//, ""))
-  // env-read: AMPLIFY_RIVER_AT freezes the replay clock at this ISO time (screenshots).
-  readonly property string freezeAt: Quickshell.env("AMPLIFY_RIVER_AT") || ""
-  // env-read: AMPLIFY_RIVER_FROM starts the running replay at this ISO time (tools/headless-shot.sh idle checks).
-  readonly property string startAt: Quickshell.env("AMPLIFY_RIVER_FROM") || ""
+  // The shared scene clock (Service.qml). Unset, or with a fixture of its own, the river
+  // makes its own clock (quickshell -p plugin/river, plugin/river/test/shot.sh).
+  property var sceneClock: null
+  // env-read: AMPLIFY_RIVER_FIXTURE replays this file (on the river's own clock) instead of the shared capture.
+  readonly property string fixturePath: Quickshell.env("AMPLIFY_RIVER_FIXTURE") || ""
+  LazyLoader {
+    id: own
+    active: !feed.sceneClock || feed.fixturePath !== ""
+    SceneClock { snapshotPath: feed.fixturePath }
+  }
+  readonly property var src: feed.sceneClock && feed.fixturePath === "" ? feed.sceneClock : own.item
 
-  property real speed: 60        // virtual seconds per real second
-  property int stepMs: 1000
-  property var fixture: null
+  readonly property real beforeMs: 60000  // replay: the scene time before the moment whose lane changes show
+  readonly property int stepMs: 1000      // real ms a scene change eases over (River.qml tethers)
   property var scene: null
   property var prevScene: null
   property real nowMs: 0
-  property real fromMs: 0
-  property real toMs: 0
   property var events: []        // lane changes of the latest step
   property int serial: 0
-  readonly property string label: scene ? scene.meta.label : ""
+  // The one caption (Mandrel.sceneCaption) for the moment the river shows.
+  readonly property string caption: nowMs && src && src.scene ? Mandrel.sceneCaption(src.scene, nowMs) : ""
 
-  readonly property var mandrel: ({ buildScene: Mandrel.buildScene, replayResponses: Mandrel.replayResponses })
-
-  function advance(ms) {
-    var next = R.replaySceneAt(mandrel, fixture, ms)
+  function advance(next, ms) {
     var ev = R.transitions(scene, next)
     prevScene = scene
     nowMs = ms
@@ -47,33 +45,25 @@ Scope {
     if (ev.length) console.log("amplify: river events " + ev.map(function (e) { return e.kind + " " + e.id8 + " " + e.from + "→" + e.to }).join(", "))
   }
 
-  function load(text) {
-    fixture = JSON.parse(text)
-    console.log("amplify: replay river " + Mandrel.replaySource(fixture))
-    fromMs = Date.parse(fixture.meta.replay_from)
-    toMs = Date.parse(fixture.meta.captured_at)
-    if (freezeAt) {
-      var at = Date.parse(freezeAt)
-      advance(at - stepMs * speed)   // the step before, so its lane changes show
-      advance(at)
-    } else {
-      advance(startAt ? Date.parse(startAt) : fromMs)
+  function follow() {
+    var c = src
+    if (!c || !c.scene) return
+    if (c.live) {
+      if (c.scene !== scene) advance(c.scene, c.nowMs)
+      else nowMs = c.nowMs
+      return
     }
-  }
-
-  FileView {
-    path: feed.fixturePath
-    printErrors: true
-    onLoaded: feed.load(text())
-  }
-
-  Timer {
-    interval: feed.stepMs; repeat: true
-    running: feed.fixture !== null && feed.freezeAt === ""
-    onTriggered: {
-      var n = feed.nowMs + feed.stepMs * feed.speed
-      if (n > feed.toMs) { n = feed.fromMs; feed.scene = null }  // loop without a fake retreat
-      feed.advance(n)
+    if (c.nowMs === nowMs && scene) return
+    if (!scene) {
+      console.log("amplify: replay river " + Mandrel.replaySource(c.snapshot))
+      advance(R.replaySceneAt(Mandrel, c.snapshot, c.nowMs - beforeMs), c.nowMs - beforeMs)
     }
+    advance(R.replaySceneAt(Mandrel, c.snapshot, c.nowMs), c.nowMs)
+  }
+  onSrcChanged: follow()
+  Connections {
+    target: feed.src
+    function onSceneChanged() { feed.follow() }
+    function onNowMsChanged() { feed.follow() }
   }
 }

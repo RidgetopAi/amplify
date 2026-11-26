@@ -294,39 +294,45 @@ AMPLIFY_READY_MS=0 plugin "$RUN/broken-river/plugin"; shot_stop "$QS"; cp "$RUN/
 screens "$RUN/early-broken.log" ready | sed 's/^/broken river before the first frame: /'
 all2 "$RUN/early-broken.log" ready "shader=error " && pass "a broken river reports shader=error before the first frame" \
   || fail "a broken river reads other than shader=error before the first frame"
-# One capture (task 844a60aa): the shipped plugin's orbs, river and basin each log the snapshot
-# they replay (data/mandrel.js replaySource) and, traced, each caption they draw. All must name
-# one capture, every caption its captured time, and the river's time must read as its last change.
+# One capture on one clock (tasks 844a60aa, 679fbbc5): the shipped plugin's orbs, river and basin
+# each log the snapshot they replay (data/mandrel.js replaySource) and, traced, the scene time
+# they are drawn at ("amplify: scene <comp> at <ISO>") and the caption they draw. All must replay
+# one capture, be drawn at one moment, the capture (replay holds there), and draw one caption
+# (Mandrel.sceneCaption) naming that moment: "REPLAYED SNAPSHOT · <label> · as of <moment> ·
+# last activity <time>", to the minute.
 ORBS_FIXTURE= plugin; shot_stop "$QS"; cp "$RUN/plugin.log" "$RUN/one.log"
 srcs=$(grep -aoE "amplify: replay (orbs|river|basin) .*" "$RUN/one.log" | sort -u)
-caps=$(grep -aoE "amplify: caption (orbs|river) .*" "$RUN/one.log")
-sed 's/^/  /' <<< "$srcs"; sort -u <<< "$caps" | head -4 | sed 's/^/  /'
-want=$(sed -E 's/.* captured ([^ ]+) .*/\1/; s/\.000Z$/Z/' <<< "$srcs" | sort -u)
+# latest <what>: "<comp><TAB><value>" of each component's last "amplify: <what> <comp> <value>" line.
+latest() { grep -aoE "amplify: $1 (orbs|river|basin) .*" "$RUN/one.log" | sed -E "s/^amplify: $1 //" \
+  | awk '{ i = index($0, " "); v[substr($0, 1, i - 1)] = substr($0, i + 1) } END { for (c in v) print c "\t" v[c] }' | sort; }
+moments=$(latest scene) caps=$(latest caption)
+sed 's/^/  /' <<< "$srcs"; sed 's/^/  scene /' <<< "$moments"; sed 's/^/  caption /' <<< "$caps"
+want=$(sed -E 's/.* captured ([^ ]+) .*/\1/' <<< "$srcs" | sort -u)
+wantmin="$(date -u -d "$want" +'%Y-%m-%d %H:%M' 2>/dev/null)Z"
+comps() { cut -f1 <<< "$1" | tr '\n' ' '; }
 [[ $(awk '{ print $3 }' <<< "$srcs" | sort -u | tr '\n' ' ') == "basin orbs river " && $(sed -E 's/^amplify: replay [a-z]+ //' <<< "$srcs" | sort -u | grep -c .) == 1 \
-   && $(awk '{ print $3 }' <<< "$caps" | sort -u | tr '\n' ' ') == "orbs river " && $(grep -oE "captured [^ ]+" <<< "$caps" | sort -u) == "captured $want" \
-   && -n $(grep "  ·  changed " <<< "$caps") && -z $(grep -E "^amplify: caption river .*  ·  [0-9]" <<< "$caps") ]] \
-  && pass "one capture: orbs, river and basin replay the same snapshot, every caption reads captured $want, the river's time reads 'changed'" \
-  || fail "components or captions disagree on the capture (want one replay source and 'captured ${want:-?}' in every caption, river time as 'changed')"
+   && $(comps "$moments") == "basin orbs river " && $(cut -f2 <<< "$moments" | sort -u) == "at $want" \
+   && $(comps "$caps") == "basin orbs river " && $(cut -f2 <<< "$caps" | sort -u | grep -c .) == 1 \
+   && $(cut -f2 <<< "$caps" | head -1) =~ ^REPLAYED\ SNAPSHOT\ ·\ .+\ ·\ as\ of\ $wantmin\ ·\ last\ activity\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}Z$ ]] \
+  && pass "one clock: orbs, river and basin replay one snapshot, are drawn at its capture $want and draw one caption (as of $wantmin)" \
+  || fail "orbs, river and basin disagree on the moment or caption (want one replay source, every scene at ${want:-?}, one caption 'REPLAYED SNAPSHOT · … · as of $wantmin · last activity …')"
 cat "$RUN/two.log" "$RUN/early.log" "$RUN/early-broken.log" "$RUN/one.log" >> "$RUN/plugin-main.log"
 mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 
 # Idle CPU on a model of Brian's desktop (task 8b5eca2f): three outputs (1920x1080,
 # 1920x1080, 2560x1440), the whole plugin animated (orbs, river and basin on every screen,
-# six windows), replaying the shipped capture with nothing changing: the river frozen at flow 0
-# (04:30Z), the orbs' client clock from 04:38:18Z, capture + 38 min (one lost orb turning, its
-# lease draining in 42 s steps, the last at 04:38:16Z, so none falls in the window; the rest
-# dormant), basin rows from the amp capture. After 6 s to settle, over 10 s: Quickshell
+# six windows), replaying the shipped capture with nothing changing: the one scene clock held at
+# 04:38:18Z, capture + 38 min (AMPLIFY_SCENE_AT: the river at flow 0, one lost orb turning, its
+# lease held, the rest dormant), basin rows from the amp capture. After 6 s to settle, over 10 s: Quickshell
 # under 2 % of one core (decision 25eced40); no amplify window swaps a frame; each
 # amplify-orbs window swaps under one frame a second, the lost orb's turn (AMPLIFY_FPS=1
 # logs each window's swapped frames every 5 s). On llvmpipe one frame of these windows
 # costs about 20 ms of CPU, so this budget leaves no room for a clock that runs on its own.
 # Then two more runs on the same outputs (task 118f6917):
-#  - the river replay running (not frozen) at flow 0 with nothing changing, from 22:00Z
-#    (no river change until 00:28Z, 148 s of replay), orbs idle as above: over 30 s no
-#    amplify window swaps a single frame (a once-a-second caption or clock would);
-#  - live orbs spinning (the orbs' replay from its capture, river frozen at flow 0): over
-#    20 s (client time about 7-27 s, with a live coord and two forming workers whose leases
-#    step, so eases run in it) each amplify-orbs
+#  - the same held scene over 30 s: no amplify window swaps a single frame (a once-a-second
+#    caption or clock would; task 679fbbc5: the replayed scene clock never steps);
+#  - live orbs spinning (the scene clock held at the capture: a live coord and two forming
+#    workers) over 20 s, each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
 #    (125 ms), at most 9 frames/s in any 5 s, and at most one frame a second more than
 #    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
@@ -359,7 +365,7 @@ showfps() { awk -v n="$1" '{ v[$1 " " $2] = v[$1 " " $2] " " $3 ($4 == "-" ? "" 
 screens3() { (( $(awk -v w="$1" '$1 == w { s[$2] = 1 } END { print length(s) }' <<< "$2") == 3 )); }
 qmlerr() { grep -acE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$1"; }
 
-out=$(fpsrun "$RUN/idle.log" 10 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T04:38:18Z)
+out=$(fpsrun "$RUN/idle.log" 10 AMPLIFY_SCENE_AT=2026-11-22T04:38:18Z)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out")
 sizes=$(grep -ao "amplify: ready .* size=[0-9x]*" "$RUN/idle.log" | sed 's/.*screen=//' | sort | tr '\n' ' ')
 echo "idle: screens $sizes"
@@ -377,15 +383,15 @@ screens3 amplify-orbs "$fps" && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
   && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on 3 screens, under 1)" \
   || fail "idle: an orbs window draws faster than its records move (worst $worst fps; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no))"
 
-out=$(fpsrun "$RUN/idle-river.log" 30 AMPLIFY_RIVER_FROM=2026-11-21T22:00:00Z AMPLIFY_ORBS_FROM=2026-11-22T04:38:18Z)
-fps=$(tail -n +2 <<< "$out"); showfps "river running" "$fps"
+out=$(fpsrun "$RUN/idle-river.log" 30 AMPLIFY_SCENE_AT=2026-11-22T04:38:18Z)
+fps=$(tail -n +2 <<< "$out"); showfps "held" "$fps"
 frames=$(awk '$1 == "amplify" { f += $3 * 5 } END { printf "%d", f + 0.5 }' <<< "$fps")
 rerr=$(qmlerr "$RUN/idle-river.log")
 screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
-  && pass "idle, river replay running at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
-  || fail "idle, river replay running at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
+  && pass "idle, scene held at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
+  || fail "idle, scene held at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
 
-out=$(fpsrun "$RUN/live-orbs.log" 20 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z)
+out=$(fpsrun "$RUN/live-orbs.log" 20)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
 echo "  live orbs: Quickshell at $pct % of one core"
 # Per 5 s line: frames/s over 9, steps/s over 8.6, or frames/s over steps/s + 1 (when logged).

@@ -14,7 +14,6 @@ Item {
   property int maxRows: 5
   readonly property alias hitItem: list
   readonly property int count: feed.rows.length
-  readonly property bool replay: !!(feed.activeScene && feed.activeScene.meta && feed.activeScene.meta.mode === "replay")
   signal opened(string url)
   // The pool's program, for the ready line (Service.qml); none while the pool is hidden (no rows).
   function shaders() { return pool.visible ? [pool] : [] }
@@ -75,7 +74,7 @@ Item {
 
   Item {
     id: header
-    width: parent.width; height: 46
+    width: parent.width; height: caption.y + caption.height
     Text {
       id: headline
       x: 6; y: 0
@@ -85,10 +84,24 @@ Item {
       Behavior on color { enabled: basin.animate; ColorAnimation { duration: 900 } }
     }
     Text {
+      id: sub
       x: 7; anchors.top: headline.bottom; anchors.topMargin: 3
-      text: ("by urgency · one click to the exact place" + (basin.replay ? " · replayed snapshot" : "")).toUpperCase()
+      text: "by urgency · one click to the exact place".toUpperCase()
       color: basin.count ? "#8a6f63" : "#4a5263"; font.family: basin.mono; font.pixelSize: 10; font.letterSpacing: 1.2
     }
+    // The one caption (Mandrel.sceneCaption, task 679fbbc5): the moment shown and its last
+    // activity, the same text the orbs and river draw.
+    Text {
+      id: caption
+      x: 7; width: parent.width - 14; anchors.top: sub.bottom; anchors.topMargin: 4
+      text: basin.feed.caption
+      wrapMode: Text.Wrap
+      color: "#7d8799"; opacity: 0.85; font.family: basin.mono; font.pixelSize: 10; font.letterSpacing: 1.0
+      // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
+      onTextChanged: if (basin.trace && caption.text !== "") console.log("amplify: caption basin " + caption.text)
+    }
+    readonly property real shownMs: basin.feed.activeScene ? basin.feed.now : 0
+    onShownMsChanged: if (basin.trace && shownMs) console.log("amplify: scene basin at " + new Date(shownMs).toISOString())
   }
 
   ListView {

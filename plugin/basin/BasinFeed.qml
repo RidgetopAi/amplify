@@ -9,16 +9,15 @@ import "basin.js" as Basin
 
 // One feed per shell (mount at the plugin root, not per screen): Amp live
 // thread state from `amp top --stream-jsonl`, falling back to polling
-// `amp threads list --json` while the stream is down, plus the Mandrel scene.
-// Pass `scene` to share another component's scene; otherwise this feed builds
-// its own (live with MANDREL_URL + MANDREL_VIEWER_TOKEN, else the replayed
-// snapshot).
+// `amp threads list --json` while the stream is down, plus the Mandrel scene of
+// the scene clock (SceneClock.qml, task 679fbbc5) the orbs and river read, at its moment.
 QtObject {
   id: feed
 
-  property var scene: null
-  readonly property var activeScene: scene || ownScene
-  property var ownScene: null
+  required property var sceneClock
+  readonly property var activeScene: sceneClock.scene
+  // The one caption (Mandrel.sceneCaption) for the moment the basin shows.
+  readonly property string caption: activeScene ? Mandrel.sceneCaption(activeScene, now) : ""
   property var amp: null
   property string ampSource: "none"     // top | list | fixture | none
   property var rows: []
@@ -30,26 +29,24 @@ QtObject {
   readonly property string ampFixture: Quickshell.env("AMPLIFY_AMP_FIXTURE") || ""
   // env-read: AMPLIFY_NOW pins the clock (ISO or ms) for deterministic captures.
   readonly property string pinnedNow: Quickshell.env("AMPLIFY_NOW") || ""
-  // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (see data/README.md).
-  readonly property var config: Mandrel.resolveConfig({
-    MANDREL_URL: Quickshell.env("MANDREL_URL") || "",
-    MANDREL_VIEWER_TOKEN: Quickshell.env("MANDREL_VIEWER_TOKEN") || ""
-  })
-
   property var _reader: Amp.createTopReader(function (s) { feed.amp = s; feed.ampSource = "top"; feed.rebuild() })
   property int _topFailures: 0
 
   function clock() { return pinnedNow ? (Number(pinnedNow) || Date.parse(pinnedNow)) : Date.now() }
 
+  // Mandrel rows at the scene clock's moment; Amp thread waits on the wall clock (or AMPLIFY_NOW).
   function rebuild() {
     var sc = activeScene
-    // A replayed snapshot keeps its own clock, so its sessions do not decay to lost.
-    var replay = sc && sc.meta && sc.meta.mode === "replay"
-    now = replay ? Date.parse(sc.meta.builtAt) : clock()
-    if (sc && !scene && !replay) Mandrel.tickScene(sc, now)
+    now = sc ? sceneClock.nowMs : clock()
+    if (sc) Mandrel.tickScene(sc, now)
     rows = Basin.buildBasin(sc, amp, { now: now, threadNow: clock() })
   }
-  onActiveSceneChanged: rebuild()
+  onActiveSceneChanged: {
+    if (activeScene && activeScene.meta.mode === "replay")
+      console.log("amplify: replay basin " + Mandrel.replaySource(sceneClock.snapshot))
+    rebuild()
+  }
+  property Connections _clock: Connections { target: feed.sceneClock; function onNowMsChanged() { feed.rebuild() } }
 
   property list<QtObject> _parts: [
     // Primary: the live stream. Every line is a full thread list.
@@ -98,31 +95,7 @@ QtObject {
       }
     },
 
-    // Mandrel scene when no one shares one: live polling, else the snapshot.
-    FileView {
-      id: snapshotFile
-      // Copied in (tools/sync-shared.sh): Quickshell blackholes paths outside the config directory.
-      path: Qt.resolvedUrl("amplify-snapshot.json").toString().replace(/^file:\/\//, "")
-      printErrors: false
-      onLoaded: if (!feed.scene && feed.config.mode !== "live") {
-        var snap = JSON.parse(text())
-        console.log("amplify: replay basin " + Mandrel.replaySource(snap))
-        var at = Date.parse(snap.meta.captured_at)
-        feed.ownScene = Mandrel.createReplayDriver(snap, {}).sceneAt(at)
-      }
-    },
-    Timer {
-      interval: 30000; repeat: true; triggeredOnStart: true
-      running: !feed.scene && feed.config.mode === "live"
-      onTriggered: {
-        var fetch = Mandrel.fetcherFor(feed.config, Mandrel.xhrTransport(), null)
-        Mandrel.loadScene(fetch, { baseUrl: feed.config.baseUrl, mode: "live" }).then(
-          function (sc) { feed.ownScene = sc },
-          function (err) { console.log("amplify: basin scene fetch failed " + err) })
-      }
-    },
-
-    // Waiting times and client-clock liveness move without a refetch.
+    // Amp thread waiting times move without a refetch.
     Timer { interval: 15000; repeat: true; running: !feed.pinnedNow; onTriggered: feed.rebuild() }
   ]
 
