@@ -36,7 +36,8 @@
 # ends cannot hang the catalogue.
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
-# plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), mutate (node --test
+# plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), qsb
+# (tools/build-shaders.sh --check: the committed .qsb match their sources), mutate (node --test
 # tools/motion/test/mutate.test.mjs: this runner on stub gates; for mutations of this
 # file, which the whole motion gate would also fail on its own catalogue check), river-shot
 # (plugin/river/test/shot.sh), orbs-shot (plugin/orbs/test/shot.sh), headless
@@ -77,12 +78,12 @@ gates_of() { node -e 'const m = require(process.argv[1]).mutations.find((x) => x
 
 declare -A CMD=(
   [data]="node --test data/test/" [orbs]="node --test plugin/orbs/test/" [river]="node --test plugin/river/test/"
-  [motion]="node --test tools/motion/test/" [spec]="node tools/motion/spec.mjs"
+  [motion]="node --test tools/motion/test/" [spec]="node tools/motion/spec.mjs" [qsb]="tools/build-shaders.sh --check"
   [mutate]="node --test tools/motion/test/mutate.test.mjs"
   [river-shot]="plugin/river/test/shot.sh" [orbs-shot]="plugin/orbs/test/shot.sh" [headless]="tools/headless-shot.sh"
   [headless-pair]="tools/headless-pair.sh"
 )
-ORDER=(data orbs river motion spec mutate headless headless-pair orbs-shot river-shot)   # cheapest first
+ORDER=(data orbs river motion spec qsb mutate headless headless-pair orbs-shot river-shot)   # cheapest first
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"

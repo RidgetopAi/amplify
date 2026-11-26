@@ -149,13 +149,14 @@ test("the spec check fails when a row is deleted or an animation is added withou
 test("the mutation catalogue applies to this tree and covers the river records", () => {
     const all = catalogue(), ids = all.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, "ids unique");
-    const gates = new Set(["data", "orbs", "river", "motion", "spec", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair"]);
+    const gates = new Set(["data", "orbs", "river", "motion", "spec", "qsb", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair"]);
     for (const m of all) {
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);
     }
     for (const id of ["K1-lease-tween-removed", "K2-hull-y-target", "K4-tether-y2-target", "K14-pass-ring-still-only", "X1-tether-voff-behavior-removed", "SP-row-deleted", "XG1-service-trace-off-in-still", "XG1b-untraced-still-pool-fades", "XG2-unlisted-animator",
-                     "GA-basin-untraced-in-still", "GAb-basin-untraced-still-pool-fades", "N1-blank-capture-guard-off", "G3-broken-pool-frag", "G6-shader-error-only-for-orbs"])
+                     "GA-basin-untraced-in-still", "GAb-basin-untraced-still-pool-fades", "N1-blank-capture-guard-off", "G3-broken-pool-frag", "G6-shader-error-only-for-orbs",
+                     "QG1-beam-qsb-truncated", "QG2-beam-source-not-rebuilt", "PC1-critic-body-magenta", "PC2-critic-body-black-quad", "PC3-beam-fills-quad-white"])
         assert.ok(ids.includes(id), id);
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
 });
