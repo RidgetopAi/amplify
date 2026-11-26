@@ -33,6 +33,41 @@ Item {
   onSpinRateChanged: { spinBase = spinBase + clock * (spinFrom - spinRate); spinFrom = spinRate }
   Component.onCompleted: spinFrom = spinRate
 
+  // State changes ease over a second, so a decay reads as a decay. The eases step on the
+  // field's step clock (OrbField `stepMs`, at most 8 steps a second), not on Qt's
+  // animation driver: a NumberAnimation drew every frame between spin steps, and starting
+  // one made every Amplify window draw a frame (task 118f6917).
+  property real stepMs: 0          // the field's step clock, wall ms of its last step
+  signal eased(real until)         // an ease started; the step clock runs until `until`
+  component Ease: Item {          // a child of the view (`parent`); draws nothing
+    visible: false
+    required property real to      // what the record asks for
+    property int duration: 900
+    property bool quad: false      // InOutQuad, else linear
+    property real from: 0
+    property real goal: 0
+    property real t0: 0
+    property bool ready: false
+    readonly property real value: {
+      if (!ready || !parent.animate) return to
+      var p = Math.min(1, Math.max(0, (parent.stepMs - t0) / duration))
+      if (quad) p = p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p)
+      return from + (goal - from) * p
+    }
+    // From what is drawn now; the step clock moves it on from the next step.
+    onToChanged: if (ready) { from = value; goal = to; t0 = Date.now(); parent.eased(t0 + duration) }
+    Component.onCompleted: { from = to; goal = to; ready = true }
+  }
+  Ease { id: satE; to: view.orb ? view.orb.sat : 0; duration: 1200; quad: true }
+  Ease { id: lightE; to: view.orb ? view.orb.light : 0; duration: 1200; quad: true }
+  Ease { id: dormE; to: view.orb ? view.orb.dorm : 0; duration: 1600 }
+  Ease { id: lostE; to: view.orb ? view.orb.lost : 0; duration: 900 }
+  Ease { id: needE; to: view.orb ? view.orb.need : 0; duration: 900 }
+  Ease { id: endedE; to: view.orb ? view.orb.ended : 0; duration: 1500 }
+  Ease { id: formE; to: view.orb ? view.orb.form : 1; duration: 800 }
+  Ease { id: energyE; to: view.orb ? view.orb.energy : 0; duration: 800 }
+  Ease { id: levelE; to: view.orb && view.orb.task ? view.orb.task.lease : 0; duration: 900 }
+
   // Drawn: the orb's centre and opacity, the eased material uniforms, spin angle
   // and lease level; '<axis>:to' is what the session record asks for.
   Loader {
@@ -60,14 +95,14 @@ Item {
     // The surface still turns with the spin angle.
     property real time: 2.3
     property real angle: view.spinBase + view.clock * view.spinFrom
-    property real sat: view.orb ? view.orb.sat : 0
-    property real light: view.orb ? view.orb.light : 0
-    property real energy: view.orb ? view.orb.energy : 0
-    property real form: view.orb ? view.orb.form : 1
-    property real dorm: view.orb ? view.orb.dorm : 0
-    property real lost: view.orb ? view.orb.lost : 0
-    property real ended: view.orb ? view.orb.ended : 0
-    property real need: view.orb ? view.orb.need : 0
+    property real sat: satE.value
+    property real light: lightE.value
+    property real energy: energyE.value
+    property real form: formE.value
+    property real dorm: dormE.value
+    property real lost: lostE.value
+    property real ended: endedE.value
+    property real need: needE.value
     property real fuse: view.orb ? view.orb.fuse : -1
     property real pulse: view.orb ? view.orb.pulse : 1
     property real seed: view.orb ? view.orb.seed : 0
@@ -77,15 +112,6 @@ Item {
     property color alarm: view.alarm
     property color warm: view.warm
 
-    // State changes ease over a second, so a decay reads as a decay.
-    Behavior on sat { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }
-    Behavior on light { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }
-    Behavior on dorm { enabled: view.animate; NumberAnimation { duration: 1600 } }
-    Behavior on lost { enabled: view.animate; NumberAnimation { duration: 900 } }
-    Behavior on need { enabled: view.animate; NumberAnimation { duration: 900 } }
-    Behavior on ended { enabled: view.animate; NumberAnimation { duration: 1500 } }
-    Behavior on form { enabled: view.animate; NumberAnimation { duration: 800 } }
-    Behavior on energy { enabled: view.animate; NumberAnimation { duration: 800 } }
   }
 
   // Lease vessel, hung from the worker's knot (or below any holder's limb).
@@ -104,7 +130,7 @@ Item {
       blending: true
       fragmentShader: Qt.resolvedUrl("../shaders/orbvessel.frag.qsb")
       property real time: 2.3   // meniscus held, as `time` above
-      property real level: view.orb && view.orb.task ? view.orb.task.lease : 0
+      property real level: levelE.value
       property real held: view.orb && view.orb.task && view.orb.task.held ? 1 : 0
       property real wPx: width
       property real hPx: height
@@ -112,7 +138,6 @@ Item {
       // Mono (silhouette proof): neutral liquid and glass, so only shape carries the role.
       property color liquid: view.mono ? "#b4b4b4" : view.orb && view.orb.task ? view.orb.task.color : "#919ef7"
       property color glass: view.mono ? "#d0d0d0" : view.hue
-      Behavior on level { enabled: view.animate; NumberAnimation { duration: 900 } }
     }
 
     Text {

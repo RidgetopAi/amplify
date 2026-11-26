@@ -25,7 +25,9 @@
 #      frame);
 #   6. idle on a model of the desktop (task 8b5eca2f): three outputs (one 2560x1440), the
 #      whole plugin animated, the replay with nothing changing: Quickshell under 2 % of one
-#      core, no river/basin window redraws, each orbs window under one frame a second.
+#      core, no river/basin window redraws, each orbs window under one frame a second;
+#      with the river replay running at flow 0, no river/basin frame in 30 s; with live orbs
+#      spinning, each orbs window within its clock (task 118f6917).
 #      Screenshots are taken in a scratch directory
 #      and copied to docs/spike only when every check passed, so a failed or
 #      unrendered run (e.g. no HEADLESS_MESA without a GPU) never overwrites them.
@@ -217,37 +219,81 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 # amplify-orbs window swaps under one frame a second, the lost orb's turn (AMPLIFY_FPS=1
 # logs each window's swapped frames every 5 s). On llvmpipe one frame of these windows
 # costs about 20 ms of CPU, so this budget leaves no room for a clock that runs on its own.
+# Then two more runs on the same outputs (task 118f6917):
+#  - the river replay running (not frozen) at flow 0 with nothing changing, from 22:00Z
+#    (no river change until 00:28Z, 148 s of replay), orbs idle as above: over 30 s no
+#    amplify window swaps a single frame (a once-a-second caption or clock would);
+#  - live orbs spinning (the orbs' replay from its capture, river frozen at flow 0): over
+#    20 s (client time about 7-27 s, which holds a lease step at 9 s, the forming orb's form
+#    step at 17 s and lease steps at 21 and 25 s, so eases run in it) each amplify-orbs
+#    window draws no more than its clock: at most 8.6 steps/s
+#    (125 ms), at most 9 frames/s in any 5 s, and at most one frame a second more than
+#    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
 swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
 swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
 swaymsg create_output > /dev/null; swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null; sleep 1
-AMPLIFY_FPS=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" \
-  AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z \
-  quickshell -p "$ROOT/plugin" > "$RUN/idle.log" 2>&1 & QS=$!; PIDS+=($QS)
-for _ in $(seq 100); do grep -aq "amplify: ready" "$RUN/idle.log" && break; sleep 0.1; done
-sleep 6
-CLK=$(getconf CLK_TCK) c0=$(awk '{ print $14 + $15 }' "/proc/$QS/stat") l0=$(wc -l < "$RUN/idle.log")
-sleep 10
-c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+# fpsrun <log> <seconds> <env...>: the plugin animated with AMPLIFY_FPS=1 on these outputs; after
+# 6 s to settle, samples Quickshell's CPU over <seconds>, then prints its percent of one core
+# and, one per line, "<window> <screen> <fps> <steps/s or ->" logged inside that span.
+fpsrun() {
+  local log=$1 secs=$2; shift 2
+  env AMPLIFY_FPS=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" "$@" \
+    quickshell -p "$ROOT/plugin" > "$log" 2>&1 & QS=$!; PIDS+=($QS)
+  for _ in $(seq 100); do grep -aq "amplify: ready" "$log" && break; sleep 0.1; done
+  sleep 6
+  local clk c0 c1 l0; clk=$(getconf CLK_TCK) c0=$(awk '{ print $14 + $15 }' "/proc/$QS/stat") l0=$(wc -l < "$log")
+  sleep "$secs"
+  c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+  awk -v t=$((c1 - c0)) -v k="$clk" -v s="$secs" 'BEGIN { printf "%.1f\n", t / k / s * 100 }'
+  tail -n +"$((l0 + 1))" "$log" | grep -aoE "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*( steps=[0-9.]*)?" \
+    | sed 's/amplify: fps window=//; s/ screen=/ /; s/ steps=/ /' | awk '{ print $1, $2, $3, ($4 == "" ? "-" : $4) }'
+}
+# showfps <name> <fps lines>: each window's 5 s rates (frames/s, or frames/s/steps/s).
+showfps() { awk -v n="$1" '{ v[$1 " " $2] = v[$1 " " $2] " " $3 ($4 == "-" ? "" : "/" $4) } END { for (k in v) print "  " n " fps " k ":" v[k] }' <<< "$2" | sort; }
+# screens3 <window> <fps lines>: true when all three screens logged that window.
+screens3() { (( $(awk -v w="$1" '$1 == w { s[$2] = 1 } END { print length(s) }' <<< "$2") == 3 )); }
+qmlerr() { grep -acE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$1"; }
+
+out=$(fpsrun "$RUN/idle.log" 10 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z)
+pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out")
 sizes=$(grep -ao "amplify: ready .* size=[0-9x]*" "$RUN/idle.log" | sed 's/.*screen=//' | sort | tr '\n' ' ')
 echo "idle: screens $sizes"
-pct=$(awk -v t=$((c1 - c0)) -v k="$CLK" 'BEGIN { printf "%.1f", t / k / 10 * 100 }')
-idlerr=$(grep -acE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/idle.log")
-[[ $sizes == "HEADLESS-1 size=1920x1080 HEADLESS-2 size=1920x1080 HEADLESS-3 size=2560x1440 " ]] && (( (c1 - c0) * 100 <= 2 * 10 * CLK && idlerr == 0 )) \
+idlerr=$(qmlerr "$RUN/idle.log")
+[[ $sizes == "HEADLESS-1 size=1920x1080 HEADLESS-2 size=1920x1080 HEADLESS-3 size=2560x1440 " ]] && awk -v p="$pct" 'BEGIN { exit !(p <= 2) }' && (( idlerr == 0 )) \
   && pass "idle: three outputs, orbs + river + basin animated, Quickshell at $pct % of one core (budget 2 %)" \
   || fail "idle: Quickshell at $pct % of one core over 10 s on three outputs (budget 2 %; screens: $sizes; $idlerr QML errors)"
-# The windows' frame rates logged inside the 10 s: "<window> <screen> <fps>" per line.
-fps=$(tail -n +"$((l0 + 1))" "$RUN/idle.log" | grep -ao "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*" | sed 's/amplify: fps window=//; s/ screen=/ /')
-echo "$fps" | awk '{ v[$1 " " $2] = v[$1 " " $2] " " $3 } END { for (k in v) print "  idle fps " k ":" v[k] }' | sort
-n=$(awk '$1 == "amplify" { s[$2] = 1 } END { print length(s) }' <<< "$fps") worst=$(awk '$1 == "amplify" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
-(( n == 3 )) && awk -v m="$worst" 'BEGIN { exit !(m <= 0.2) }' \
-  && pass "idle: no river/basin window redraws at flow 0 with nothing changing (worst $worst fps on $n screens)" \
-  || fail "idle: a river/basin window keeps drawing with nothing changing (worst $worst fps, $n of 3 screens logged)"
-n=$(awk '$1 == "amplify-orbs" { s[$2] = 1 } END { print length(s) }' <<< "$fps") worst=$(awk '$1 == "amplify-orbs" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
-(( n == 3 )) && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
-  && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on $n screens, under 1)" \
-  || fail "idle: an orbs window draws faster than its records move (worst $worst fps, $n of 3 screens logged)"
-grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/idle.log" | head -3 | sed 's/^/  idle: /'
-grep -av "amplify: fps" "$RUN/idle.log" >> "$RUN/plugin.log"
+showfps idle "$fps"
+worst=$(awk '$1 == "amplify" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
+screens3 amplify "$fps" && awk -v m="$worst" 'BEGIN { exit !(m <= 0.2) }' \
+  && pass "idle: no river/basin window redraws at flow 0 with nothing changing (worst $worst fps on 3 screens)" \
+  || fail "idle: a river/basin window keeps drawing with nothing changing (worst $worst fps; all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no))"
+worst=$(awk '$1 == "amplify-orbs" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
+screens3 amplify-orbs "$fps" && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
+  && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on 3 screens, under 1)" \
+  || fail "idle: an orbs window draws faster than its records move (worst $worst fps; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no))"
+
+out=$(fpsrun "$RUN/idle-river.log" 30 AMPLIFY_RIVER_FROM=2026-11-21T22:00:00Z AMPLIFY_ORBS_FROM=2026-11-22T05:24:10Z)
+fps=$(tail -n +2 <<< "$out"); showfps "river running" "$fps"
+frames=$(awk '$1 == "amplify" { f += $3 * 5 } END { printf "%d", f + 0.5 }' <<< "$fps")
+rerr=$(qmlerr "$RUN/idle-river.log")
+screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
+  && pass "idle, river replay running at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
+  || fail "idle, river replay running at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
+
+out=$(fpsrun "$RUN/live-orbs.log" 20 AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z)
+pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
+echo "  live orbs: Quickshell at $pct % of one core"
+# Per 5 s line: frames/s over 9, steps/s over 8.6, or frames/s over steps/s + 1 (when logged).
+over=$(awk '$1 == "amplify-orbs" && ($3 > 9 || ($4 != "-" && ($4 > 8.6 || $3 > $4 + 1))) { print $2 " " $3 ($4 == "-" ? "" : " fps, " $4 " steps/s") }' <<< "$fps" | head -3 | tr '\n' ';')
+spun=$(awk '$1 == "amplify-orbs" && ($4 == "-" || $4 >= 1) { n++ } END { print n + 0 }' <<< "$fps")
+lerr=$(qmlerr "$RUN/live-orbs.log")
+screens3 amplify-orbs "$fps" && [[ -z $over ]] && (( spun > 0 && lerr == 0 )) \
+  && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s, <= steps + 1; 3 screens)" \
+  || fail "live orbs spinning: an orbs window draws above its clock (${over:-none over}; spinning lines $spun; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no); $lerr QML errors)"
+for f in idle idle-river live-orbs; do
+  grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/$f.log" | head -3 | sed "s/^/  $f: /"
+  grep -av "amplify: fps" "$RUN/$f.log" >> "$RUN/plugin.log"
+done
 
 grep -ah "amplify:\|harness:\|WARN\|ERROR" "$RUN/plugin.log" "$RUN/harness.log" | grep -v "amplify: trace" | sed 's/^/  /'
 # A blank capture (nothing rendered) has no spread; a real one has wallpaper, water and orbs.

@@ -85,9 +85,9 @@
       "stop": "not animated (cosmetic desync with river-2, ungated by design)", "code": [], "parts": []
     },
     {
-      "id": "orbs-clock", "comp": "orbs", "what": "Spin clock for every orb: real seconds, stepped each time the fastest drawn rim turns Orbs.SPIN_STEP_PX (at most 8 steps/s); the shaders' surface time is held (task 8b5eca2f)",
-      "record": "the drawn sessions' liveness spin rates (orbs.js MATERIAL: live, forming, quiet, lost spin; dormant and ended do not)", "trigger": "a drawn orb spins, animate && visible", "start": "where it stopped", "end": "runs while an orb spins (1/s)",
-      "stop": "no drawn orb spins, !animate or !visible",
+      "id": "orbs-clock", "comp": "orbs", "what": "Spin clock for every orb: real seconds, stepped each time the fastest drawn rim turns Orbs.SPIN_STEP_PX (at most 8 steps/s); the shaders' surface time is held (task 8b5eca2f). The same clock paces the orb eases (orbs-orb): every 125 ms while one runs, so a window draws at most 8 frames a second (task 118f6917)",
+      "record": "the drawn sessions' liveness spin rates (orbs.js MATERIAL: live, forming, quiet, lost spin; dormant and ended do not)", "trigger": "a drawn orb spins, animate && visible", "start": "where it stopped", "end": "runs while an orb spins (1/s) or an ease runs",
+      "stop": "no drawn orb spins and no ease runs, !animate or !visible",
       "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: spinClock" }],
       "parts": [{ "part": "clock", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
     },
@@ -101,12 +101,12 @@
       "id": "orbs-orb", "comp": "orbs", "what": "Orb material eases between liveness states; surface spins at its liveness rate; lease vessel level eases",
       "record": "session liveness, last_activity_at, endedAt, creation_reason; held task claim_expires_at (orbProps)",
       "trigger": "each client tick or refetch", "start": "the last value", "end": "the record's value",
-      "stop": "each tween ends (0.8..1.6 s); the spin angle is spinBase + orbs clock x liveness spin rate, so it stops with the clock or when dormant/ended",
-      "code": [{ "file": "plugin/orbs/OrbView.qml", "line": "Behavior on sat" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on light" },
-               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on dorm" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on lost" },
-               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on need" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on ended" },
-               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on form" }, { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on energy" },
-               { "file": "plugin/orbs/OrbView.qml", "line": "Behavior on level" }],
+      "stop": "each tween ends (0.8..1.6 s), stepping on the orbs clock (OrbField spinClock, every 125 ms while one runs; never on the animation driver, task 118f6917); the spin angle is spinBase + orbs clock x liveness spin rate, so it stops with the clock or when dormant/ended",
+      "code": [{ "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: satE" }, { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: lightE" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: dormE" }, { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: lostE" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: needE" }, { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: endedE" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: formE" }, { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: energyE" },
+               { "file": "plugin/orbs/OrbView.qml", "line": "Ease { id: levelE" }],
       "parts": [{ "part": "orb", "axes": {
         "x": { "kind": "step", "eps": 0.5 }, "y": { "kind": "step", "eps": 0.5 },
         "opacity": { "kind": "step", "eps": 0.001 },
@@ -124,7 +124,7 @@
     {
       "id": "orbs-beam", "comp": "orbs", "what": "Activity beam between two orbs fades with the link's age",
       "record": "scene.links[] (session activity), age on the client clock", "trigger": "each client tick", "start": "alpha at the link age", "end": "gone after 30 min",
-      "stop": "not animated: placed and faded per tick; its packet moves with the orbs clock",
+      "stop": "not animated: placed and faded per tick; its packet is held (Beam.qml time 2.3: no record moves it, task 8b5eca2f)",
       "code": [{ "file": "plugin/orbs/Beam.qml", "line": "transform: Rotation" }],
       "parts": [{ "part": "beam", "axes": {
         "x": { "kind": "none", "why": "derived from the two orbs' step positions" }, "y": { "kind": "none", "why": "derived from the two orbs' step positions" },

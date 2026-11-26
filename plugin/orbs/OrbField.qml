@@ -141,10 +141,22 @@ Item {
   readonly property bool spinning: animate && visible && rimSpeed > 0
   property real clockAt: 0
   onSpinningChanged: clockAt = Date.now()
+  // The same clock paces the orbs' eases (OrbView Ease, task 118f6917): while one runs it
+  // steps every 125 ms, so a window draws at most 8 frames a second for its spins and
+  // eases together, and none between steps. stepMs is the wall time of the last step;
+  // steps counts them (AMPLIFY_FPS logs both).
+  property real stepMs: Date.now()
+  property real easeUntil: 0
+  property int steps: 0
+  readonly property bool easing: animate && visible && stepMs < easeUntil
   Timer { id: spinClock
-    running: field.spinning; repeat: true
-    interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))
-    onTriggered: { var t = Date.now(); field.clock += (t - field.clockAt) / 1000; field.clockAt = t }
+    running: field.spinning || field.easing; repeat: true
+    interval: field.easing ? 125 : Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))
+    onTriggered: {
+      var t = Date.now()
+      if (field.spinning) field.clock += (t - field.clockAt) / 1000
+      field.clockAt = t; field.stepMs = t; field.steps++
+    }
   }
   Loader {
     active: field.trace
@@ -183,6 +195,8 @@ Item {
       x: orb ? orb.x - width / 2 : 0
       y: orb ? orb.y - height / 2 : 0
       clock: field.clock
+      stepMs: field.stepMs
+      onEased: until => field.easeUntil = Math.max(field.easeUntil, until)
       animate: field.animate
       trace: field.trace
       mono: field.mono

@@ -19,6 +19,8 @@ Scope {
     || decodeURIComponent(String(Qt.resolvedUrl("amplify-snapshot.json")).replace(/^file:\/\//, ""))
   // env-read: AMPLIFY_RIVER_AT freezes the replay clock at this ISO time (screenshots).
   readonly property string freezeAt: Quickshell.env("AMPLIFY_RIVER_AT") || ""
+  // env-read: AMPLIFY_RIVER_FROM starts the running replay at this ISO time (tools/headless-shot.sh idle checks).
+  readonly property string startAt: Quickshell.env("AMPLIFY_RIVER_FROM") || ""
 
   property real speed: 60        // virtual seconds per real second
   property int stepMs: 1000
@@ -54,7 +56,7 @@ Scope {
       advance(at - stepMs * speed)   // the step before, so its lane changes show
       advance(at)
     } else {
-      advance(fromMs)
+      advance(startAt ? Date.parse(startAt) : fromMs)
     }
   }
 

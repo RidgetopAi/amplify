@@ -50,7 +50,9 @@ Item {
         enabled: !win.drawn
         function onFrameSwapped() { win.drawn = field.GraphicsInfo.shaderType === GraphicsInfo.RhiShader }
       }
+      // With the field's clock steps per second, so a frame drawn between steps shows (task 118f6917).
       property int swapped: 0
+      property int stepsAt: 0
       Connections {
         target: win.contentItem.Window.window
         enabled: orbsLayer.logFps
@@ -59,8 +61,9 @@ Item {
       Timer {
         interval: 5000; repeat: true; running: orbsLayer.logFps
         onTriggered: {
-          console.log("amplify: fps window=amplify-orbs screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1))
-          win.swapped = 0
+          console.log("amplify: fps window=amplify-orbs screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1)
+                      + " steps=" + ((field.steps - win.stepsAt) / 5).toFixed(1))
+          win.swapped = 0; win.stepsAt = field.steps
         }
       }
 

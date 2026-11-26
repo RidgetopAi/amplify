@@ -1095,12 +1095,12 @@
    "id": "OB-sat-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb sat",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on sat { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }",
-     "to": ""
+     "from": "    property real sat: satE.value\n",
+     "to": "    property real sat: view.orb ? view.orb.sat : 0\n"
     }
    ],
    "gates": [
@@ -1111,12 +1111,12 @@
    "id": "OB-light-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb light",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on light { enabled: view.animate; NumberAnimation { duration: 1200; easing.type: Easing.InOutQuad } }",
-     "to": ""
+     "from": "    property real light: lightE.value\n",
+     "to": "    property real light: view.orb ? view.orb.light : 0\n"
     }
    ],
    "gates": [
@@ -1127,12 +1127,12 @@
    "id": "OB-dorm-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb dorm",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on dorm { enabled: view.animate; NumberAnimation { duration: 1600 } }",
-     "to": ""
+     "from": "    property real dorm: dormE.value\n",
+     "to": "    property real dorm: view.orb ? view.orb.dorm : 0\n"
     }
    ],
    "gates": [
@@ -1143,12 +1143,12 @@
    "id": "OB-lost-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb lost",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on lost { enabled: view.animate; NumberAnimation { duration: 900 } }",
-     "to": ""
+     "from": "    property real lost: lostE.value\n",
+     "to": "    property real lost: view.orb ? view.orb.lost : 0\n"
     }
    ],
    "gates": [
@@ -1159,12 +1159,12 @@
    "id": "OB-need-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb need",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on need { enabled: view.animate; NumberAnimation { duration: 900 } }",
-     "to": ""
+     "from": "    property real need: needE.value\n",
+     "to": "    property real need: view.orb ? view.orb.need : 0\n"
     }
    ],
    "gates": [
@@ -1175,12 +1175,12 @@
    "id": "OB-ended-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb ended",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on ended { enabled: view.animate; NumberAnimation { duration: 1500 } }",
-     "to": ""
+     "from": "    property real ended: endedE.value\n",
+     "to": "    property real ended: view.orb ? view.orb.ended : 0\n"
     }
    ],
    "gates": [
@@ -1191,12 +1191,12 @@
    "id": "OB-form-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb form",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on form { enabled: view.animate; NumberAnimation { duration: 800 } }",
-     "to": ""
+     "from": "    property real form: formE.value\n",
+     "to": "    property real form: view.orb ? view.orb.form : 1\n"
     }
    ],
    "gates": [
@@ -1207,12 +1207,12 @@
    "id": "OB-energy-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb energy",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on energy { enabled: view.animate; NumberAnimation { duration: 800 } }",
-     "to": ""
+     "from": "    property real energy: energyE.value\n",
+     "to": "    property real energy: view.orb ? view.orb.energy : 0\n"
     }
    ],
    "gates": [
@@ -1223,12 +1223,12 @@
    "id": "OB-level-behavior-removed",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb length",
-   "note": "",
+   "note": "the ease is gone: the uniform jumps to its record's value (118f6917: eases are OrbView Ease objects on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on level { enabled: view.animate; NumberAnimation { duration: 900 } }",
-     "to": ""
+     "from": "      property real level: levelE.value\n",
+     "to": "      property real level: view.orb && view.orb.task ? view.orb.task.lease : 0\n"
     }
    ],
    "gates": [
@@ -1239,12 +1239,12 @@
    "id": "OB-sat-in-still",
    "source": "e0cabe57 orbs equivalent",
    "class": "orbs-orb still",
-   "note": "",
+   "note": "eases run in still mode (118f6917: the still switch is in Ease.value)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
-     "from": "Behavior on sat { enabled: view.animate;",
-     "to": "Behavior on sat { enabled: true;"
+     "from": "if (!ready || !parent.animate) return to",
+     "to": "if (!ready) return to"
     }
    ],
    "gates": [
@@ -1809,17 +1809,17 @@
    "id": "IC1-orb-clock-runs-forever",
    "source": "8b5eca2f critic case",
    "class": "orbs-clock idle",
-   "note": "the main 3162e0b0 clock back: an infinite NumberAnimation at frame rate while animate && visible, whatever the orbs' liveness; the spec anchor moves with it, so only the idle gate can catch it",
+   "note": "the main 3162e0b0 clock back: an infinite NumberAnimation at frame rate while animate && visible, whatever the orbs' liveness (the step clock left only pacing the eases); the spec anchor moves with it, so only the idle gate can catch it",
    "edits": [
     {
      "file": "plugin/orbs/OrbField.qml",
-     "from": "  Timer { id: spinClock\n    running: field.spinning; repeat: true\n    interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))\n    onTriggered: { var t = Date.now(); field.clock += (t - field.clockAt) / 1000; field.clockAt = t }\n  }\n",
-     "to": "  NumberAnimation on clock {\n    running: field.animate && field.visible\n    from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite\n  }\n"
+     "from": "  Timer { id: spinClock\n    running: field.spinning || field.easing; repeat: true\n    interval: field.easing ? 125 : Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))\n    onTriggered: {\n      var t = Date.now()\n      if (field.spinning) field.clock += (t - field.clockAt) / 1000\n      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n",
+     "to": "  NumberAnimation on clock {\n    running: field.animate && field.visible\n    from: 0; to: 3600; duration: 3600 * 1000; loops: Animation.Infinite\n  }\n  Timer { id: spinClock\n    running: field.easing; repeat: true; interval: 125\n    onTriggered: { field.stepMs = Date.now(); field.steps++ }\n  }\n"
     },
     {
      "file": "docs/motion.json",
-     "from": "\"line\": \"Timer { id: spinClock\" }",
-     "to": "\"line\": \"NumberAnimation on clock\" }"
+     "from": "\"line\": \"Timer { id: spinClock\" }]",
+     "to": "\"line\": \"Timer { id: spinClock\" }, { \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"NumberAnimation on clock\" }]"
     }
    ],
    "gates": [
@@ -1835,7 +1835,7 @@
    "edits": [
     {
      "file": "plugin/orbs/OrbField.qml",
-     "from": "interval: Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))",
+     "from": "interval: field.easing ? 125 : Math.max(125, 1000 * Orbs.SPIN_STEP_PX / Math.max(field.rimSpeed, 1e-3))",
      "to": "interval: 16"
     }
    ],
@@ -1924,6 +1924,98 @@
    "gates": [
     "spec",
     "orbs-shot"
+   ]
+  },
+  {
+   "id": "OF1-orb-angle-tween-between-steps",
+   "source": "118f6917 critic case",
+   "class": "orbs-orb rotation live",
+   "note": "an orb property tween that redraws every frame between spin steps: the spin angle eased on Qt's animation driver from one step to the next, with its spec anchor, so only the live-orbs check can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real angle: view.spinBase + view.clock * view.spinFrom\n",
+     "to": "    property real angle: view.spinBase + view.clock * view.spinFrom\n    Behavior on angle { enabled: view.animate; NumberAnimation { duration: 400 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on angle\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "OF2-orb-form-tween-on-driver",
+   "source": "118f6917 critic case",
+   "class": "orbs-orb form live",
+   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    property real form: formE.value\n",
+     "to": "    property real form: view.orb ? view.orb.form : 1\n    Behavior on form { enabled: view.animate; NumberAnimation { duration: 800 } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }]",
+     "to": "{ \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Ease { id: levelE\" }, { \"file\": \"plugin/orbs/OrbView.qml\", \"line\": \"Behavior on form\" }]"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "OF3-ease-clock-unpaced",
+   "source": "118f6917",
+   "class": "orbs-clock live",
+   "note": "the step clock steps every 16 ms while an ease runs, so the eases draw at frame rate",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "interval: field.easing ? 125 :",
+     "to": "interval: field.easing ? 16 :"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RC1-river-caption-every-second",
+   "source": "118f6917 critic case",
+   "class": "river caption idle",
+   "note": "a once-a-second redraw of the river window at flow 0: main deb12ecf's replay caption back (the replay clock's minute, which changes every real second)",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "+ (river.shownAt ? \"  ·  \" + new Date(river.shownAt)",
+     "to": "+ (river.feed ? \"  ·  \" + new Date(river.feed.nowMs)"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "RC2-river-caption-follows-step",
+   "source": "118f6917",
+   "class": "river caption idle",
+   "note": "the caption's time is updated on every replay step, not only when the layout changes",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "if (key !== shownKey) { shownKey = key; shownAt = feed.nowMs }",
+     "to": "shownKey = key; shownAt = feed.nowMs"
+    }
+   ],
+   "gates": [
+    "headless"
    ]
   }
  ]
