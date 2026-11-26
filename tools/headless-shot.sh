@@ -403,15 +403,22 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 #  - live orbs spinning (the scene clock held at the capture: a live coord and two forming
 #    workers) over 20 s, each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
-#    (125 ms), at most 9 frames/s in any 5 s, and at most one frame a second more than
-#    the steps it logged, so nothing (a tween on Qt's animation driver) draws between steps.
+#    (125 ms), at most 9 frames/s in any 5 s, and over the whole span no more frames than
+#    the steps it logged, plus one a second for the scene's once-a-second data tick
+#    (unloaded, every line reads frames = steps + 1/s) and 2 at the span's edges, so nothing
+#    (a tween on Qt's animation driver) draws between steps. Judged over the span, not per
+#    5 s line (task 85e35a5d): a step's frame swaps a little after it, so under load one
+#    lands in the next line (5.0 fps over 3.8 steps/s), which the span's sum cancels; only
+#    its start can take one from before (a pending step and tick swap as one frame), and the
+#    span (measured, the lines' ms) can hold one more tick than whole seconds. A tween
+#    between steps draws tens of frames over the bound.
 swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
 swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
 swaymsg create_output > /dev/null; shot_wait 10 "a third output" outputs 3
 swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null
 # fpsrun <log> <seconds> <env...>: the plugin animated with AMPLIFY_FPS=1 on these outputs; after
 # 6 s to settle, samples Quickshell's CPU over <seconds>, then prints its percent of one core
-# and, one per line, "<window> <screen> <fps> <steps/s or ->" logged inside that span.
+# and, one per line, "<window> <screen> <fps> <steps/s or -> <window ms or ->" logged inside that span.
 fpsrun() {
   local log=$1 secs=$2; shift 2
   env AMPLIFY_FPS=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" "$@" \
@@ -425,8 +432,9 @@ fpsrun() {
   sleep "$secs"
   c1=$(awk '{ print $14 + $15 }' "/proc/$QS/stat"); shot_stop "$QS"
   awk -v t=$((c1 - c0)) -v k="$clk" -v s="$secs" 'BEGIN { printf "%.1f\n", t / k / s * 100 }'
-  tail -n +"$((l0 + 1))" "$log" | grep -aoE "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*( steps=[0-9.]*)?" \
-    | sed 's/amplify: fps window=//; s/ screen=/ /; s/ steps=/ /' | awk '{ print $1, $2, $3, ($4 == "" ? "-" : $4) }'
+  tail -n +"$((l0 + 1))" "$log" | grep -aoE "amplify: fps window=[a-z-]* screen=[A-Z0-9-]* [0-9.]*( steps=[0-9.]* ms=[0-9]*)?" \
+    | sed 's/amplify: fps window=//; s/ screen=/ /; s/ steps=/ /; s/ ms=/ /' \
+    | awk '{ print $1, $2, $3, ($4 == "" ? "-" : $4), ($5 == "" ? "-" : $5) }'
 }
 # showfps <name> <fps lines>: each window's 5 s rates (frames/s, or frames/s/steps/s).
 showfps() { awk -v n="$1" '{ v[$1 " " $2] = v[$1 " " $2] " " $3 ($4 == "-" ? "" : "/" $4) } END { for (k in v) print "  " n " fps " k ":" v[k] }' <<< "$2" | sort; }
@@ -463,12 +471,19 @@ screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
 out=$(fpsrun "$RUN/live-orbs.log" 20)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
 echo "  live orbs: Quickshell at $pct % of one core"
-# Per 5 s line: frames/s over 9, steps/s over 8.6, or frames/s over steps/s + 1 (when logged).
-over=$(awk '$1 == "amplify-orbs" && ($3 > 9 || ($4 != "-" && ($4 > 8.6 || $3 > $4 + 1))) { print $2 " " $3 ($4 == "-" ? "" : " fps, " $4 " steps/s") }' <<< "$fps" | head -3 | tr '\n' ';')
+# Per 5 s line: frames/s over 9 or steps/s over 8.6. Per screen over the span: frames over
+# steps + 1 a second (its lines' summed ms) + 2; a line without steps or ms fails it.
+over=$(awk '$1 == "amplify-orbs" && ($3 > 9 || $5 == "-" || $4 > 8.6) { print $2 " " $3 " fps" ($5 == "-" ? ", no steps or ms logged" : ", " $4 " steps/s") }' <<< "$fps"
+  awk '$1 == "amplify-orbs" && $5 != "-" { f[$2] += int($3 * 5 + 0.5); s[$2] += int($4 * 5 + 0.5); ms[$2] += $5 }
+       END { for (k in f) if (f[k] > s[k] + ms[k] / 1000 + 2) printf "%s %d frames over %.1f s, %d steps (bound %d)\n", k, f[k], ms[k] / 1000, s[k], s[k] + ms[k] / 1000 + 2 }' <<< "$fps")
+over=$(grep . <<< "$over" | head -3 | tr '\n' ';')
+span=$(awk '$1 == "amplify-orbs" { f[$2] += int($3 * 5 + 0.5); s[$2] += int($4 * 5 + 0.5); ms[$2] += $5 }
+            END { for (k in f) printf "%s %d frames/%d steps/%.1f s; ", k, f[k], s[k], ms[k] / 1000 }' <<< "$fps")
+echo "  live orbs span: $span"
 spun=$(awk '$1 == "amplify-orbs" && ($4 == "-" || $4 >= 1) { n++ } END { print n + 0 }' <<< "$fps")
 lerr=$(qmlerr "$RUN/live-orbs.log")
 screens3 amplify-orbs "$fps" && [[ -z $over ]] && (( spun > 0 && lerr == 0 )) \
-  && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s, <= steps + 1; 3 screens)" \
+  && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s; over the span <= steps + 1/s + 2; 3 screens)" \
   || fail "live orbs spinning: an orbs window draws above its clock (${over:-none over}; spinning lines $spun; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no); $lerr QML errors)"
 for f in idle idle-river live-orbs; do
   grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/$f.log" | head -3 | sed "s/^/  $f: /"

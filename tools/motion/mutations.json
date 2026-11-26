@@ -1955,6 +1955,28 @@
    ]
   },
   {
+   "id": "OF4-orbs-draw-every-frame-while-easing",
+   "source": "71c4fec7 F1, 85e35a5d",
+   "class": "orbs-clock live",
+   "note": "a FrameAnimation advances the eases' time (stepMs) every frame while one runs, so the orbs window draws every frame between its paced steps (the steps themselves unchanged), with its spec anchor; eases run only in the live-orbs window, so only its frames-against-steps bound can catch it",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n",
+     "to": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n  FrameAnimation { running: field.easing; onTriggered: field.stepMs = Date.now() }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }],",
+     "to": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }, { \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"FrameAnimation { running\" }],"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
    "id": "OF2-orb-form-tween-on-driver",
    "source": "118f6917 critic case",
    "class": "orbs-orb form live",
@@ -2276,6 +2298,38 @@
      "file": "tools/shot-reap.sh",
      "from": "|| kill -9 \"$1\" 2>/dev/null\n",
      "to": "|| true\n"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "W5-headless-cleanup-unguarded",
+   "source": "71c4fec7 F2, 85e35a5d",
+   "class": "gate cleanup",
+   "note": "headless-shot.sh's cleanup loses its $BASHPID guard: a launch TERMed before its exec runs the gate's EXIT trap in the forked child and tears down the run's compositor and run dir mid-run",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "cleanup() { [[ $BASHPID == \"$$\" ]] || return; kill",
+     "to": "cleanup() { kill"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "W6-orbs-shot-cleanup-unguarded",
+   "source": "71c4fec7 F2, 85e35a5d",
+   "class": "gate cleanup",
+   "note": "as W5, in plugin/orbs/test/shot.sh",
+   "edits": [
+    {
+     "file": "plugin/orbs/test/shot.sh",
+     "from": "cleanup() {\n  [[ $BASHPID == \"$$\" ]] || return\n",
+     "to": "cleanup() {\n"
     }
    ],
    "gates": [
