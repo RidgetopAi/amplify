@@ -207,6 +207,26 @@ Item {
           + root.shaderReport({ orbs: orbsLayer.shaders(), river: river.shaders(), basin: basin.shaders() },
                               { orbs: orbsLayer.windows().every(function (w) { return w.drawn }), river: win.drawn, basin: win.drawn })
       }
+      // Traced, after this screen's ready or rendered line that is no longer pending: one
+      // "amplify: program" line per program each group draws on this screen, with its status
+      // and the centre of every effect drawing it, in screen pixels, so tools/headless-shot.sh
+      // can check each orbs program by name and where it draws (task 4131a23d).
+      function logPrograms() {
+        if (!root.trace) return
+        var st = root.programs(), orbs = orbsLayer.windows().filter(function (w) { return w.modelData === win.modelData })
+        var groups = { orbs: orbs.length ? orbs[0].shaders() : [], river: river.shaders(), basin: basin.shaders() }
+        for (var g in groups) {
+          var at = {}, urls = []
+          for (var i = 0; i < groups[g].length; i++) {
+            var fx = groups[g][i], url = fx.fragmentShader.toString(), c = fx.mapToItem(null, fx.width / 2, fx.height / 2)
+            if (!at[url]) { at[url] = []; urls.push(url) }
+            at[url].push(Math.round(c.x) + "," + Math.round(c.y))
+          }
+          for (var j = 0; j < urls.length; j++)
+            console.log("amplify: program screen=" + win.modelData.name + " " + g + " " + urls[j].split("/").pop()
+                        + " " + st[urls[j]] + " at " + at[urls[j]].join(" "))
+        }
+      }
       Connections {
         target: win.contentItem.Window.window
         enabled: !win.drawn || win.waiting
@@ -217,6 +237,7 @@ Item {
           if (line.indexOf("shader=pending") >= 0) return
           win.waiting = false
           console.log(line)
+          win.logPrograms()
         }
       }
       Timer {
@@ -225,6 +246,7 @@ Item {
           var line = win.report("ready")
           win.waiting = line.indexOf("shader=pending") >= 0
           console.log(line)
+          if (!win.waiting) win.logPrograms()
         }
       }
     }
