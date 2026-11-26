@@ -1853,7 +1853,7 @@
    "id": "IC3-lease-drift-every-tick",
    "source": "8b5eca2f critic case",
    "class": "orbs-orb length idle",
-   "note": "the vessel level follows the lease every second (no LEASE_STEPS): its 900 ms tween restarts each tick, so a draining lease keeps the window drawing",
+   "note": "the vessel level follows the lease every second (no LEASE_STEPS): its 900 ms tween restarts each tick, so a draining lease keeps the window drawing (task 679fbbc5: the replayed scene clock holds, so no headless run drains a lease; the orbs tests of stepped lease levels catch it)",
    "edits": [
     {
      "file": "plugin/orbs/orbs.js",
@@ -1862,6 +1862,7 @@
     }
    ],
    "gates": [
+    "orbs",
     "headless"
    ]
   },
@@ -1957,7 +1958,7 @@
    "id": "OF2-orb-form-tween-on-driver",
    "source": "118f6917 critic case",
    "class": "orbs-orb form live",
-   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps",
+   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps (task 679fbbc5: the replayed scene clock holds, so the headless live-orbs run has no forming steps to ease; the orbs eases at entry and in orbs-decay run on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
@@ -1972,6 +1973,7 @@
    ],
    "gates": [
     "spec",
+    "orbs-shot",
     "headless"
    ]
   },
@@ -1979,7 +1981,7 @@
    "id": "OF3-ease-clock-unpaced",
    "source": "118f6917",
    "class": "orbs-clock live",
-   "note": "the step clock steps every 16 ms while an ease runs, so the eases draw at frame rate",
+   "note": "the step clock steps every 16 ms while an ease runs, so the eases draw at frame rate (task 679fbbc5: the replayed scene clock holds, so the headless live-orbs run has no forming steps to ease; the orbs eases at entry and in orbs-decay run on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbField.qml",
@@ -1988,6 +1990,7 @@
     }
    ],
    "gates": [
+    "orbs-shot",
     "headless"
    ]
   },
