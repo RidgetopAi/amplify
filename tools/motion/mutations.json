@@ -2390,6 +2390,70 @@
    "gates": [
     "headless"
    ]
+  },
+  {
+   "id": "PG1-beam-draws-nothing",
+   "source": "4131a23d (critic gap G4 of verdict 38478d1a)",
+   "class": "orbs programs drawn",
+   "note": "the beam program compiles but draws nothing (transparent): the ready line still counts orbs=5/5 compiled",
+   "edits": [
+    {
+     "file": "shaders/orbbeam.frag",
+     "from": "    fragColor = vec4(c * a, a) * qt_Opacity;\n",
+     "to": "    fragColor = vec4(c * a, a) * 0.0;\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PG2-beam-program-missing",
+   "source": "4131a23d (critic gap G4 of verdict 38478d1a)",
+   "class": "orbs programs drawn",
+   "note": "the beam loads a .qsb the plugin does not ship, so its program errors",
+   "edits": [
+    {
+     "file": "plugin/orbs/Beam.qml",
+     "from": "Qt.resolvedUrl(\"../shaders/orbbeam.frag.qsb\")",
+     "to": "Qt.resolvedUrl(\"../shaders/orbbeam.qsb\")"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PG3-critic-body-never-drawn",
+   "source": "4131a23d (critic gap G4 of verdict 38478d1a)",
+   "class": "orbs programs drawn",
+   "note": "the critic body effect is hidden, so its program is listed and counted as compiled (its window drew) but never draws",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "    fragmentShader: Qt.resolvedUrl(\"../shaders/orb_\" + (view.orb ? view.orb.role : \"worker\") + \".frag.qsb\")\n",
+     "to": "    visible: !view.orb || view.orb.role !== \"critic\"\n    fragmentShader: Qt.resolvedUrl(\"../shaders/orb_\" + (view.orb ? view.orb.role : \"worker\") + \".frag.qsb\")\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "PG4-critic-drawn-as-worker",
+   "source": "4131a23d (critic gap G4 of verdict 38478d1a)",
+   "class": "orbs programs drawn",
+   "note": "critics draw the worker body, so the critic program is never loaded or drawn",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbView.qml",
+     "from": "\"../shaders/orb_\" + (view.orb ? view.orb.role : \"worker\")",
+     "to": "\"../shaders/orb_\" + (view.orb && view.orb.role !== \"critic\" ? view.orb.role : \"worker\")"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
   }
  ]
 }

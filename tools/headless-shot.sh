@@ -14,7 +14,8 @@
 #      broken in turn, shader=error with that component at 0 (task 5afeee5f: G3, G4,
 #      G6, N2); on a second screen too, and logged before the first frame shader=pending
 #      then an "amplify: rendered" line reading compiled, a broken program error even
-#      then (task f0e14f4c);
+#      then (task f0e14f4c); and by name, each orbs program (coord, critic and worker
+#      bodies, beam, vessel) compiled and changing the pixels where it draws (task 4131a23d);
 #   2. the uncovered orbs' centres are lit and accent-tinted, and nothing is
 #      drawn where the P0 placeholder orb was (0.28W, 0.5H);
 #   3. a covered orb's centre shows the app window, so the layer sits below windows;
@@ -128,6 +129,8 @@ nogl() { grep -aE "Failed to create RHI|Failed to initialize graphics backend" "
 
 ready=$(grep -a "amplify: ready" "$RUN/plugin.log" | head -1)
 echo "log: ${ready#*qml: }"
+# This run's orbs programs by name, for the every-program check below (task 4131a23d).
+progs=$(grep -aoE "amplify: program screen=[^ ]+ orbs .*" "$RUN/plugin.log")
 [[ $ready == *"layer=bottom"* ]] && pass "layer is bottom" || fail "layer is not bottom"
 (( built == 0 )) && pass "every .qsb rebuilt from source" || fail "shader build failed (tools/build-shaders.sh exit $built)"
 gl=$(nogl)
@@ -222,6 +225,44 @@ for g in "${COMPS[@]}"; do
   [[ $bready == *"shader=error $(counts "$g")"* ]] && pass "broken $g programs report shader=error ($(counts "$g"))" \
     || fail "ready line hides broken $g programs (want shader=error $(counts "$g"))"
   cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"
+done
+
+# Every orbs program draws (task 4131a23d): the shipped capture has no critic and no beam,
+# so the shipped plugin on the test fixture is the one run that draws them all. Each of its
+# programs (the coord, critic and worker bodies, the beam and the vessel) must be named in
+# the first run's "amplify: program" lines, compiled, with no other orbs program, and every
+# effect drawing it must change the pixels at its centre: headless-uncovered.png (that run,
+# the app window away) against the same scene with every orbs program broken (drawing
+# nothing). A count alone (orbs=5/5) passes a program that compiles but draws nothing.
+ORBS_PROGS="orb_coord orb_critic orb_worker orbbeam orbvessel"
+plugin "$RUN/broken-orbs/plugin"; grim "$RUN/no-orbs.png"; kill "$QS" 2>/dev/null; wait "$QS" 2>/dev/null
+cat "$RUN/plugin.log" >> "$RUN/plugin-main.log"
+# moved <x> <y>: true when the 9x9 box centred on x,y changes between the two captures: some
+# pixel's summed RGB difference (0-765) is over 24; prints the largest.
+moved() {
+  local d box="9x9+$(($1 - 4))+$(($2 - 4))"
+  d=$(magick "$RUN/headless-uncovered.png[$box]" "$RUN/no-orbs.png[$box]" -compose difference -composite \
+    -separate -evaluate-sequence add -format "%[fx:int(255*maxima)]" info:)
+  echo "${d:-0}"; (( ${d:-0} > 24 ))
+}
+# The control: away from the orbs (where the placeholder was) the two captures agree, so a
+# change at an orb is that orb's programs drawing, not a scene that moved.
+d=$(moved "$((W * 28 / 100))" "$((H / 2))") && fail "the scene without orbs programs differs away from the orbs ($d at the placeholder spot)" \
+  || pass "the scene without orbs programs differs only where orbs draw (placeholder spot changes by $d)"
+names=$(awk '{ sub(/\.frag\.qsb$/, "", $5); print $5 }' <<< "$progs" | sort -u | tr '\n' ' ')
+[[ $names == "$ORBS_PROGS " ]] && pass "the orbs draw exactly their programs: $ORBS_PROGS" \
+  || fail "the orbs' programs are not exactly $ORBS_PROGS (drawn: ${names:-none})"
+for p in $ORBS_PROGS; do
+  row=$(grep -E " orbs $p\.frag\.qsb " <<< "$progs" | head -1) st=$(awk '{ print $6 }' <<< "$row")
+  n=0 bad="" ds=""
+  for c in $(sed 's/.* at //' <<< "$row"); do
+    x=${c%,*} y=${c#*,}
+    (( x >= 0 && x < W && y >= 0 && y < H )) || continue
+    n=$((n + 1)); d=$(moved "$x" "$y") || bad+=" $c($d)"; ds+=" $d"
+  done
+  echo "orbs program $p: ${st:-missing}, $n on screen${row:+ at ${row#* at }}${ds:+ (centre box changes by$ds)}"
+  [[ $st == compiled ]] && (( n > 0 )) && [[ -z $bad ]] && pass "orbs program $p compiles and draws ($n effects)" \
+    || fail "orbs program $p does not compile and draw (${st:-not drawn}; $n on screen; drawing nothing at:${bad:- -})"
 done
 
 # Two screens (task f0e14f4c). Qt loads each program once per process, so only the first
