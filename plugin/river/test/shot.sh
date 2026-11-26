@@ -18,7 +18,7 @@
 #   eddy:    animated, busy at 04:23:17Z (flow 0, one blocked task): the swirl turns on its own hull in 6/6 pairs;
 #   fx:      animated, busy at 04:01:47Z: the PASS ring and REJECT eddy move, then are static by 5 s and log done;
 #            everything off the water but the blocked swirl is static from 5 s to 6 s (tethers and gates settle);
-#   replay:  AMPLIFY_STILL=1, busy with the replay clock running: a verdict effect shows for one step only.
+#   replay:  AMPLIFY_STILL=1, busy with the scene clock stepping (AMPLIFY_SCENE_STEP): a verdict effect shows for one step only.
 # Trajectory checks (tools/motion/follow.mjs, spec docs/motion.json): settle, fx,
 # eddy and still run with AMPLIFY_TRACE=1, which logs every drawn axis of every
 # moving item (plugin/motion/Trace.qml) with the value its record asks for. The
@@ -119,13 +119,13 @@ idle() { (( ($2 - $1) * 100 <= 2 * $3 * CLK )); }
 swirls() { grep -o "amplify: river swirl [0-9a-f]*" "$1" | awk '{ print $NF }' | sort -u | tr '\n' ' '; }
 
 # ---------------------------------------------------------------- default: the snapshot at capture
-start default "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z
+start default "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_SCENE_AT=2026-11-22T04:00:17Z
 at 1.5; grim "$OUT/river-default.png"; stop
 grep -q "amplify: river lanes draft=9 ready=0 claimed=2 verifying=0 evidence=0 merged=5 trunk=0 vessels=16 tethers=2 expired= " "$RUN/default.log" \
   && pass "default: 16 vessels in their scene lanes, 2 live tethers" || fail "default: lane counts or tethers differ"
 
 # ---------------------------------------------------------------- busy: verdicts, tethers; still mode is static
-start busy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
+start busy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_SCENE_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 1.5; grim "$OUT/river-busy.png"
 cp "$OUT/river-busy.png" "$RUN/busy-0.png"; c0=$(ticks); at 2.5; grab 1; at 3.5; grab 2; at 4.5; grab 3; c1=$(ticks); stop
 L="$RUN/busy.log"
@@ -160,7 +160,7 @@ out=$(node "$ROOT/plugin/river/test/tethers.mjs" "$BUSY" 2026-11-22T04:01:47Z "$
 # ---------------------------------------------------------------- still-trace: tracing on draws the same, and still mode holds
 # The same still busy scene with AMPLIFY_TRACE=1: the same pixels as the untraced shot, and in
 # the trace nothing changes between data steps (follow river-still). Untraced runs log no trace.
-start still-trace "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
+start still-trace "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_TRACE=1 AMPLIFY_SCENE_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 2.5; grab 0; at 3.5; grab 1; stop
 # Settled frames of both runs (busy at 4.5 s, this run at 3.5 s), below the replay label: the
 # centred label lands on one of two subpixel positions in about one run in three, traced or
@@ -173,7 +173,7 @@ d=$(cmp_below_label "$RUN/busy-3.png" "$RUN/still-trace-1.png")
 follow river-still "$RUN/still-trace.log" "still: in the trace, nothing moves between data steps"
 
 # ---------------------------------------------------------------- idle: flow 0, nothing may move
-start idle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:30:00Z
+start idle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_SCENE_AT=2026-11-22T04:30:00Z
 at 2; grab 0; c0=$(ticks); at 3; grab 1; at 4; grab 2; at 5; grab 3; c1=$(ticks); stop
 d=$($MOTION still $(frames 0 1 2 3))
 [[ $? == 0 ]] && grep -q "flow=0.00 speed=0.0 " "$RUN/idle.log" && ! grep -q "river eddy\|river fx \|river swirl" "$RUN/idle.log" \
@@ -182,7 +182,7 @@ d=$($MOTION still $(frames 0 1 2 3))
   || fail "idle: river moves or re-renders without data ($d px, $((c1 - c0)) CPU ticks)"
 
 # ---------------------------------------------------------------- settle: vessels sail to a new lane, then stop
-start settle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T02:33:00Z
+start settle "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_TRACE=1 AMPLIFY_SCENE_AT=2026-11-22T02:33:00Z
 at 0.3; grab 0; at 1; grab 1; at 5; grab 2; c0=$(ticks); at 6; grab 3; at 7; grab 4; c1=$(ticks); stop
 early=$($MOTION still $(frames 0 1)); late=$($MOTION still $(frames 2 3 4)); ok=$?
 grep -q "flow=0.00 speed=0.0 " "$RUN/settle.log" && [[ $early =~ ^[0-9]+$ && $early != 0 && $ok == 0 ]] && idle "$c0" "$c1" 2 \
@@ -192,7 +192,7 @@ grep -q "flow=0.00 speed=0.0 " "$RUN/settle.log" && [[ $early =~ ^[0-9]+$ && $ea
 follow river-settle "$RUN/settle.log" "settle: every moved vessel and gate follows its spec row"
 
 # ---------------------------------------------------------------- flowing: the same check sees motion (control)
-start flowing "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z
+start flowing "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_SCENE_AT=2026-11-22T04:00:17Z
 at 2; grab 0; at 5; grab 1; at 5.2; grab 2; at 5.4; grab 3; stop
 d=$($MOTION still $(frames 0 1))
 grep -q "flow=1.00 speed=90.0 " "$RUN/flowing.log" && [[ $d =~ ^[0-9]+$ ]] && [[ $d != 0 ]] \
@@ -202,7 +202,7 @@ out=$($MOTION flow $(frames 1 2 3)) && pass "flowing: the water runs downstream,
   || fail "flowing: the water does not run downstream (${out:-?})"
 
 # ---------------------------------------------------------------- eddy: the blocked swirl turns on its own hull
-start eddy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T04:23:17Z AMPLIFY_RIVER_FIXTURE="$BUSY"
+start eddy "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_TRACE=1 AMPLIFY_SCENE_AT=2026-11-22T04:23:17Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 for i in 0 1 2 3 4 5 6; do at "$(awk -v i=$i 'BEGIN { print 2.5 + i / 2 }')"; grab $i; done; stop
 E=$(grep -o "amplify: river eddy 85ff482a at [0-9]*,[0-9]*" "$RUN/eddy.log" | tail -1 | awk '{print $NF}')
 out=$([[ -n $E ]] && $MOTION eddy "$E" $(frames 0 1 2 3 4 5 6)); ok=$?
@@ -214,7 +214,7 @@ echo "$out" | sed "s/^/  [eddy] /"
 follow river-eddy "$RUN/eddy.log" "eddy: the swirl turns at its record's rate, the water clock stopped"
 
 # ---------------------------------------------------------------- fx: verdict effects end within 5 s
-start fx "$ROOT/plugin/river" "amplify: river fx reject" AMPLIFY_TRACE=1 AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
+start fx "$ROOT/plugin/river" "amplify: river fx reject" AMPLIFY_TRACE=1 AMPLIFY_SCENE_AT=2026-11-22T04:01:47Z AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 0.6; grab 0; at 1.4; grab 1; at 5; grab 2; at 6; grab 3; stop
 L="$RUN/fx.log"
 eddy=$(grep -o "amplify: river eddy 85ff482a at [0-9]*,[0-9]*" "$L" | tail -1 | awk '{print $NF}')
@@ -239,7 +239,7 @@ late=$($MOTION region 0,0,$W,$H "${eddy:--}" $(frames 2 3))
   || fail "fx: $late px still moving off the water at 5-6 s"
 
 # ---------------------------------------------------------------- replay: still mode shows a verdict for one step
-start replay "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_RIVER_FIXTURE="$BUSY"
+start replay "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_STILL=1 AMPLIFY_SCENE_AT=2026-11-22T03:59:17Z AMPLIFY_SCENE_STEP=60 AMPLIFY_RIVER_FIXTURE="$BUSY"
 at 5.5; stop
 L="$RUN/replay.log"
 seq=$(grep -o "amplify: river lanes .* fx=[0-9]*" "$L" | awk -F'fx=' '{ printf "%s ", $NF }')
@@ -249,7 +249,7 @@ grep -q "amplify: river fx done pass 379c80c6" "$L" && grep -q "amplify: river f
   || fail "replay: still-mode verdict effects not cleared at the next step (fx per step: $seq)"
 
 # ---------------------------------------------------------------- service: the whole plugin mounts the river
-start in-service "$ROOT/plugin" "amplify: ready layer" AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z \
+start in-service "$ROOT/plugin" "amplify: ready layer" AMPLIFY_STILL=1 AMPLIFY_SCENE_AT=2026-11-22T04:00:17Z \
   AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme"
 at 1; grim "$OUT/river-in-service.png"; stop
 grep -q "amplify: ready layer=bottom" "$RUN/in-service.log" && grep -q "amplify: river lanes draft=9" "$RUN/in-service.log" \

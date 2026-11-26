@@ -71,7 +71,7 @@ motion_check() {
   for sc in service service-still; do
     [[ $sc == service ]] && { secs=10; still=0; } || { secs=8; still=1; }
     AMPLIFY_STILL=$still AMPLIFY_TRACE=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
-      AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" AMPLIFY_RIVER_AT=2026-11-22T04:01:47Z \
+      AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" \
       quickshell -p "$ROOT/plugin" > "$RUN/motion-$sc.log" 2>&1 & local qs=$!
     # Measurement window: the trace the follow check reads (from launch; its want floors count on it).
     sleep "$secs"; shot_stop "$qs"
@@ -95,9 +95,9 @@ report_motion() {
   echo "$2" | grep "^BAD" | head -20 | sed "s/^/  /"; echo "shot: motion $1: follow checks failed"; return 1
 }
 layer_check() {
-  # The river shares the layer since P1; its replay clock steps in still mode unless
-  # AMPLIFY_RIVER_AT freezes it (river row 9), which this check would read as orbs moving.
-  AMPLIFY_STILL=1 AMPLIFY_RIVER_AT=2026-11-22T04:00:17Z AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
+  # The river shares the layer since P1; the scene clock holds the replay at the capture
+  # (task 679fbbc5), so nothing steps the data under still mode.
+  AMPLIFY_STILL=1 AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" \
     quickshell -p "$ROOT/plugin" > "$RUN/layer.log" 2>&1 & local qs=$! bad=0
   # The ready line follows every window's first frame (it reads compiled only then). The
   # captures are taken only once it is in the log, checked again after the wait (task

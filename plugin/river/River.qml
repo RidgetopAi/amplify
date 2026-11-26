@@ -17,9 +17,18 @@ import "river.js" as R
 Item {
   id: river
 
-  // One replay clock per river. A host with a shared scene source sets feed.
+  // The scene clock every component reads (Service.qml); unset, the river makes its own.
+  property var sceneClock: null
   property var feed: ownFeed
-  RiverFeed { id: ownFeed }
+  RiverFeed { id: ownFeed; sceneClock: river.sceneClock }
+  // The screen this river is drawn on (Service.qml), which keys its traced lines: "river@<screen>".
+  property string screenName: ""
+  readonly property string traceKey: "river" + (screenName ? "@" + screenName : "")
+  // AMPLIFY_TRACE=1: the scene time the river is drawn at and the clock it follows
+  // (SceneClock.clockId), for the one-clock check (tools/headless-shot.sh).
+  readonly property real shownMs: feed ? feed.nowMs : 0
+  onShownMsChanged: if (trace && shownMs) console.log("amplify: scene " + traceKey + " at " + new Date(shownMs).toISOString()
+                                                       + " clock " + (feed && feed.src ? feed.src.clockId : "none"))
   property bool animate: true
   // Trace mode (AMPLIFY_TRACE=1, shot.sh): each moving item makes a Trace
   // (plugin/motion/Trace.qml) that logs what it draws as it changes, with the
@@ -56,14 +65,9 @@ Item {
     if (model.count > arr.length) model.remove(arr.length, model.count - arr.length)
   }
 
-  // Scene time at which the layout last changed what the river draws (the replay caption).
-  property real shownAt: 0
-  property string shownKey: ""
   onLayChanged: refresh()
   function refresh() {
     if (!lay) return
-    var key = JSON.stringify(lay)
-    if (key !== shownKey) { shownKey = key; shownAt = feed.nowMs }
     // Gates keyed by lane, so a lane that widens slides its gate (row 2).
     sync(gates, lay.gates.map(function (g) {
       return { key: g.lane, lane: g.lane, label: g.label, color: g.color, gx: g.x, count: g.count,
@@ -81,9 +85,9 @@ Item {
                vx: vx[t.id].x, voff: vx[t.id].off }
     }))
   }
-  // Once per scene, after spawn, so fx= counts the effects this scene draws (every step when still or frozen, every minute when playing).
+  // Once per scene, after spawn, so fx= counts the effects this scene draws.
   function logScene() {
-    if (!lay || feed.serial === loggedSerial || (animate && !feed.freezeAt && feed.serial % 60 !== 1)) return
+    if (!lay || feed.serial === loggedSerial) return
     loggedSerial = feed.serial
     console.log("amplify: river lanes " + lay.gates.map(function (g) { return g.label + "=" + g.count }).join(" ")
         + " vessels=" + lay.vessels.length + " tethers=" + lay.tethers.length
@@ -550,18 +554,16 @@ Item {
       }
     }
 
-    // ---------------------------------------------------------------- replay label
+    // ---------------------------------------------------------------- caption
     Text {
-      visible: river.feed && river.feed.scene && river.feed.scene.meta.mode === "replay"
+      visible: text !== ""
       anchors.horizontalCenter: parent.horizontalCenter
       y: 40
-      // The scene time of the river's last drawn change (shownAt), not the replay clock: the
-      // clock's minute changed every second and redrew an idle river at 1 fps (task 118f6917).
-      // Worded as a change time, so it does not read as the replay clock (task 844a60aa).
-      text: (river.feed && river.feed.label ? river.feed.label : "")
-        + (river.shownAt ? "  ·  changed " + new Date(river.shownAt).toISOString().slice(0, 16).replace("T", " ") + "Z" : "")
-      // AMPLIFY_TRACE=1: the caption as drawn, for the one-capture check (tools/headless-shot.sh).
-      onTextChanged: if (river.trace && text !== "") console.log("amplify: caption river " + text)
+      // The one caption (Mandrel.sceneCaption, task 679fbbc5): the moment shown and its last
+      // activity, to the minute, the same text the orbs and basin draw.
+      text: river.feed ? river.feed.caption : ""
+      // AMPLIFY_TRACE=1: the moment and caption as drawn, for the one-clock check (tools/headless-shot.sh).
+      onTextChanged: if (river.trace && text !== "") console.log("amplify: caption " + river.traceKey + " " + text)
       color: "#7d8799"
       font { family: river.mono; pixelSize: 11; letterSpacing: 1.6 }
     }

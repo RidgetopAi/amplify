@@ -14,6 +14,8 @@ Item {
   property color foreground: "#cdd6f4"
   property bool animate: true
   property bool trace: false
+  // The scene clock the river and basin read too (Service.qml).
+  property var sceneClock: null
   // AMPLIFY_FPS=1 (Service.qml): log the frames each window swapped per second, every 5 s.
   property bool logFps: false
 
@@ -74,8 +76,8 @@ Item {
         foreground: orbsLayer.foreground
         animate: orbsLayer.animate
         trace: orbsLayer.trace
-        // env-read: AMPLIFY_ORBS_FROM starts the replayed orbs' client clock at this ISO time (tools/headless-shot.sh idle check).
-        startAt: Quickshell.env("AMPLIFY_ORBS_FROM") || ""
+        sceneClock: orbsLayer.sceneClock
+        screenName: win.modelData.name
       }
     }
   }

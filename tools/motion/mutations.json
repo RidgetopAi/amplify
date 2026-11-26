@@ -744,19 +744,24 @@
    ]
   },
   {
-   "id": "R9-ignores-freeze",
-   "source": "05a122b0 R9",
-   "class": "river row 9",
-   "note": "",
+   "id": "OC1-river-own-clock",
+   "source": "05a122b0 R9, 679fbbc5 critic case",
+   "class": "river row 9 (one clock)",
+   "note": "the river keeps its own replay clock: in the service it ignores the shared scene clock and shows its own moment (the capture's replay_from), so it draws another moment and caption than the orbs and basin",
    "edits": [
     {
      "file": "plugin/river/RiverFeed.qml",
-     "from": "running: feed.fixture !== null && feed.freezeAt === \"\"",
-     "to": "running: feed.fixture !== null"
+     "from": "    active: !feed.sceneClock || feed.fixturePath !== \"\"\n    SceneClock { snapshotPath: feed.fixturePath }",
+     "to": "    active: true\n    SceneClock { snapshotPath: feed.fixturePath; heldAt: \"2026-11-21T21:36:00.000Z\" }"
+    },
+    {
+     "file": "plugin/river/RiverFeed.qml",
+     "from": "readonly property var src: feed.sceneClock && feed.fixturePath === \"\" ? feed.sceneClock : own.item",
+     "to": "readonly property var src: own.item"
     }
    ],
    "gates": [
-    "river-shot"
+    "headless"
    ]
   },
   {
@@ -1083,7 +1088,7 @@
    "edits": [
     {
      "file": "plugin/Service.qml",
-     "from": "      River { id: river; anchors.fill: parent; animate: !root.still; trace: root.trace }\n",
+     "from": "      River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }\n",
      "to": ""
     }
    ],
@@ -1848,7 +1853,7 @@
    "id": "IC3-lease-drift-every-tick",
    "source": "8b5eca2f critic case",
    "class": "orbs-orb length idle",
-   "note": "the vessel level follows the lease every second (no LEASE_STEPS): its 900 ms tween restarts each tick, so a draining lease keeps the window drawing",
+   "note": "the vessel level follows the lease every second (no LEASE_STEPS): its 900 ms tween restarts each tick, so a draining lease keeps the window drawing (task 679fbbc5: the replayed scene clock holds, so no headless run drains a lease; the orbs tests of stepped lease levels catch it)",
    "edits": [
     {
      "file": "plugin/orbs/orbs.js",
@@ -1857,6 +1862,7 @@
     }
    ],
    "gates": [
+    "orbs",
     "headless"
    ]
   },
@@ -1952,7 +1958,7 @@
    "id": "OF2-orb-form-tween-on-driver",
    "source": "118f6917 critic case",
    "class": "orbs-orb form live",
-   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps",
+   "note": "main deb12ecf form tween back: a NumberAnimation Behavior on the form uniform (fed by the record directly), with its spec anchor; the forming orb steps its form 1/32 every few seconds, and each 800 ms tween draws every frame between spin steps (task 679fbbc5: the replayed scene clock holds, so the headless live-orbs run has no forming steps to ease; the orbs eases at entry and in orbs-decay run on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbView.qml",
@@ -1967,6 +1973,7 @@
    ],
    "gates": [
     "spec",
+    "orbs-shot",
     "headless"
    ]
   },
@@ -1974,7 +1981,7 @@
    "id": "OF3-ease-clock-unpaced",
    "source": "118f6917",
    "class": "orbs-clock live",
-   "note": "the step clock steps every 16 ms while an ease runs, so the eases draw at frame rate",
+   "note": "the step clock steps every 16 ms while an ease runs, so the eases draw at frame rate (task 679fbbc5: the replayed scene clock holds, so the headless live-orbs run has no forming steps to ease; the orbs eases at entry and in orbs-decay run on the step clock)",
    "edits": [
     {
      "file": "plugin/orbs/OrbField.qml",
@@ -1983,6 +1990,7 @@
     }
    ],
    "gates": [
+    "orbs-shot",
     "headless"
    ]
   },
@@ -2328,15 +2336,15 @@
    ]
   },
   {
-   "id": "RC1-river-caption-every-second",
-   "source": "118f6917 critic case",
-   "class": "river caption idle",
-   "note": "a once-a-second redraw of the river window at flow 0: main deb12ecf's replay caption back (the replay clock's minute, which changes every real second)",
+   "id": "OC2-orbs-caption-client-clock",
+   "source": "679fbbc5 critic case",
+   "class": "one clock",
+   "note": "the orbs caption keeps the client clock +N min format instead of the one caption",
    "edits": [
     {
-     "file": "plugin/river/River.qml",
-     "from": "+ (river.shownAt ? \"  ·  changed \" + new Date(river.shownAt)",
-     "to": "+ (river.feed ? \"  ·  changed \" + new Date(river.feed.nowMs)"
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "readonly property string label: scene && nowMs && src && src.scene ? Mandrel.sceneCaption(src.scene, nowMs) : \"\"",
+     "to": "readonly property string label: scene ? \"REPLAYED SNAPSHOT · \" + (src.snapshot.meta.label || \"\") + \" · client clock +\" + Math.round((nowMs - fetchMs) / 60000) + \" min\" : \"\""
     }
    ],
    "gates": [
@@ -2344,15 +2352,15 @@
    ]
   },
   {
-   "id": "RC2-river-caption-follows-step",
-   "source": "118f6917",
-   "class": "river caption idle",
-   "note": "the caption's time is updated on every replay step, not only when the layout changes",
+   "id": "OC3-basin-wall-clock",
+   "source": "679fbbc5",
+   "class": "one clock",
+   "note": "the basin builds its rows at the wall clock, not the scene clock's moment: in replay its time and caption read today",
    "edits": [
     {
-     "file": "plugin/river/River.qml",
-     "from": "if (key !== shownKey) { shownKey = key; shownAt = feed.nowMs }",
-     "to": "shownKey = key; shownAt = feed.nowMs"
+     "file": "plugin/basin/BasinFeed.qml",
+     "from": "now = sc ? sceneClock.nowMs : clock()",
+     "to": "now = clock()"
     }
    ],
    "gates": [
@@ -2363,7 +2371,7 @@
    "id": "OS1-orbs-other-snapshot",
    "source": "844a60aa critic case",
    "class": "one capture",
-   "note": "the orbs replay a different capture than the river and basin: the orbs' copy of the shared snapshot drifts to the old orbs capture time (04:55:40Z), so its records, clock and state differ",
+   "note": "the orbs' copy of the shared snapshot drifts to the old orbs capture time (04:55:40Z): the service's orbs read the scene clock's capture, so only the copy check sees it (orbs alone would replay another capture)",
    "edits": [
     {
      "file": "plugin/orbs/amplify-snapshot.json",
@@ -2372,19 +2380,19 @@
     }
    ],
    "gates": [
-    "headless"
+    "data"
    ]
   },
   {
-   "id": "OS2-orbs-default-not-shared",
+   "id": "OS2-clock-default-not-shared",
    "source": "844a60aa",
    "class": "one capture",
-   "note": "OrbField's default snapshot is another file in plugin/ (the river's staged busy frames), not a copy of the shared capture",
+   "note": "the scene clock's default snapshot is another file in plugin/ (the river's staged busy frames), not a copy of the shared capture",
    "edits": [
     {
-     "file": "plugin/orbs/OrbField.qml",
-     "from": "|| Qt.resolvedUrl(\"amplify-snapshot.json\")",
-     "to": "|| Qt.resolvedUrl(\"../river/test/busy-frames.json\")"
+     "file": "data/SceneClock.qml",
+     "from": "|| decodeURIComponent(String(Qt.resolvedUrl(\"amplify-snapshot.json\"))",
+     "to": "|| decodeURIComponent(String(Qt.resolvedUrl(\"../river/test/busy-frames.json\"))"
     }
    ],
    "gates": [
@@ -2392,15 +2400,15 @@
    ]
   },
   {
-   "id": "CC1-caption-other-captured-time",
-   "source": "844a60aa critic case",
-   "class": "one capture",
-   "note": "the river's caption shows a different captured time: the replay driver labels each scene with the replay clock as its capture",
+   "id": "CC1-caption-other-moment",
+   "source": "844a60aa critic case, 679fbbc5",
+   "class": "one clock",
+   "note": "the river's caption names another moment (the minute before the one it draws)",
    "edits": [
     {
      "file": "plugin/river/RiverFeed.qml",
-     "from": "readonly property string label: scene ? scene.meta.label : \"\"",
-     "to": "readonly property string label: scene ? \"REPLAYED SNAPSHOT · Mandrel project amplify, captured \" + new Date(nowMs).toISOString().slice(0, 19) + \"Z\" : \"\""
+     "from": "Mandrel.sceneCaption(src.scene, nowMs)",
+     "to": "Mandrel.sceneCaption(src.scene, nowMs - beforeMs)"
     }
    ],
    "gates": [
@@ -2408,15 +2416,47 @@
    ]
   },
   {
-   "id": "G3-river-caption-not-change",
-   "source": "0d8e0859 G3, 844a60aa",
-   "class": "river caption",
-   "note": "the river caption's time is not worded as its last change, so it reads as the replay clock",
+   "id": "OC4-replay-not-held",
+   "source": "679fbbc5",
+   "class": "one clock",
+   "note": "the replayed scene is not held: the clock steps to the wall clock once a second in replay too, so the page reads today's time over a capture (and redraws each second)",
    "edits": [
     {
-     "file": "plugin/river/River.qml",
-     "from": "\"  ·  changed \" + new Date(river.shownAt)",
-     "to": "\"  ·  \" + new Date(river.shownAt)"
+     "file": "data/SceneClock.qml",
+     "from": "running: clock.live && clock.scene !== null",
+     "to": "running: clock.scene !== null"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OC5-river-not-given-shared-clock",
+   "source": "679fbbc5 defect a5d1ffa7",
+   "class": "one clock",
+   "note": "the shadowed binding restored: inside the PanelWindow delegate River's sceneClock binds its own (null) property, so each screen's river makes its own clock (live: its own fetch); replay holds both clocks at the capture, so only the clock it follows differs",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "River { id: river; anchors.fill: parent; sceneClock: sharedClock;",
+     "to": "River { id: river; anchors.fill: parent; sceneClock: sceneClock;"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "OC6-orbs-not-given-shared-clock",
+   "source": "679fbbc5 defect a5d1ffa7",
+   "class": "one clock",
+   "note": "the same shadowing for the orbs: OrbsLayer binds its own (null) sceneClock, so every screen's orb field makes its own clock",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "OrbsLayer { id: orbsLayer; sceneClock: sharedClock;",
+     "to": "OrbsLayer { id: orbsLayer; sceneClock: sceneClock;"
     }
    ],
    "gates": [

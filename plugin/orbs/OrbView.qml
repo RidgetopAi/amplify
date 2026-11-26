@@ -38,6 +38,10 @@ Item {
   // animation driver: a NumberAnimation drew every frame between spin steps, and starting
   // one made every Amplify window draw a frame (task 118f6917).
   property real stepMs: 0          // the field's step clock, wall ms of its last step
+  // Until its window has drawn (OrbField framed), an ease holds where it starts; from then it
+  // runs from the later of its start and that first frame.
+  property bool framed: true
+  property real framedMs: 0
   signal eased(real until)         // an ease started; the step clock runs until `until`
   component Ease: Item {          // a child of the view (`parent`); draws nothing
     visible: false
@@ -50,7 +54,8 @@ Item {
     property bool ready: false
     readonly property real value: {
       if (!ready || !parent.animate) return to
-      var p = Math.min(1, Math.max(0, (parent.stepMs - t0) / duration))
+      if (!parent.framed) return from
+      var p = Math.min(1, Math.max(0, (parent.stepMs - Math.max(t0, parent.framedMs)) / duration))
       if (quad) p = p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p)
       return from + (goal - from) * p
     }

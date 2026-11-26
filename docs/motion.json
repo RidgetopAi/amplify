@@ -74,10 +74,11 @@
       "parts": [{ "part": "rings", "axes": { "rotation": { "kind": "sweep", "from": 0, "to": -140, "tol": 1, "minBetween": 10, "maxStep": 0.25 } } }]
     },
     {
-      "id": "river-9", "comp": "river", "what": "Replay clock: builds the next scene from the fixture each second",
-      "record": "the fixture's records through data/mandrel.js buildScene", "trigger": "running replay", "start": "replay_from", "end": "captured_at, then loops",
-      "stop": "AMPLIFY_RIVER_AT freezes it", "draws": false,
-      "code": [{ "file": "plugin/river/RiverFeed.qml", "line": "Timer {" }], "parts": []
+      "id": "scene-clock", "comp": "service", "what": "The one scene clock (SceneClock.qml, task 679fbbc5): live, one refetch for orbs, river and basin, and the scene time stepped to the wall clock once a second; replay holds at the capture (no timer runs)",
+      "record": "the latest fetch (live) or the capture, meta.captured_at (replay)", "trigger": "live mode", "start": "fetch", "end": "-",
+      "stop": "replay (MANDREL_URL or MANDREL_VIEWER_TOKEN unset), AMPLIFY_SCENE_AT holds it at that time; tests only: AMPLIFY_SCENE_STEP steps the replay up to the capture", "draws": false,
+      "code": [{ "file": "plugin/basin/SceneClock.qml", "line": "Timer {", "count": 3 }, { "file": "plugin/orbs/SceneClock.qml", "line": "Timer {", "count": 3 },
+               { "file": "plugin/river/SceneClock.qml", "line": "Timer {", "count": 3 }], "parts": []
     },
     {
       "id": "river-10", "comp": "river", "what": "Water stage hue steps across each gate (g0/g1 uniforms)",
@@ -90,12 +91,6 @@
       "stop": "no drawn orb spins and no ease runs, !animate or !visible",
       "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: spinClock" }],
       "parts": [{ "part": "clock", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
-    },
-    {
-      "id": "orbs-tick", "comp": "orbs", "what": "Client-clock tick (1 s) and live refetch",
-      "record": "session timestamps on the client clock (tickScene), viewer contract 22d73eeb", "trigger": "replay or live", "start": "fetch", "end": "loops",
-      "stop": "fixedOffsetMs >= 0 (shots) or not live", "draws": false,
-      "code": [{ "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: refetchTimer" }, { "file": "plugin/orbs/OrbField.qml", "line": "Timer { id: tickTimer" }], "parts": []
     },
     {
       "id": "orbs-orb", "comp": "orbs", "what": "Orb material eases between liveness states; surface spins at its liveness rate; lease vessel level eases",
@@ -123,7 +118,7 @@
     },
     {
       "id": "orbs-beam", "comp": "orbs", "what": "Activity beam between two orbs fades with the link's age",
-      "record": "scene.links[] (session activity), age on the client clock", "trigger": "each client tick", "start": "alpha at the link age", "end": "gone after 30 min",
+      "record": "scene.links[] (session activity), age at the scene clock's moment", "trigger": "each scene clock step", "start": "alpha at the link age", "end": "gone after 30 min",
       "stop": "not animated: placed and faded per tick; its packet is held (Beam.qml time 2.3: no record moves it, task 8b5eca2f)",
       "code": [{ "file": "plugin/orbs/Beam.qml", "line": "transform: Rotation" }],
       "parts": [{ "part": "beam", "axes": {
@@ -163,10 +158,10 @@
       "parts": []
     },
     {
-      "id": "basin-feed", "comp": "basin", "what": "Amp stream retry, list polling, live scene polling, 15 s rebuild",
-      "record": "amp top / threads list; Mandrel scene", "trigger": "stream down / live mode / clock", "start": "-", "end": "-",
+      "id": "basin-feed", "comp": "basin", "what": "Amp stream retry, list polling, 15 s rebuild (the Mandrel scene comes from the scene clock)",
+      "record": "amp top / threads list", "trigger": "stream down / clock", "start": "-", "end": "-",
       "stop": "fixture or pinned clock", "draws": false,
-      "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 4 }], "parts": []
+      "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 3 }], "parts": []
     },
     {
       "id": "service-host", "comp": "service", "what": "Per-window swapped-frame logger (AMPLIFY_FPS=1, every 5 s) and the ready line",
