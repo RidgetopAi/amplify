@@ -25,15 +25,23 @@
 # keeps about one core busy on llvmpipe and its checks have time limits (a tether settles
 # within 2 s), so at most $MUTATE_RENDER_JOBS (default: nproc) render gates run at once,
 # whatever -j is (on a 2-vCPU orb, 4 at once made the control's river-shot miss that limit,
-# 2.08 s), and the headless gate runs alone (it also drives wayvnc on a fixed port).
+# 2.08 s). The headless and river-shot gates take one slot each (task 87f71d95: headless
+# wayvnc listens on a socket in its own run dir, and its waits are bounded readiness waits,
+# not fixed sleeps), and headless-pair, two headless runs at once, takes two. orbs-shot
+# takes every slot and renders alone: its service scenario judges the orbs' first eases,
+# which run while the plugin draws its first frames, and with any other render starting
+# beside it the step clock's first steps came 250-570 ms late and the eases jumped past
+# their limit (2 concurrent orbs-shots: 1 trial in 3 failed unmutated; alone: none). Each gate is
+# stopped after $MUTATE_GATE_TIMEOUT s (default 1200; exit 124, RED), so a wait that never
+# ends cannot hang the catalogue.
 #
 # Gates: data, orbs, river, motion (node --test of data/test, plugin/orbs/test,
 # plugin/river/test, tools/motion/test), spec (tools/motion/spec.mjs), mutate (node --test
 # tools/motion/test/mutate.test.mjs: this runner on stub gates; for mutations of this
 # file, which the whole motion gate would also fail on its own catalogue check), river-shot
 # (plugin/river/test/shot.sh), orbs-shot (plugin/orbs/test/shot.sh), headless
-# (tools/headless-shot.sh). The render gates need the stack in tools/headless-shot.sh
-# and HEADLESS_MESA without a GPU. A critic who finds a surviving mutation adds it to
+# (tools/headless-shot.sh), headless-pair (tools/headless-pair.sh). The render gates need
+# the stack in tools/headless-shot.sh and HEADLESS_MESA without a GPU. A critic who finds a surviving mutation adds it to
 # tools/motion/mutations.json.
 set -uo pipefail
 
@@ -48,8 +56,10 @@ if [[ ${1:-} == --list ]]; then
   exit 0
 fi
 
-# env-read: MUTATE_RENDER_JOBS caps the render gates (river-shot, orbs-shot, headless) running at once.
+# env-read: MUTATE_RENDER_JOBS caps the render gates (river-shot, orbs-shot, headless, headless-pair) running at once.
 JOBS=$(nproc) RENDER=${MUTATE_RENDER_JOBS:-$(nproc)} ids=()
+# env-read: MUTATE_GATE_TIMEOUT is how long one gate may run, in seconds.
+GATE_TIMEOUT=${MUTATE_GATE_TIMEOUT:-1200}
 while (( $# )); do
   case $1 in
     -j) JOBS=${2:-}; shift ;;
@@ -60,6 +70,7 @@ while (( $# )); do
 done
 [[ $JOBS =~ ^[1-9][0-9]*$ ]] || { echo "mutate: -j needs a positive number" >&2; exit 2; }
 [[ $RENDER =~ ^[1-9][0-9]*$ ]] || { echo "mutate: MUTATE_RENDER_JOBS needs a positive number" >&2; exit 2; }
+[[ $GATE_TIMEOUT =~ ^[1-9][0-9]*$ ]] || { echo "mutate: MUTATE_GATE_TIMEOUT needs a positive number" >&2; exit 2; }
 
 (( ${#ids[@]} )) || mapfile -t ids < <(node -e 'for (const m of require(process.argv[1]).mutations) console.log(m.id)' "$CAT")
 gates_of() { node -e 'const m = require(process.argv[1]).mutations.find((x) => x.id === process.argv[2]); if (!m) process.exit(2); console.log(m.gates.join(" "))' "$CAT" "$1"; }
@@ -69,8 +80,9 @@ declare -A CMD=(
   [motion]="node --test tools/motion/test/" [spec]="node tools/motion/spec.mjs"
   [mutate]="node --test tools/motion/test/mutate.test.mjs"
   [river-shot]="plugin/river/test/shot.sh" [orbs-shot]="plugin/orbs/test/shot.sh" [headless]="tools/headless-shot.sh"
+  [headless-pair]="tools/headless-pair.sh"
 )
-ORDER=(data orbs river motion spec mutate headless orbs-shot river-shot)   # cheapest first
+ORDER=(data orbs river motion spec mutate headless headless-pair orbs-shot river-shot)   # cheapest first
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
@@ -98,27 +110,22 @@ trap 'exit 130' INT TERM
 BASE="$WORK/base"; mkdir "$BASE"
 (cd "$ROOT" && git ls-files -co --exclude-standard -z | grep -zv '^\.amp/' | tar --null -T - -cf -) | tar -xf - -C "$BASE"
 
-# render_slot [all]: hold one of the RENDER render-gate slots (fds in SLOTS), waiting for a
-# free one; with "all", every slot, so the gate renders alone (the headless gate: its
-# broken-shader check gives a fresh, uncached plugin copy 10 s to report ready, which one
-# other render on a 2-vCPU orb made it miss).
-# Waiters queue on a turnstile first, so a run that waits is not passed over by later ones.
+# render_slot <n>: hold n of the RENDER render-gate slots (fds in SLOTS; n is capped at
+# RENDER), waiting for free ones. Waiters queue on a turnstile first, so a run that waits
+# is not passed over by later ones.
 render_slot() {
-  local k fd t
+  local k fd t n=$(( $1 < RENDER ? $1 : RENDER ))
   SLOTS=()
   exec {t}> "$WORK/render.turnstile"; flock "$t"
-  if [[ ${1:-} == all ]]; then
-    for ((k = 1; k <= RENDER; k++)); do exec {fd}> "$WORK/render-$k.lock"; flock "$fd"; SLOTS+=("$fd"); done
-  else
-    while (( ! ${#SLOTS[@]} )); do
-      for ((k = 1; k <= RENDER; k++)); do
-        exec {fd}> "$WORK/render-$k.lock"
-        flock -n "$fd" && { SLOTS=("$fd"); break; }
-        exec {fd}>&-
-      done
-      (( ${#SLOTS[@]} )) || sleep 0.2
+  while (( ${#SLOTS[@]} < n )); do
+    for ((k = 1; k <= RENDER && ${#SLOTS[@]} < n; k++)); do
+      [[ " ${SLOTS[*]} " == *" k$k:"* ]] && continue
+      exec {fd}> "$WORK/render-$k.lock"
+      if flock -n "$fd"; then SLOTS+=("k$k:$fd"); else exec {fd}>&-; fi
     done
-  fi
+    (( ${#SLOTS[@]} < n )) && sleep 0.2
+  done
+  SLOTS=("${SLOTS[@]#*:}")
   exec {t}>&-
 }
 
@@ -131,10 +138,12 @@ gate() {
   exec 9< "$rt"
   flock -n 9 || { echo "mutate: runtime dir $rt is in use by another run" > "$OUT/$id-$g.log"; exec 9<&-; echo busy; return; }
   local SLOTS=() fd
-  [[ $g == *-shot ]] && render_slot
-  [[ $g == headless ]] && render_slot all
+  [[ $g == river-shot ]] && render_slot 1
+  [[ $g == orbs-shot ]] && render_slot "$RENDER"
+  [[ $g == headless ]] && render_slot 1
+  [[ $g == headless-pair ]] && render_slot 2
   local env=(MUTATE_RUN="$rt" SHOT_RUNTIME_DIR="$rt" TMPDIR="$rt")
-  (cd "$WORK/scr-$n" && exec env "${env[@]}" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
+  (cd "$WORK/scr-$n" && exec env "${env[@]}" timeout -k 10 "$GATE_TIMEOUT" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
   rc=$?
   reap "$rt"; for fd in "${SLOTS[@]}"; do exec {fd}>&-; done; exec 9<&-; rm -rf "$rt"
   echo "$rc"

@@ -143,7 +143,7 @@ test("mutate.sh adds 1 when the control is not GREEN", (ctx) => {
     assert.equal(r.status, 1);
 });
 
-test("mutate.sh -j 4: same table as -j 1, runs overlap in their own trees and runtime dirs, render gates capped, headless alone", (ctx) => {
+test("mutate.sh -j 4: same table as -j 1, runs overlap in their own trees and runtime dirs, render gates capped", (ctx) => {
     const ms = [];
     for (let k = 0; k < 4; k++) ms.push(mut(`R${k}`, ["data", "river-shot"], k % 2 ? "river-shot-bad" : "x"));
     for (let k = 0; k < 3; k++) ms.push(mut(`O${k}`, ["orbs-shot"], k ? "orbs-shot-bad" : "x"));
@@ -164,8 +164,6 @@ test("mutate.sh -j 4: same table as -j 1, runs overlap in their own trees and ru
     assert.ok(peak(spans) > 1, "-j 4 runs gates at once");
     const render = spans.filter((x) => /shot|headless/.test(x.gate));
     assert.ok(peak(render) <= 2, "at most MUTATE_RENDER_JOBS render gates at once");
-    for (const h of render.filter((x) => x.gate === "headless"))
-        assert.ok(!render.some((x) => x !== h && overlap(h, x)), "the headless gate renders alone");
     // Each gate has its own runtime dir; each run's tree carries only its own mutation.
     assert.equal(new Set(spans.map((x) => x.rt)).size, spans.length);
     const flagOf = new Map();
@@ -174,5 +172,55 @@ test("mutate.sh -j 4: same table as -j 1, runs overlap in their own trees and ru
         flagOf.set(s.dir, s.flag);
     }
     assert.equal(new Set(flagOf.values()).size, flagOf.size, "no two runs share a tree");
+    assert.ok(render.some((a) => render.some((b) => a !== b && overlap(a, b))), "render gates overlap");
+    for (const o of render.filter((x) => x.gate === "orbs-shot"))
+        assert.ok(!render.some((x) => x !== o && overlap(o, x)), "the orbs-shot gate renders alone");
     assert.deepEqual(leftovers(t), []);
+});
+
+// Headless runs are isolated (their own VNC socket, task 87f71d95), so they take one render
+// slot each and run side by side up to the cap; before, each held every slot and the 25
+// headless runs of the catalogue ran one at a time (critic gap G4 of verdict 0d8e0859).
+test("mutate.sh runs headless gates at once, up to MUTATE_RENDER_JOBS", (ctx) => {
+    const t = tree(ctx, [mut("H0", ["headless"], "headless-bad"), mut("H1", ["headless"], "headless-bad"), mut("H2", ["headless"], "headless-bad")]);
+    const r = mutate(t, ["-j", "4"], { STUB_SLEEP: "0.6", MUTATE_RENDER_JOBS: "2" });
+    assert.equal(r.status, 0);
+    const spans = r.runs.filter((x) => x.what === "start").map((s) => ({ ...s, end: r.runs.find((x) => x.what === "end" && x.dir === s.dir && x.ms >= s.ms).ms }));
+    assert.equal(spans.length, 4, "control and three mutations");
+    assert.equal(peak(spans), 2, "two headless gates at once, never more than the cap");
+});
+
+// A gate that never ends (a readiness wait whose timeout never fires) is stopped after
+// MUTATE_GATE_TIMEOUT s and counts as RED with exit 124, so the catalogue still finishes.
+test("mutate.sh stops a gate after MUTATE_GATE_TIMEOUT and reports it RED (124)", (ctx) => {
+    const t = tree(ctx, [mut("HANG", ["data", "river-shot"])]);
+    const t0 = Date.now();
+    const r = mutate(t, ["HANG"], { STUB_SLEEP: "60", MUTATE_GATE_TIMEOUT: "2" });
+    assert.ok(Date.now() - t0 < 30000, "the run finished well before the stubs' 60 s");
+    assert.match(r.row("HANG"), /RED\s+data=124$/);
+    assert.match(r.row("control"), /RED\s+data=124$/);
+    assert.deepEqual(leftovers(t), []);
+});
+
+// shot_wait (tools/shot-reap.sh), the render gates' readiness wait (task 87f71d95).
+const shotWait = (script, timeout = 15000) => {
+    const t0 = Date.now();
+    const r = spawnSync("bash", ["-c", `. "${path.join(root, "tools/shot-reap.sh")}"; ${script}`], { encoding: "utf8", timeout });
+    return { ...r, secs: (Date.now() - t0) / 1000 };
+};
+
+test("shot_wait returns only once its condition holds, and then at once", (ctx) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "shot-wait-"));
+    ctx.after(() => fs.rmSync(d, { recursive: true, force: true }));
+    const r = shotWait(`( sleep 1; echo "amplify: ready" > "${d}/log" ) & ready() { grep -q "amplify: ready" "${d}/log" 2>/dev/null; }; shot_wait 10 "the ready line" ready; echo "rc=$? $(cat "${d}/log")"`);
+    assert.match(r.stdout, /rc=0 amplify: ready/, "it returned after the line was written");
+    assert.ok(r.secs >= 0.9 && r.secs < 3, `took ${r.secs} s (the line came at 1 s)`);
+});
+
+test("shot_wait gives up after its timeout, returns 1 and says what it waited for", () => {
+    const r = shotWait(`shot_wait 1 "a line that never comes" false; echo "rc=$?"`);
+    assert.notEqual(r.status, null, "it never returned (the timeout did not fire)");
+    assert.match(r.stdout, /rc=1/);
+    assert.match(r.stderr, /timed out after 1 s waiting for a line that never comes/);
+    assert.ok(r.secs >= 0.9 && r.secs < 5, `took ${r.secs} s`);
 });

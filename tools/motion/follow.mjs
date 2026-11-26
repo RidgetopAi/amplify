@@ -23,6 +23,12 @@
 //                  holds at its target (within eps). enter: the value a new
 //                  item comes in from when it does not start at its target
 //                  (enterRequired: it always must, basin rows).
+//                  pace: the median time between consecutive drawn changes of
+//                  this axis, over every item in the run, is at least pace ms: it
+//                  steps on a clock (the orbs' 125 ms step clock), not on Qt's
+//                  animation driver, which changes it every frame (critic gap
+//                  G1 of verdict 0d8e0859, task 87f71d95). Not in still runs;
+//                  needs at least 5 gaps.
 //   rides          every sample is within tol of the partner's (with: part,
 //                  axis) samples just before or after it, and it ends on it.
 //   sweep          each item goes once from `from` to `to` (within tol),
@@ -266,6 +272,7 @@ export function check(spec, scenario, text) {
         const again = [...S.values()].filter((s) => `${s.comp}.${s.part}` === want && s.ident.includes("#")).map((s) => s.ident);
         results.push({ name: `keyed ${want}`, ok: !again.length, why: again.length ? `made again: ${again.join(" ")}` : "no item made again" });
     }
+    const gaps = {};
     const logEnd = Math.max(0, ...[...S.values()].flatMap((s) => Object.values(s.axes).map((a) => a.at(-1).t)));
     const rows = new Map(spec.rows.flatMap((r) => r.parts.map((p) => [`${r.comp} ${p.part}`, { row: r, ...p }])));
     for (const s of S.values()) {
@@ -276,6 +283,10 @@ export function check(spec, scenario, text) {
             const p = def.axes[axis];
             const name = `${s.comp}.${s.part}.${axis}`;
             if (!p) { results.push({ name: `${name} ${s.ident}`, ok: false, why: "axis traced but not in the spec" }); continue; }
+            if (p.pace && !sc.still) for (let k = 2; k < drawn.length; k++) {
+                const g = (gaps[name] ??= { pace: p.pace, ms: [] });
+                g.ms.push(drawn[k].t - drawn[k - 1].t);
+            }
             const target = s.axes[`${axis}:to`], rates = s.axes[`${axis}:rate`], on = s.axes[`${axis}:on`];
             let rs;
             if (p.kind === "none") continue;
@@ -307,6 +318,11 @@ export function check(spec, scenario, text) {
                 if (r.mover || !r.ok || sc.still || process.env.FOLLOW_ALL) results.push({ name: `${name} ${s.ident}`, ok: r.ok, why: r.why });
             }
         }
+    }
+    for (const [name, g] of Object.entries(gaps)) {
+        if (g.ms.length < 5) continue;
+        const ms = [...g.ms].sort((a, b) => a - b), med = ms[ms.length >> 1];
+        results.push({ name: `${name} pace`, ok: med >= g.pace, why: `median ${med} ms between drawn changes over ${ms.length} (want ≥ ${g.pace} ms: on the step clock, not every frame)` });
     }
     for (const [name, n] of Object.entries(sc.want || {}))
         results.push({ name, ok: (movers[name] || 0) >= n, why: `${movers[name] || 0} movers (want ≥ ${n})`, want: true });
