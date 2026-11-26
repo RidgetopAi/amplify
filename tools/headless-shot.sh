@@ -400,6 +400,13 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 # Then two more runs on the same outputs (task 118f6917):
 #  - the same held scene over 30 s: no amplify window swaps a single frame (a once-a-second
 #    caption or clock would; task 679fbbc5: the replayed scene clock never steps);
+#  - the shipped default (task aa5e593d): no AMPLIFY_SCENE_AT, the scene held at the capture
+#    04:00:17Z, whose last activity (03:52Z) keeps the river flowing (flow > 0) for as long as
+#    it is held. Over 10 s each amplify window steps its water clock (River.qml waterClock) at
+#    most 4.2 times a second, at least once (the water flows), and swaps at most one frame a
+#    second more than it stepped, so no frame clock draws every vsync (on Brian's desktop that
+#    was 11 % of a core; on llvmpipe a frame costs about 140 ms of CPU, so Quickshell's CPU is
+#    logged here and the 2 % budget is asserted on the flow-0 run above);
 #  - live orbs spinning (the scene clock held at the capture: a live coord and two forming
 #    workers) over 20 s, each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
@@ -468,6 +475,17 @@ screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
   && pass "idle, scene held at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
   || fail "idle, scene held at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
 
+out=$(fpsrun "$RUN/shipped.log" 10)
+pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "shipped" "$fps"
+echo "  shipped default: Quickshell at $pct % of one core"
+flow=$(grep -aoE "amplify: river lanes .* flow=[0-9.]+" "$RUN/shipped.log" | tail -1 | sed -E 's/.*flow=//')
+# Per 5 s amplify line: no steps logged, steps/s over 4.2 or under 0.2 (still water), or frames/s over steps/s + 1.
+over=$(awk '$1 == "amplify" && ($4 == "-" || $4 > 4.2 || $4 < 0.2 || $3 > $4 + 1) { print $2 " " $3 " fps, " $4 " steps/s" }' <<< "$fps" | head -3 | tr '\n' ';')
+serr=$(qmlerr "$RUN/shipped.log")
+screens3 amplify "$fps" && [[ -z $over ]] && awk -v f="${flow:-0}" 'BEGIN { exit !(f > 0) }' && (( serr == 0 )) \
+  && pass "shipped default: the held capture flows (flow $flow) and each river/basin window draws on its water clock (<= 4.2 steps/s, <= steps + 1 fps; 3 screens; Quickshell $pct %)" \
+  || fail "shipped default: a river/basin window draws off its water clock or the water is still (flow ${flow:-?}; ${over:-none over}; all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $serr QML errors; Quickshell $pct %)"
+
 out=$(fpsrun "$RUN/live-orbs.log" 20)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
 echo "  live orbs: Quickshell at $pct % of one core"
@@ -485,7 +503,7 @@ lerr=$(qmlerr "$RUN/live-orbs.log")
 screens3 amplify-orbs "$fps" && [[ -z $over ]] && (( spun > 0 && lerr == 0 )) \
   && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s; over the span <= steps + 1/s + 2; 3 screens)" \
   || fail "live orbs spinning: an orbs window draws above its clock (${over:-none over}; spinning lines $spun; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no); $lerr QML errors)"
-for f in idle idle-river live-orbs; do
+for f in idle idle-river shipped live-orbs; do
   grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/$f.log" | head -3 | sed "s/^/  $f: /"
   grep -av "amplify: fps" "$RUN/$f.log" >> "$RUN/plugin.log"
 done

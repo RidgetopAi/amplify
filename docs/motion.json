@@ -5,9 +5,9 @@
       "id": "river-1", "comp": "river", "what": "Water streaks advected downstream",
       "record": "tasks whose updated_at is in the 15 min before the scene clock (layout().flow, flowSpeed = 90 x flow)",
       "trigger": "a scene with flow > 0", "start": "phase where it stopped", "end": "runs while flow > 0",
-      "stop": "speed 0, !animate or !visible: the frame clock stops",
-      "code": [{ "file": "plugin/river/River.qml", "line": "FrameAnimation {" }],
-      "parts": [{ "part": "water", "axes": { "x": { "kind": "clock", "rateTol": 0.25 } } }]
+      "stop": "speed 0, !animate or !visible: the water clock stops. It steps on a Timer every waterStepMs (at most 4 steps/s), never on the frame clock (task aa5e593d)",
+      "code": [{ "file": "plugin/river/River.qml", "line": "Timer { id: waterClock" }],
+      "parts": [{ "part": "water", "axes": { "x": { "kind": "clock", "rateTol": 0.25, "pace": 200 } } }]
     },
     {
       "id": "river-2", "comp": "river", "what": "Lane gates slide when lanes widen or narrow",
