@@ -106,6 +106,7 @@ QtObject {
       printErrors: false
       onLoaded: if (!feed.scene && feed.config.mode !== "live") {
         var snap = JSON.parse(text())
+        console.log("amplify: replay basin " + Mandrel.replaySource(snap))
         var at = Date.parse(snap.meta.captured_at)
         feed.ownScene = Mandrel.createReplayDriver(snap, {}).sceneAt(at)
       }

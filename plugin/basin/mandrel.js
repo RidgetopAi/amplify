@@ -587,6 +587,19 @@ function createEventStream(o) {
 
 // ---------------------------------------------------------------- replay
 
+// One line naming the capture a component replays (task 844a60aa): its capture time,
+// session and task counts, and an FNV-1a hash of its records, so components that log it
+// on load (orbs, river, basin) can be checked to replay one snapshot (tools/headless-shot.sh).
+function replaySource(snapshot) {
+    var r = snapshot.responses || {};
+    var s = JSON.stringify(r), h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return "captured " + (snapshot.meta && snapshot.meta.captured_at) +
+        " sessions " + listOf(r["/api/sessions"], "sessions").length +
+        " tasks " + listOf(r["/api/tasks"], "tasks").length +
+        " records " + ("0000000" + h.toString(16)).slice(-8);
+}
+
 // A snapshot (fixtures/amplify-snapshot.json) holds REST-shaped responses captured
 // at meta.captured_at. replayResponses(snapshot, t) rewinds them to virtual time t:
 // records created after t disappear, sessions end only once t passes ended_at, and

@@ -7,6 +7,9 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const check = (root) => spawnSync("bash", [path.join(root, "tools", "sync-shared.sh"), "--check"], { encoding: "utf8" });
@@ -34,4 +37,30 @@ test("sync-shared.sh --check fails on a drifted copy and on a symlink", (ctx) =>
     r = check(t);
     assert.equal(r.status, 1);
     assert.match(r.stderr, /symlinks inside plugin\/: plugin\/river\/extra\.qsb/);
+});
+
+// One replay snapshot (task 844a60aa): every snapshot a shipped component replays by
+// default (Qt.resolvedUrl("<file>.json") outside plugin/*/test/) is a copy of the shared
+// capture, so orbs, river and basin show the same capture; the orbs' test-only fixture
+// (fixtures/test/orbs-states.json) is never referenced from shipped code.
+test("every shipped replay reads a copy of fixtures/amplify-snapshot.json", () => {
+    const shared = fs.readFileSync(path.join(ROOT, "fixtures", "amplify-snapshot.json"));
+    const qml = fs.readdirSync(path.join(ROOT, "plugin"), { recursive: true })
+        .filter((f) => f.endsWith(".qml") && !f.split(path.sep).includes("test"));
+    const readers = [];
+    for (const f of qml) {
+        const src = fs.readFileSync(path.join(ROOT, "plugin", f), "utf8");
+        assert.ok(!/"[^"\n]*(fixtures\/test|orbs-states)[^"\n]*"/.test(src), `${f} replays the test-only orbs fixture`);
+        for (const m of src.matchAll(/resolvedUrl\("([^"]+\.json)"\)/g)) {
+            const file = path.join(ROOT, "plugin", path.dirname(f), m[1]);
+            assert.ok(fs.existsSync(file) && shared.equals(fs.readFileSync(file)),
+                `${f} replays ${path.relative(ROOT, file)}, not a copy of fixtures/amplify-snapshot.json`);
+            readers.push(path.basename(f));
+        }
+    }
+    assert.deepEqual([...new Set(readers)].sort(), ["BasinFeed.qml", "OrbField.qml", "RiverFeed.qml"]);
+    const { M } = require("../node.cjs");
+    const src = (f) => M.replaySource(JSON.parse(fs.readFileSync(path.join(ROOT, "fixtures", f), "utf8")));
+    assert.match(src("amplify-snapshot.json"), /^captured 2026-11-22T04:00:17\.000Z sessions 12 tasks \d+ records [0-9a-f]{8}$/);
+    assert.notEqual(src("amplify-snapshot.json").split(" records ")[1], src("test/orbs-states.json").split(" records ")[1]);
 });

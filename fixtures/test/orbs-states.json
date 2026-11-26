@@ -1,6 +1,8 @@
 {
  "meta": {
   "kind": "replayed-snapshot",
+  "test_only": true,
+  "test_notice": "TEST ONLY, never shipped: lives outside plugin/. Kept for the orbs tests and motion gates (roles, five liveness states, lease cue), which the shared capture fixtures/amplify-snapshot.json does not hold (it has no critic or beam). Tests select it with AMPLIFY_ORBS_FIXTURE or an explicit snapshotPath; the shipped orbs replay plugin/orbs/amplify-snapshot.json, a copy of the shared capture (task 844a60aa).",
   "label": "Mandrel project amplify, captured 2026-11-22T04:55:40Z",
   "notice": "REPLAYED SNAPSHOT. Real rows read through the Mandrel MCP tools (session list, task list, session heartbeat, session activity) by orb orbs, reshaped into the Command REST response shapes. Not live data. No tokens or secrets.",
   "source": "mcp:brian.mandrel.ridgetopai.net project amplify",
