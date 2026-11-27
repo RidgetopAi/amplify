@@ -119,9 +119,12 @@ Item {
         }
       }
 
+      // The field rests on a line above the foot's caption strip (task 205c319c): the orbs'
+      // scene caption (OrbField.qml: 18 px from the bottom, one 11 px line) stays on dark.
       Item {
         id: field
         anchors.fill: parent
+        anchors.bottomMargin: 40
         Repeater {
           model: A.BARS
           Rectangle {
