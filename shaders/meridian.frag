@@ -70,6 +70,21 @@ vec3 toObj(vec3 w) {
 }
 float wrapA(float a) { return a - 2.0 * PI * floor((a + PI) / (2.0 * PI)); }
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+// Plaque, brightness and time-mark uniforms by index. No arrays here: Qt hands GLSL
+// "100 es" to some drivers (NVIDIA), and array constructors are not GLSL ES 1.00
+// (task 3432bf5a; tools/check-gles.sh keeps them out of every shipped .qsb).
+vec4 plq(int i) {
+    if (i == 0) return plq0; if (i == 1) return plq1; if (i == 2) return plq2; if (i == 3) return plq3;
+    if (i == 4) return plq4; if (i == 5) return plq5; if (i == 6) return plq6; return plq7;
+}
+float bright(int i) {
+    if (i == 0) return brightA.x; if (i == 1) return brightA.y; if (i == 2) return brightA.z; if (i == 3) return brightA.w;
+    if (i == 4) return brightB.x; if (i == 5) return brightB.y; if (i == 6) return brightB.z; return brightB.w;
+}
+float mark(int i) {
+    if (i == 0) return marksA.x; if (i == 1) return marksA.y; if (i == 2) return marksA.z; if (i == 3) return marksA.w;
+    if (i == 4) return marksB.x; return marksB.y;
+}
 // Vessel's studio: an overhead softbox, a warm side light and a cool fill.
 vec3 studio(vec3 d) {
     float top = smoothstep(0.25, 0.95, d.y) * smoothstep(0.9, 0.2, abs(d.x));
@@ -85,9 +100,6 @@ void main() {
     if (r > E) { fragColor = vec4(0.0); return; }
     float aa = 1.5 / max(px, 1.0);
     vec3 ro = vec3(0.0, 0.0, -CAMZ);
-    vec4 P[8] = vec4[8](plq0, plq1, plq2, plq3, plq4, plq5, plq6, plq7);
-    float B[8] = float[8](brightA.x, brightA.y, brightA.z, brightA.w, brightB.x, brightB.y, brightB.z, brightB.w);
-    float M[6] = float[6](marksA.x, marksA.y, marksA.z, marksA.w, marksB.x, marksB.y);
 
     // The loupe: a fixed lens over the globe that magnifies and flattens what it covers.
     vec2 lc = loupe.xy;
@@ -111,7 +123,7 @@ void main() {
         // Graticule: latitude every 15 degrees; time meridians at 1m, 5m, 15m, 1h, 6h, 1d ago.
         float g = abs(fract(lat / (PI / 12.0) + 0.5) - 0.5) * (PI / 12.0);
         em += vec3(0.55, 0.6, 0.68) * smoothstep(aaG * 1.2, 0.0, g) * 0.10;
-        for (int i = 0; i < 6; i++) em += vec3(0.55, 0.6, 0.68) * smoothstep(aaG * 1.4, 0.0, abs(wrapA(lon - M[i])) * cl) * 0.22;
+        for (int i = 0; i < 6; i++) em += vec3(0.55, 0.6, 0.68) * smoothstep(aaG * 1.4, 0.0, abs(wrapA(lon - mark(i))) * cl) * 0.22;
         // Now meridian (lon 0): cream; red once the promised heartbeat stopped (lost).
         float nowd = abs(wrapA(lon)) * cl;
         em += mix(vec3(0.95, 0.9, 0.8), vec3(1.0, 0.25, 0.12), lost) * smoothstep(aaG * 2.5, 0.0, nowd) * 0.65;
@@ -132,15 +144,16 @@ void main() {
         // Plaques: the record's text (atlas slot i), brightness = trust.
         for (int i = 0; i < 8; i++) {
             if (float(i) >= nPlq) break;
-            vec4 q = P[i];
+            vec4 q = plq(i);
+            float b = bright(i);
             vec2 lp = vec2(wrapA(lon - q.x) * cl, lat - q.y);
             vec2 uv = lp / (2.0 * q.zw) + 0.5;
-            if (B[i] > 0.0 && uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
+            if (b > 0.0 && uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
                 float fi = float(i);
                 vec2 o = vec2(mod(fi, 4.0) * 0.25, floor(fi / 4.0) * 0.5);
                 vec4 tx = texture(atlas, o + vec2(uv.x, 1.0 - uv.y) * vec2(0.25, 0.5));
                 alb = mix(alb, alb * 0.35, tx.a * 0.7);
-                em += tx.rgb * B[i] * 1.15;
+                em += tx.rgb * b * 1.15;
             }
         }
         // Sun = liveness: day, dusk, night, moonlight, eclipse.
