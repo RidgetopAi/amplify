@@ -2955,6 +2955,38 @@
    "gates": [
     "focus"
    ]
+  },
+  {
+   "id": "LY1-cards-fixed-spacing",
+   "source": "205c319c",
+   "class": "basin card layout",
+   "note": "cards stacked at a fixed 64 px that ignores their text height: a wrapped title spills over the next card",
+   "edits": [
+    {
+     "file": "plugin/basin/Basin.qml",
+     "from": "height: Math.max(64, textCol.implicitHeight + 20)",
+     "to": "height: 64"
+    }
+   ],
+   "gates": [
+    "basin-shot"
+   ]
+  },
+  {
+   "id": "LY2-ambient-over-caption",
+   "source": "205c319c",
+   "class": "ambient field placement",
+   "note": "the field runs down through the bottom caption strip",
+   "edits": [
+    {
+     "file": "plugin/ambient/AmbientLayer.qml",
+     "from": "        anchors.bottomMargin: 40\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "basin-shot"
+   ]
   }
  ]
 }

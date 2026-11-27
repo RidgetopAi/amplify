@@ -86,12 +86,14 @@ declare -A CMD=(
   [ambient]="node --test plugin/ambient/test/ plugin/perf/test/"
   [ambient-shot]="plugin/ambient/test/shot.sh"
   [puck]="node --test plugin/puck/test/" [puck-shot]="plugin/puck/test/shot.sh motion click idle hover"
+  [basin-shot]="plugin/basin/test/shot.sh"
 )
 ORDER=(data orbs river focus motion spec qsb mutate headless headless-pair orbs-shot river-shot)   # cheapest first
 ORDER+=(ambient ambient-shot)   # task 523461dd; ambient before its render gate
 # Puck (task 23a62966): puck is node --test plugin/puck/test/; puck-shot is
 # plugin/puck/test/shot.sh motion click idle hover, a render gate holding one slot.
 ORDER=(puck "${ORDER[@]}" puck-shot)
+ORDER+=(basin-shot)   # task 205c319c: basin card and ambient caption layout
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
@@ -149,6 +151,7 @@ gate() {
   local SLOTS=() fd
   [[ $g == river-shot ]] && render_slot 1
   [[ $g == ambient-shot ]] && render_slot 1
+  [[ $g == basin-shot ]] && render_slot 1
   [[ $g == orbs-shot ]] && render_slot "$RENDER"
   [[ $g == headless ]] && render_slot 1
   [[ $g == headless-pair ]] && render_slot 2

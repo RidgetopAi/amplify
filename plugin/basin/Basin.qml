@@ -45,6 +45,13 @@ Item {
     }
   }
   Connections { target: basin.feed; function onRowsChanged() { basin.sync(basin.feed.rows) } }
+  // Where row i settles: below the cards above it (rows are as tall as their text). The
+  // list's content height is passed only so a trace binding re-reads it when a card grows.
+  function slotY(i, contentHeight) {
+    var y = 0
+    for (var j = 0; j < i; j++) { var it = list.itemAtIndex(j); y += (it ? it.height : 64) + list.spacing }
+    return y
+  }
   Component.onCompleted: sync(feed.rows)
 
   Loader {
@@ -141,12 +148,18 @@ Item {
       required property string go
       readonly property bool isLost: kind === "lost"
       readonly property color tint: isLost ? basin.lost : basin.warm
-      width: list.width; height: 64
+      // As tall as its text (task 205c319c): a fixed 64 px let a wrapped title or a taller
+      // system font spill the text over the next card.
+      width: list.width; height: Math.max(64, textCol.implicitHeight + 20)
+      // AMPLIFY_TRACE=1: the card and its text as laid out, for the layout check (plugin/basin/test/shot.sh).
+      readonly property string layout: basin.trace ? [row.index, row.y, row.height, row.y + textCol.y, row.y + textCol.y + textCol.height,
+        title.lineCount, title.truncated ? 1 : 0].map(function (n) { return Math.round(n) }).join(" ") : ""
+      onLayoutChanged: if (layout) console.log("amplify: basin card " + basin.traceKey + " " + String(row.key).replace(/\s/g, "_") + " " + layout)
       Loader {
         active: basin.trace
         sourceComponent: Trace {
           comp: "basin"; part: "row"; ident: String(row.key || "").slice(0, 24).replace(/\s/g, "_")
-          v: ({ y: row.y, opacity: row.opacity, "y:to": row.index * (row.height + list.spacing), "opacity:to": 1,
+          v: ({ y: row.y, opacity: row.opacity, "y:to": basin.slotY(row.index, list.contentHeight), "opacity:to": 1,
                 halo: haloRing.visible ? haloRing.opacity : 0, "halo:to": haloRing.visible ? 1 : 0 })
         }
       }
@@ -188,6 +201,7 @@ Item {
       }
 
       Column {
+        id: textCol
         anchors.left: badge.right; anchors.leftMargin: 12
         anchors.right: goPill.left; anchors.rightMargin: 12
         anchors.verticalCenter: parent.verticalCenter
@@ -198,7 +212,8 @@ Item {
           font.family: basin.mono; font.pixelSize: 10; font.letterSpacing: 1.4
         }
         Text {
-          width: parent.width; elide: Text.ElideRight
+          id: title
+          width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
           text: row.title
           color: "#fff1e8"; font.pixelSize: 14
         }
