@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "ridgetopai.amplify",
+  "name": "Amplify",
+  "version": "0.0.1",
+  "author": "RidgetopAI",
+  "description": "Live Mandrel-driven desktop layer (P0 spike: one orb per screen on WlrLayer.Bottom)",
+  "kinds": ["service"],
+  "keepLoaded": false,
+  "entryPoints": { "service": "plugin/Service.qml" }
+}

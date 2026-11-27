@@ -83,6 +83,47 @@ function resolveConfig(env) {
     return cfg;
 }
 
+// The user's config file (task 45de8d89): $XDG_CONFIG_HOME/amplify/mandrel.env, else
+// ~/.config/amplify/mandrel.env. It lives in the user's home, never in the repo or the
+// installed plugin folder (which is a clone of the repo), so a token is never committed.
+// env holds XDG_CONFIG_HOME and HOME as the host read them; null when neither is set.
+function configFilePath(env) {
+    env = env || {};
+    var xdg = String(env.XDG_CONFIG_HOME || "").trim();
+    var home = String(env.HOME || "").trim();
+    var dir = xdg.charAt(0) === "/" ? xdg : (home.charAt(0) === "/" ? home.replace(/\/+$/, "") + "/.config" : "");
+    return dir ? dir.replace(/\/+$/, "") + "/amplify/mandrel.env" : null;
+}
+
+// KEY=VALUE lines, as a shell env file: blank lines and # comments skipped, an optional
+// "export ", values optionally in matching single or double quotes. Only MANDREL_URL and
+// MANDREL_VIEWER_TOKEN are kept.
+function parseConfigFile(text) {
+    var out = {};
+    var lines = String(text || "").split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+        var m = lines[i].match(/^\s*(?:export\s+)?(MANDREL_URL|MANDREL_VIEWER_TOKEN)\s*=\s*(.*?)\s*$/);
+        if (!m) continue;
+        var v = m[2];
+        var q = v.match(/^(["'])(.*)\1$/);
+        out[m[1]] = q ? q[2] : v.replace(/\s+#.*$/, "");
+    }
+    return out;
+}
+
+// The config from the environment and the config file's text (null or "" when missing or
+// unreadable): each variable set in the environment wins over the file. Anything missing
+// replays (resolveConfig); this never throws.
+function configFrom(env, fileText) {
+    env = env || {};
+    var file = parseConfigFile(fileText);
+    var merged = {
+        MANDREL_URL: String(env.MANDREL_URL || "").trim() || file.MANDREL_URL || "",
+        MANDREL_VIEWER_TOKEN: String(env.MANDREL_VIEWER_TOKEN || "").trim() || file.MANDREL_VIEWER_TOKEN || ""
+    };
+    return resolveConfig(merged);
+}
+
 function authHeaders(cfg) {
     var h = { "Accept": "application/json" };
     if (cfg && cfg.token) h["Authorization"] = "Bearer " + cfg.token;

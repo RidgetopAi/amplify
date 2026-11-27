@@ -17,11 +17,25 @@ import "mandrel.js" as Mandrel  // copy of data/mandrel.js (tools/sync-shared.sh
 Scope {
   id: clock
 
-  // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (data layer config; replay when unset or mdl_).
-  readonly property var config: Mandrel.resolveConfig({
+  // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (data layer config; replay when unset or mdl_), and XDG_CONFIG_HOME, HOME to find the user's config file.
+  readonly property var env: ({
     MANDREL_URL: Quickshell.env("MANDREL_URL") || "",
-    MANDREL_VIEWER_TOKEN: Quickshell.env("MANDREL_VIEWER_TOKEN") || ""
+    MANDREL_VIEWER_TOKEN: Quickshell.env("MANDREL_VIEWER_TOKEN") || "",
+    XDG_CONFIG_HOME: Quickshell.env("XDG_CONFIG_HOME") || "",
+    HOME: Quickshell.env("HOME") || ""
   })
+  // The user's config file, ~/.config/amplify/mandrel.env (task 45de8d89; Mandrel.configFilePath),
+  // read once when the clock is made: the environment wins per variable, and a missing or
+  // unreadable file replays. Edit it, then disable and enable the plugin.
+  readonly property string configPath: Mandrel.configFilePath(env) || ""
+  FileView {
+    id: configFile
+    path: clock.configPath
+    blockAllReads: true    // text() reads the file there and then, so config is set before anything starts
+    printErrors: false
+  }
+  // configFile.path makes the binding wait for the path; a missing file reads "".
+  readonly property var config: Mandrel.configFrom(env, configFile.path ? configFile.text() : "")
   readonly property bool live: config.mode === "live"
   // The replayed capture: a test fixture when set, else amplify-snapshot.json next to this
   // copy, a copy of fixtures/amplify-snapshot.json (tools/sync-shared.sh).

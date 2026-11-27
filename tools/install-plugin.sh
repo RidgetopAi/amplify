@@ -5,9 +5,10 @@
 #   tools/install-plugin.sh            # link, wait out the reload, wait until listed, enable
 #   tools/install-plugin.sh --remove   # disable and unlink
 #
-# `omarchy plugin add <url>` expects manifest.json at the repo root, which this
-# repo does not have yet (plugin/ is a subdirectory), so the spike links the
-# directory by hand as the Omarchy manual describes for local plugins.
+# Users install with `omarchy plugin add https://github.com/RidgetopAi/amplify`
+# (the root manifest.json points into plugin/; task 45de8d89, README.md). This
+# script is the checkout path: it links plugin/ by hand, as the Omarchy manual
+# describes for local plugins, and rebuilds the shaders first.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

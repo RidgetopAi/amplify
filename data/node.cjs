@@ -25,10 +25,16 @@ function load() {
 
 const M = load();
 
+// The config file's text, or null when it is missing or unreadable (replay, never a throw).
+function readConfigFile(file) {
+    if (!file) return null;
+    try { return fs.readFileSync(file, "utf8"); } catch { return null; }
+}
+
 function config(env) {
-    // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (the only variables the data layer reads)
-    const e = env || { MANDREL_URL: process.env.MANDREL_URL, MANDREL_VIEWER_TOKEN: process.env.MANDREL_VIEWER_TOKEN };
-    return M.resolveConfig(e);
+    // env-read: MANDREL_URL, MANDREL_VIEWER_TOKEN (the only variables the data layer reads), and XDG_CONFIG_HOME, HOME to find the user's config file (M.configFilePath)
+    const e = env || { MANDREL_URL: process.env.MANDREL_URL, MANDREL_VIEWER_TOKEN: process.env.MANDREL_VIEWER_TOKEN, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME, HOME: process.env.HOME };
+    return M.configFrom(e, readConfigFile(M.configFilePath(e)));
 }
 
 const timers = {
