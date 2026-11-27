@@ -5,6 +5,7 @@ import QtQuick
 import "orbs"
 import "river"
 import "basin"
+import "panes"
 import "basin" as Shared   // SceneClock.qml: one copy per component dir (tools/sync-shared.sh), named here once
 
 // Amplify service. Loaded two ways from the same file:
@@ -172,10 +173,10 @@ Item {
       WlrLayershell.layer: root.desktopLayer
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      // Only the basin's rows take input here (the orbs have their own layer);
+      // Only the basin's rows and the panes take input here (the orbs have their own layer);
       // everything else falls through to the wallpaper layer and the desktop's
       // own click handling.
-      mask: Region { item: basin.hitItem }
+      mask: Region { item: basin.hitItem; Region { item: panes } }
 
       River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }
 
@@ -186,6 +187,15 @@ Item {
         animate: !root.still
         trace: root.trace
         anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 30 }
+      }
+
+      // The panes (task bc45ee1d): stats, latest records, project switcher and links, above the basin.
+      Panes {
+        id: panes
+        feed: basinFeed
+        screenName: win.modelData.name
+        width: Math.min(640, win.width / 2 - 56)
+        anchors { right: parent.right; top: parent.top; rightMargin: 28; topMargin: 76 }
       }
 
       // Counts the frames this window swaps (a FrameAnimation here would itself draw every frame).

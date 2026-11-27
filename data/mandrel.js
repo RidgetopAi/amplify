@@ -336,6 +336,7 @@ function buildScene(inputs, opts) {
         var id = pick(c, "id");
         latest.push({ kind: "context", type: pick(c, "context_type", "contextType", "type") || null, id: id, id8: id8(id),
                       url: recordUrl(baseUrl, id), title: firstLine(pick(c, "content", "title"), 120),
+                      fullTitle: firstLine(pick(c, "content", "title"), Infinity) || null,
                       at: pick(c, "created_at", "createdAt") || null, sessionId: pick(c, "session_id", "sessionId") || null,
                       trust: pick(c, "trust") && typeof c.trust === "object" ? c.trust.band : (pick(c, "trust") || null) });
     });
@@ -343,14 +344,24 @@ function buildScene(inputs, opts) {
         var id = pick(d, "id");
         latest.push({ kind: "decision", type: pick(d, "decision_type", "decisionType") || null, id: id, id8: id8(id),
                       url: recordUrl(baseUrl, id), title: firstLine(pick(d, "title"), 120),
+                      fullTitle: firstLine(pick(d, "title"), Infinity) || null,
                       at: pick(d, "created_at", "createdAt", "decision_date", "decisionDate") || null,
                       sessionId: pick(d, "session_id", "sessionId") || null, trust: null });
     });
     tasks.forEach(function (tk) {
         latest.push({ kind: "task", type: tk.status, id: tk.id, id8: tk.id8, url: tk.url, title: firstLine(tk.title, 120),
-                      at: tk.createdAt, sessionId: null, trust: null });
+                      fullTitle: firstLine(tk.title, Infinity) || null, at: tk.createdAt, sessionId: null, trust: null });
     });
     latest.sort(function (a, b) { return (toMs(b.at) || 0) - (toMs(a.at) || 0); });
+    // records (panes, task bc45ee1d): the newest context, decision and task (fullTitle is the
+    // whole first line; title is cut at 120), and every record's created time, newest first,
+    // taken before latest is cut to latestLimit.
+    var records = { context: null, decision: null, task: null, times: [] };
+    latest.forEach(function (r) {
+        var m = toMs(r.at);
+        if (m !== null) records.times.push(m);
+        if (records[r.kind] === null) records[r.kind] = r;
+    });
     latest = latest.slice(0, opts.latestLimit || 12);
 
     var needsYou = [];
@@ -394,6 +405,7 @@ function buildScene(inputs, opts) {
         tasks: tasks,
         lanes: lanes,
         latest: latest,
+        records: records,
         needsYou: needsYou,
         counts: { liveness: livenessCounts, tasks: tasks.filter(function (x) { return !x.hidden; }).length,
                   needsYou: needsYou.length }
