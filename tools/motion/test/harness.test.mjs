@@ -150,7 +150,7 @@ test("the mutation catalogue applies to this tree and covers the river records",
     const all = catalogue(), ids = all.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, "ids unique");
     const gates = new Set(["data", "orbs", "river", "focus", "motion", "spec", "qsb", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair",
-                           "ambient", "ambient-shot", "puck", "puck-shot", "basin-shot"]);
+                           "ambient", "ambient-shot", "puck", "puck-shot", "basin-shot", "install"]);
     for (const m of all) {
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);

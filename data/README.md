@@ -4,7 +4,7 @@
 
 ## Config
 
-The data layer reads only `MANDREL_URL` and `MANDREL_VIEWER_TOKEN` (`resolveConfig(env)`; the host reads the env, marked `// env-read:`). If either is unset, or the token starts with `mdl_` (an MCP read-write token), it falls back to replaying `fixtures/amplify-snapshot.json`. Never commit a token.
+The data layer reads only `MANDREL_URL` and `MANDREL_VIEWER_TOKEN` (`resolveConfig(env)`; the host reads the env, marked `// env-read:`). If either is unset, or the token starts with `mdl_` (an MCP read-write token), it falls back to replaying `fixtures/amplify-snapshot.json`. Hosts also read the user's config file `${XDG_CONFIG_HOME:-~/.config}/amplify/mandrel.env` (`configFilePath(env)`, `parseConfigFile(text)`, `configFrom(env, fileText)`; the environment wins per variable, and a missing or unreadable file replays; see the top-level README.md). Never commit a token.
 
 ## API
 

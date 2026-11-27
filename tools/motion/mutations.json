@@ -2987,6 +2987,38 @@
    "gates": [
     "basin-shot"
    ]
+  },
+  {
+   "id": "IN1-token-read-from-repo",
+   "source": "45de8d89 (doneWhen 2)",
+   "class": "install config",
+   "note": "the config file is read from the working directory (the repo or the installed plugin clone) instead of ~/.config/amplify",
+   "edits": [
+    {
+     "file": "data/mandrel.js",
+     "from": "return dir ? dir.replace(/\\/+$/, \"\") + \"/amplify/mandrel.env\" : null;",
+     "to": "return \"mandrel.env\";"
+    }
+   ],
+   "gates": [
+    "install"
+   ]
+  },
+  {
+   "id": "IN2-no-demo-fallback",
+   "source": "45de8d89 (doneWhen 2)",
+   "class": "install demo mode",
+   "note": "a missing or unreadable config file throws instead of falling back to demo/replay mode",
+   "edits": [
+    {
+     "file": "data/node.cjs",
+     "from": "try { return fs.readFileSync(file, \"utf8\"); } catch { return null; }",
+     "to": "return fs.readFileSync(file, \"utf8\");"
+    }
+   ],
+   "gates": [
+    "install"
+   ]
   }
  ]
 }
