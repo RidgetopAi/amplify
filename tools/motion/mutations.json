@@ -89,8 +89,8 @@
    "edits": [
     {
      "file": "plugin/river/River.qml",
-     "from": "onTriggered: river.phase += river.speed * frameTime",
-     "to": "onTriggered: river.phase -= river.speed * frameTime"
+     "from": "      river.phase += river.speed * (t - river.clockAt) / 1000\n",
+     "to": "      river.phase -= river.speed * (t - river.clockAt) / 1000\n"
     }
    ],
    "gates": [
@@ -488,16 +488,22 @@
    "id": "O7-clock-at-flow-0",
    "source": "05a122b0 O7",
    "class": "river row 1 stop",
-   "note": "",
+   "note": "the water clock keeps stepping at flow 0 (aa5e593d: a Timer with interval 0 never fires, so the step interval is mutated too)",
    "edits": [
     {
      "file": "plugin/river/River.qml",
-     "from": "running: river.animate && river.visible && river.speed > 0",
-     "to": "running: river.animate && river.visible"
+     "from": "readonly property bool flowing: animate && visible && speed > 0",
+     "to": "readonly property bool flowing: animate && visible"
+    },
+    {
+     "file": "plugin/river/river.js",
+     "from": "1000 * WATER_STEP_PX / speed) : 0;",
+     "to": "1000 * WATER_STEP_PX / speed) : WATER_MIN_STEP_MS;"
     }
    ],
    "gates": [
-    "river-shot"
+    "river-shot",
+    "headless"
    ]
   },
   {
@@ -2771,6 +2777,54 @@
    ],
    "gates": [
     "ambient"
+   ]
+  },
+  {
+   "id": "WR1-water-clock-every-vsync",
+   "source": "aa5e593d done-when 5",
+   "class": "river row 1 water clock",
+   "note": "the water phase steps on a FrameAnimation again, every vsync on every screen (11 % of a core on Brian's desktop)",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "  Timer { id: waterClock\n    running: river.flowing; repeat: true\n    interval: R.waterStepMs(river.speed)\n",
+     "to": "  FrameAnimation { id: waterClock\n    running: river.flowing\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "WR2-idle-check-pinned-flow0",
+   "source": "aa5e593d done-when 5",
+   "class": "headless idle",
+   "note": "the shipped-default idle run pinned back to a flow-0 scene time, so it never measures the flowing held capture",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "out=$(fpsrun \"$RUN/shipped.log\" 10)\n",
+     "to": "out=$(fpsrun \"$RUN/shipped.log\" 10 AMPLIFY_SCENE_AT=2026-11-22T04:38:18Z)\n"
+    }
+   ],
+   "gates": [
+    "headless"
+   ]
+  },
+  {
+   "id": "WR3-water-layer-double-swap",
+   "source": "aa5e593d (coordinator: fix the double swap)",
+   "class": "river row 1 water clock",
+   "note": "the water drawn through a layer again: each water step swaps two frames",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "    Item {\n      anchors.fill: parent\n      ShaderEffect {\n        id: water\n",
+     "to": "    Item {\n      anchors.fill: parent\n      layer.enabled: true\n      ShaderEffect {\n        id: water\n"
+    }
+   ],
+   "gates": [
+    "headless"
    ]
   }
  ]

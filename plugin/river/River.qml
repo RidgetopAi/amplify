@@ -146,12 +146,25 @@ Item {
   Component.onCompleted: { refresh(); if (feed) spawn(feed.events); logScene() }
 
   // The current advances only as fast as the work does; with no recent task
-  // updates the speed is 0 and the frame clock stops, so idle water is still.
+  // updates the speed is 0 and the water clock stops, so idle water is still.
+  // Water step clock (task aa5e593d): the phase steps on a Timer every R.waterStepMs
+  // (at most 4 steps a second), never on the frame clock, so flowing water draws a
+  // bounded number of frames instead of one per vsync on every screen. Each step adds
+  // the real time since the last, so the flow keeps its speed. steps counts them
+  // (AMPLIFY_FPS logs it with the window's frames).
   readonly property real speed: R.flowSpeed(lay ? lay.flow : 0)
-  FrameAnimation {
-    id: waterClock
-    running: river.animate && river.visible && river.speed > 0
-    onTriggered: river.phase += river.speed * frameTime
+  readonly property bool flowing: animate && visible && speed > 0
+  property real clockAt: 0
+  property int steps: 0
+  onFlowingChanged: clockAt = Date.now()
+  Timer { id: waterClock
+    running: river.flowing; repeat: true
+    interval: R.waterStepMs(river.speed)
+    onTriggered: {
+      var t = Date.now()
+      river.phase += river.speed * (t - river.clockAt) / 1000
+      river.clockAt = t; river.steps++
+    }
   }
   Loader {
     active: river.trace
@@ -164,11 +177,11 @@ Item {
     scale: river.k; transformOrigin: Item.TopLeft
 
     // ---------------------------------------------------------------- water
+    // Drawn straight into the window, not through a layer (task aa5e593d): a layer
+    // re-grabs its source a frame after each change, so every water step swapped two
+    // frames instead of one.
     Item {
       anchors.fill: parent
-      layer.enabled: true
-      layer.smooth: true
-      layer.textureSize: Qt.size(Math.max(1, Math.round(river.width / 2)), Math.max(1, Math.round(river.height / 2)))
       ShaderEffect {
         id: water
         anchors.fill: parent

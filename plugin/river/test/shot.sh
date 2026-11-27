@@ -193,7 +193,9 @@ follow river-settle "$RUN/settle.log" "settle: every moved vessel and gate follo
 
 # ---------------------------------------------------------------- flowing: the same check sees motion (control)
 start flowing "$ROOT/plugin/river" "amplify: river lanes" AMPLIFY_SCENE_AT=2026-11-22T04:00:17Z
-at 2; grab 0; at 5; grab 1; at 5.2; grab 2; at 5.4; grab 3; stop
+# Frames 1-3 are 0.5 s apart, two water steps (River.qml waterClock, 250 ms a step at flow 1,
+# task aa5e593d), so each pair holds the same travel; 0.2 s apart could fall between steps.
+at 2; grab 0; at 5; grab 1; at 5.5; grab 2; at 6; grab 3; stop
 d=$($MOTION still $(frames 0 1))
 grep -q "flow=1.00 speed=90.0 " "$RUN/flowing.log" && [[ $d =~ ^[0-9]+$ ]] && [[ $d != 0 ]] \
   && pass "flowing: flow 1, the water moved ($d px)" || fail "flowing: no motion seen ($d)"

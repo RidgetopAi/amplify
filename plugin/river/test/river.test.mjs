@@ -142,6 +142,15 @@ test("water speed is zero without recent task updates and rises with flow", () =
     assert.equal(R.flowSpeed(lay.flow), 0);
 });
 
+test("the water steps at most 4 times a second, 2 design px a step, and not at all when still", () => {
+    assert.equal(R.waterStepMs(0), 0);
+    assert.equal(R.waterStepMs(R.flowSpeed(1)), 250);       // 90 px/s: capped at 4 steps/s
+    assert.equal(R.waterStepMs(R.flowSpeed(0.05)), 2000 / 4.5);   // 4.5 px/s: one step per 2 px
+    // The held capture (last activity 03:52Z, 8 min before 04:00:17Z) flows, so its water steps.
+    const lay = R.layout(R.replaySceneAt(M, snapshot, captured), captured, W);
+    assert.ok(lay.flow > 0 && R.waterStepMs(R.flowSpeed(lay.flow)) >= 250);
+});
+
 test("the upstream row sits half a column off the centre row", () => {
     const lay = R.layout(R.replaySceneAt(M, snapshot, captured), captured, W);
     const draft = lay.vessels.filter((v) => v.lane === "draft");

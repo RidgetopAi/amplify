@@ -202,7 +202,11 @@ Item {
       }
 
       // Counts the frames this window swaps (a FrameAnimation here would itself draw every frame).
+      // With the river's water clock steps per second, so a frame drawn between steps shows (task aa5e593d),
+      // and the window's measured length in ms, as OrbsLayer logs it (task 85e35a5d).
       property int swapped: 0
+      property int stepsAt: 0
+      property real windowAt: Date.now()
       Connections {
         target: win.contentItem.Window.window
         enabled: root.logFps
@@ -211,8 +215,10 @@ Item {
       Timer {
         interval: 5000; repeat: true; running: root.logFps
         onTriggered: {
-          console.log("amplify: fps window=amplify screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1))
-          win.swapped = 0
+          var t = Date.now()
+          console.log("amplify: fps window=amplify screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1)
+                      + " steps=" + ((river.steps - win.stepsAt) / 5).toFixed(1) + " ms=" + Math.round(t - win.windowAt))
+          win.swapped = 0; win.stepsAt = river.steps; win.windowAt = t
         }
       }
 

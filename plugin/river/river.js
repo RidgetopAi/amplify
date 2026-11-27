@@ -217,6 +217,18 @@ function flowSpeed(flow) {
     return flow > 0 ? 90 * Math.min(1, flow) : 0;
 }
 
+// Water step clock (task aa5e593d), like the orbs' spin clock (orbs.js SPIN_STEP_PX):
+// River.qml advances the water phase in one step each time it has run WATER_STEP_PX
+// design px at the flow speed, never more often than every WATER_MIN_STEP_MS (4 steps
+// a second), so a flowing river window draws at most 4 frames a second instead of one
+// per vsync (about 0.04 % of a core per frame on Brian's desktop: 3 windows at 4 fps
+// add about 0.5 %). 0 (no step) at speed 0: still water draws nothing.
+var WATER_STEP_PX = 2;
+var WATER_MIN_STEP_MS = 250;
+function waterStepMs(speed) {
+    return speed > 0 ? Math.max(WATER_MIN_STEP_MS, 1000 * WATER_STEP_PX / speed) : 0;
+}
+
 // ---------------------------------------------------------------- replay
 
 // Scene at virtual time ms from a snapshot (fixtures/amplify-snapshot.json) or

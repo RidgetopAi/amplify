@@ -10,7 +10,7 @@ The punch lifecycle as a river (direction c755578f, lane mapping c1f75776). `Ser
 | verifying or evidence → an earlier lane | REJECT: an eddy where it lands and an arc back upstream |
 | `claimActor`, `claimExpiresAt` vs. the scene clock | Tether from the holder's mooring; lit length = lease left; slack and dashed once expired, even if `claimLive` is still true; toned by the holder's liveness (`tetherTone`: live, quiet/dormant dimmer, lost muted red) |
 | `eddy` (blocked) / `needsYou` | Slow swirl around the hull; warm hull (the only warm colour here) |
-| Tasks updated in the last 15 min / live sessions | Water flow speed (`flowSpeed`, 0 at flow 0) and wake length / water light. With no task updated in 15 min the water stands still and the frame clock stops |
+| Tasks updated in the last 15 min / live sessions | Water flow speed (`flowSpeed`, 0 at flow 0) and wake length / water light. With no task updated in 15 min the water stands still and the water clock stops; flowing, the water steps at most 4 times a second (`waterStepMs`), one frame per step |
 
 `river.js` holds the layout as pure functions (`layout`, `lease`, `tetherTone`, `transitions`, `placeMoorings`, `replaySceneAt`), tested by `node --test plugin/river/test/`. `shaders/river.frag` is the water; it compiles to `plugin/shaders/river.frag.qsb`.
 

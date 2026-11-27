@@ -400,6 +400,15 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 # Then two more runs on the same outputs (task 118f6917):
 #  - the same held scene over 30 s: no amplify window swaps a single frame (a once-a-second
 #    caption or clock would; task 679fbbc5: the replayed scene clock never steps);
+#  - the shipped default (task aa5e593d): no AMPLIFY_SCENE_AT, the scene held at the capture
+#    04:00:17Z, whose last activity (03:52Z) keeps the river flowing (flow > 0) for as long as
+#    it is held. Over 10 s each amplify window steps its water clock (River.qml waterClock) at
+#    most 4.2 times a second, at least once (the water flows), and over the span swaps at most
+#    1.5 frames a step + 0.5 a second + 2 (one frame a step; under a loaded catalogue run some
+#    windows swap about 1.35 a step, as the orbs windows do; a layer over the water swaps 2 a
+#    step), so no frame clock draws every vsync (on Brian's desktop that was 11 % of a core;
+#    on llvmpipe a frame costs about 140 ms of CPU, so Quickshell's CPU is logged here and the
+#    2 % budget is asserted on the flow-0 run above);
 #  - live orbs spinning (the scene clock held at the capture: a live coord and two forming
 #    workers) over 20 s, each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
@@ -452,9 +461,11 @@ idlerr=$(qmlerr "$RUN/idle.log")
   || fail "idle: Quickshell at $pct % of one core over 10 s on three outputs (budget 2 %; screens: $sizes; $idlerr QML errors)"
 showfps idle "$fps"
 worst=$(awk '$1 == "amplify" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
-screens3 amplify "$fps" && awk -v m="$worst" 'BEGIN { exit !(m <= 0.2) }' \
-  && pass "idle: no river/basin window redraws at flow 0 with nothing changing (worst $worst fps on 3 screens)" \
-  || fail "idle: a river/basin window keeps drawing with nothing changing (worst $worst fps; all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no))"
+# At flow 0 the water clock (River.qml waterClock) must not step at all (task aa5e593d).
+wsteps=$(awk '$1 == "amplify" && ($4 == "-" || $4 > m) { m = ($4 == "-" ? 99 : $4) } END { print m + 0 }' <<< "$fps")
+screens3 amplify "$fps" && awk -v m="$worst" -v w="$wsteps" 'BEGIN { exit !(m <= 0.2 && w == 0) }' \
+  && pass "idle: no river/basin window redraws or steps its water at flow 0 with nothing changing (worst $worst fps, $wsteps steps/s on 3 screens)" \
+  || fail "idle: a river/basin window keeps drawing or stepping its water with nothing changing (worst $worst fps, $wsteps steps/s (99: none logged); all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no))"
 worst=$(awk '$1 == "amplify-orbs" && $3 > m { m = $3 } END { print m + 0 }' <<< "$fps")
 screens3 amplify-orbs "$fps" && awk -v m="$worst" 'BEGIN { exit !(m < 1) }' \
   && pass "idle: each orbs window draws only as its lost orb turns (worst $worst fps on 3 screens, under 1)" \
@@ -467,6 +478,22 @@ rerr=$(qmlerr "$RUN/idle-river.log")
 screens3 amplify "$fps" && (( frames == 0 && rerr == 0 )) \
   && pass "idle, scene held at flow 0: no river/basin window swaps a frame in 30 s (3 screens)" \
   || fail "idle, scene held at flow 0: river/basin windows swapped $frames frames in 30 s with nothing changing (all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $rerr QML errors)"
+
+out=$(fpsrun "$RUN/shipped.log" 10)
+pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "shipped" "$fps"
+echo "  shipped default: Quickshell at $pct % of one core"
+flow=$(grep -aoE "amplify: river lanes .* flow=[0-9.]+" "$RUN/shipped.log" | tail -1 | sed -E 's/.*flow=//')
+# Per 5 s amplify line: no steps or ms logged, or steps/s over 4.2 or under 0.2 (still water). Per screen
+# over the span, summed as the live-orbs check does (task 85e35a5d): frames over 1.5 x steps + 0.5 a
+# second (its lines' summed ms) + 2 at the span's edges.
+over=$(awk '$1 == "amplify" && ($5 == "-" || $4 > 4.2 || $4 < 0.2) { print $2 " " $3 " fps" ($5 == "-" ? ", no steps or ms logged" : ", " $4 " steps/s") }' <<< "$fps"
+  awk '$1 == "amplify" && $5 != "-" { f[$2] += int($3 * 5 + 0.5); s[$2] += int($4 * 5 + 0.5); ms[$2] += $5 }
+       END { for (k in f) if (f[k] > 1.5 * s[k] + 0.5 * ms[k] / 1000 + 2) printf "%s %d frames over %.1f s, %d steps\n", k, f[k], ms[k] / 1000, s[k] }' <<< "$fps")
+over=$(grep . <<< "$over" | head -3 | tr '\n' ';')
+serr=$(qmlerr "$RUN/shipped.log")
+screens3 amplify "$fps" && [[ -z $over ]] && awk -v f="${flow:-0}" 'BEGIN { exit !(f > 0) }' && (( serr == 0 )) \
+  && pass "shipped default: the held capture flows (flow $flow) and each river/basin window draws on its water clock (<= 4.2 steps/s; over the span <= 1.5 x steps + 0.5/s + 2 frames; 3 screens; Quickshell $pct %)" \
+  || fail "shipped default: a river/basin window draws off its water clock or the water is still (flow ${flow:-?}; ${over:-none over}; all 3 screens logged: $(screens3 amplify "$fps" && echo yes || echo no); $serr QML errors; Quickshell $pct %)"
 
 out=$(fpsrun "$RUN/live-orbs.log" 20)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
@@ -485,7 +512,7 @@ lerr=$(qmlerr "$RUN/live-orbs.log")
 screens3 amplify-orbs "$fps" && [[ -z $over ]] && (( spun > 0 && lerr == 0 )) \
   && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s; over the span <= steps + 1/s + 2; 3 screens)" \
   || fail "live orbs spinning: an orbs window draws above its clock (${over:-none over}; spinning lines $spun; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no); $lerr QML errors)"
-for f in idle idle-river live-orbs; do
+for f in idle idle-river shipped live-orbs; do
   grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/$f.log" | head -3 | sed "s/^/  $f: /"
   grep -av "amplify: fps" "$RUN/$f.log" >> "$RUN/plugin.log"
 done
