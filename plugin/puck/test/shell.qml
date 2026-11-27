@@ -19,14 +19,15 @@ import "plugin/orbs" as Orbs
 //                              at 4 s and leaves at 6.5 s (shot.sh motion)
 //   AMPLIFY_PUCK_SHEET=click   one desktop Puck; after the first frame his click action runs
 //   AMPLIFY_PUCK_SHEET=idle    the real PuckLayer alone on the held replay, logging its frames
-//                              per second (AMPLIFY_FPS's line), and nothing else on screen
+//                              per second (AMPLIFY_FPS's line), and nothing else on screen;
+//                              traced with AMPLIFY_TRACE=1 (shot.sh idle and hover)
 ShellRoot {
   id: root
   // env-read: AMPLIFY_PUCK_SHEET selects the sheet (shot | motion | click | idle).
   readonly property string sheet: Quickshell.env("AMPLIFY_PUCK_SHEET") || "shot"
   // env-read: AMPLIFY_STILL=1: no smoothing, no blink (motion sheet).
   readonly property bool still: Quickshell.env("AMPLIFY_STILL") === "1"
-  // env-read: AMPLIFY_TRACE=1: traced (motion sheet).
+  // env-read: AMPLIFY_TRACE=1: traced (motion and idle sheets).
   readonly property bool traced: Quickshell.env("AMPLIFY_TRACE") === "1"
   property var snap: null
   readonly property real capMs: snap ? Date.parse(snap.meta.captured_at) : 0
@@ -41,7 +42,7 @@ ShellRoot {
   Orbs.SceneClock { id: clock }
   LazyLoader {
     active: root.sheet === "idle"
-    PuckLayer { sceneClock: clock; logFps: true }
+    PuckLayer { sceneClock: clock; logFps: true; trace: root.traced }
   }
 
   PanelWindow {

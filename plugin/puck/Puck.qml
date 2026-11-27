@@ -65,6 +65,7 @@ Item {
   SequentialAnimation {
     id: blinkAnim
     NumberAnimation { target: puck; property: "lid"; to: 1; duration: 90; easing.type: Easing.InQuad }
+    PauseAnimation { duration: 40 }   // hold shut so a frame draws lid 1 (defect 1f413784)
     NumberAnimation { target: puck; property: "lid"; to: 0; duration: 170; easing.type: Easing.OutQuad }
   }
 

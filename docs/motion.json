@@ -169,12 +169,13 @@
       "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []
     },
     {
-      "id": "puck-blink", "comp": "puck", "what": "Puck blinks once (lids shut and open, 260 ms)",
+      "id": "puck-blink", "comp": "puck", "what": "Puck blinks once (lids shut, held, and open, 300 ms)",
       "record": "the scene's newest activity, Mandrel.lastActivityMs (session last_activity_at, task updated_at, record created_at), the moment the caption reads (task 23a62966)",
       "trigger": "it moves later than the one Puck saw (puck.js blinks); the first scene is the baseline", "start": "lid 0 (open)", "end": "lid 0 after 1",
       "stop": "the SequentialAnimation ends; a held replay never moves the activity, so it never runs there; !animate (still) never starts it",
       "code": [{ "file": "plugin/puck/Puck.qml", "line": "SequentialAnimation {" },
-               { "file": "plugin/puck/Puck.qml", "line": "NumberAnimation { target: puck; property: \"lid\"", "count": 2 }],
+               { "file": "plugin/puck/Puck.qml", "line": "NumberAnimation { target: puck; property: \"lid\"", "count": 2 },
+               { "file": "plugin/puck/Puck.qml", "line": "PauseAnimation {" }],
       "parts": [{ "part": "lid", "axes": { "lid": { "kind": "pulse", "lo": 0, "hi": 1, "tol": 0.02 } } }]
     },
     {

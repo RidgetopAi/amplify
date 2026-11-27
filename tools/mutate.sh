@@ -82,11 +82,11 @@ declare -A CMD=(
   [mutate]="node --test tools/motion/test/mutate.test.mjs"
   [river-shot]="plugin/river/test/shot.sh" [orbs-shot]="plugin/orbs/test/shot.sh" [headless]="tools/headless-shot.sh"
   [headless-pair]="tools/headless-pair.sh"
-  [puck]="node --test plugin/puck/test/" [puck-shot]="plugin/puck/test/shot.sh motion click idle"
+  [puck]="node --test plugin/puck/test/" [puck-shot]="plugin/puck/test/shot.sh motion click idle hover"
 )
 ORDER=(data orbs river motion spec qsb mutate headless headless-pair orbs-shot river-shot)   # cheapest first
 # Puck (task 23a62966): puck is node --test plugin/puck/test/; puck-shot is
-# plugin/puck/test/shot.sh motion click idle, a render gate holding one slot.
+# plugin/puck/test/shot.sh motion click idle hover, a render gate holding one slot.
 ORDER=(puck "${ORDER[@]}" puck-shot)
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.

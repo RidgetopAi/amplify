@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Render the Puck proof headless and check his motion, his click and his idle budget:
-#   plugin/puck/test/shot.sh           # shot, motion, click, idle
-#   plugin/puck/test/shot.sh shot      # docs/shots/puck.png only (any of shot motion click idle)
+#   plugin/puck/test/shot.sh           # shot, motion, click, idle, hover
+#   plugin/puck/test/shot.sh shot      # docs/shots/puck.png only (any of shot motion click idle hover)
 # shot:   docs/shots/puck.png (plugin/puck/test/shell.qml, AMPLIFY_PUCK_SHEET=shot).
 # motion: the motion sheet traced (AMPLIFY_TRACE=1), animated and then with AMPLIFY_STILL=1,
 #         checked against docs/motion.json with tools/motion/follow.mjs (scenarios puck and
@@ -9,9 +9,13 @@
 #         needs-you rows appear, the glance and smile follow the pointer and settle.
 # click:  his click action runs `amp-desktop --puck` (a stub on PATH records its argv).
 # idle:   the real PuckLayer alone, replaying the held capture: once settled, its window
-#         swaps 0 frames a second (the 5 s windows after the first).
+#         swaps 0 frames a second (the 5 s windows after the first), and, traced, he never
+#         blinks (the first scene is the baseline and a held replay never moves the activity).
+# hover:  the same layer, with a real pointer (wayvnc's, driven by vncdo) moved onto him and
+#         off again: the smile widens while it is on him and is back at rest after it leaves.
 # Same stack as plugin/orbs/test/shot.sh: sway (headless, pixman), quickshell, grim, and
-# Mesa llvmpipe through HEADLESS_MESA when there is no GPU. Exit status = failed checks.
+# Mesa llvmpipe through HEADLESS_MESA when there is no GPU; hover also needs wayvnc and vncdo
+# (vncdotool), as tools/headless-shot.sh does. Exit status = failed checks.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -100,20 +104,48 @@ idle() {
   # The real PuckLayer alone (the sheet's idle mode), replaying the held capture: the whole
   # plugin would not do, since the river's water clock makes every Amplify window draw
   # while it runs (one render loop), whatever Puck does.
-  AMPLIFY_PUCK_SHEET=idle quickshell -p "$SHEET" > "$RUN/idle.log" 2>&1 & local qs=$! bad=0
+  AMPLIFY_PUCK_SHEET=idle AMPLIFY_TRACE=1 quickshell -p "$SHEET" > "$RUN/idle.log" 2>&1 & local qs=$! bad=0
   # Measurement window: three 5 s fps windows; the first includes his first frames.
   three() { (( $(grep -c "fps window=amplify-puck" "$1") >= 3 )); }
   shot_wait 30 "three amplify-puck fps lines" three "$RUN/idle.log" || bad=1
   local rates; rates=$(grep -o "fps window=amplify-puck [^ ]* [0-9.]*" "$RUN/idle.log" | awk '{ print $NF }' | tr '\n' ' ')
   echo "shot: idle amplify-puck fps per 5 s window: $rates"
   [[ $(echo "$rates" | awk '{ print $2, $3 }') == "0.0 0.0" ]] || { echo "shot: idle Puck draws frames with the data unchanged"; bad=1; }
+  grep -q "amplify: trace puck lid desk@" "$RUN/idle.log" || { echo "shot: idle Puck logged no lid trace"; bad=1; }
+  if grep -qE "amplify: trace puck lid desk@[^ ]+ lid:on 1\.0" "$RUN/idle.log"; then echo "shot: idle Puck blinked on the held replay"; bad=1
+  else echo "shot: idle Puck never blinked on the held replay"; fi
   if errors "$RUN/idle.log"; then echo "shot: idle logged errors (above)"; bad=1; fi
   shot_stop "$qs"
   return $bad
 }
 
+hover() {
+  AMPLIFY_PUCK_SHEET=idle AMPLIFY_TRACE=1 quickshell -p "$SHEET" > "$RUN/hover.log" 2>&1 & local qs=$! bad=0
+  traced() { grep -q "amplify: trace puck mouth desk@" "$1"; }
+  shot_wait 30 "the layer's first trace" traced "$RUN/hover.log" || bad=1
+  # The headless backend has no input devices: wayvnc holds a virtual pointer on a socket in
+  # this run's dir, and vncdo drives it (tools/headless-shot.sh).
+  local vnc="$RUN/vnc.sock" size cx cy vpid
+  wayvnc -u "$vnc" > "$RUN/wayvnc.log" 2>&1 & vpid=$!; PIDS+=($vpid)
+  vncup() { timeout 5 vncdo -s "$vnc" pause 0 >/dev/null 2>&1; }
+  shot_wait 20 "wayvnc on $vnc" vncup || bad=1
+  # His centre (PuckLayer: lower left, puck.js DESK_LEFT / DESK_BOTTOM, deskSize).
+  read -r size cx cy <<< "$(node -e 'const P = require(process.argv[1]); const s = P.deskSize(+process.argv[2], +process.argv[3]);
+    console.log(s, P.DESK_LEFT + (s >> 1), +process.argv[3] - P.DESK_BOTTOM - (s >> 1))' "$ROOT/plugin/puck/test/load.cjs" "$W" "$H")"
+  # Pacing and settle windows: 1.5 s on him, then 1.5 s off (the 280 ms mouth tween ends well within).
+  timeout 20 vncdo -s "$vnc" move "$cx" "$cy" pause 1.5 move "$((W / 2))" "$((H / 3))" pause 1.5 || bad=1
+  local to; to=$(grep -oE "amplify: trace puck mouth desk@[^ ]+ bend:to [0-9.-]+" "$RUN/hover.log" | awk '{ print $NF }' | tr '\n' ' ')
+  echo "shot: hover mouth bend:to over time: $to"
+  if [[ " $to" == *" 1.900000 "* ]]; then echo "shot: hover the pointer on him widens the smile"; else echo "shot: hover the pointer on him did not reach Puck"; bad=1; fi
+  if [[ $(echo "$to" | awk '{ print $NF }') == 0.700000 ]]; then echo "shot: hover the smile is back at rest after the pointer leaves"
+  else echo "shot: hover the pointer left and Puck still acts hovered"; bad=1; fi
+  if errors "$RUN/hover.log"; then echo "shot: hover logged errors (above)"; bad=1; fi
+  shot_stop "$vpid"; shot_stop "$qs"
+  return $bad
+}
+
 fails=0
-(( $# )) || set -- shot motion click idle
+(( $# )) || set -- shot motion click idle hover
 for step in "$@"; do
   "$step" || fails=$((fails + 1))
 done

@@ -2771,6 +2771,38 @@
    "gates": [
     "puck-shot"
    ]
+  },
+  {
+   "id": "PK4-hover-sticks",
+   "source": "23a62966 verdict 5da310fc H3 (attempt 2)",
+   "class": "puck pointer",
+   "note": "a real pointer leave never clears pointing: Puck stays hovered after the pointer goes",
+   "edits": [
+    {
+     "file": "plugin/puck/Puck.qml",
+     "from": "onContainsMouseChanged: puck.pointing = containsMouse",
+     "to": "onContainsMouseChanged: if (containsMouse) puck.pointing = true"
+    }
+   ],
+   "gates": [
+    "puck-shot"
+   ]
+  },
+  {
+   "id": "PK5-blink-ignores-baseline",
+   "source": "23a62966 verdict 5da310fc H4 (attempt 2)",
+   "class": "puck blink",
+   "note": "Puck.qml blinks on any activity change, ignoring puck.js blinks: he blinks on the first scene of a held replay",
+   "edits": [
+    {
+     "file": "plugin/puck/Puck.qml",
+     "from": "if (P.blinks(seenMs, activityMs) && animate) blinkAnim.restart()",
+     "to": "if (animate) blinkAnim.restart()"
+    }
+   ],
+   "gates": [
+    "puck-shot"
+   ]
   }
  ]
 }
