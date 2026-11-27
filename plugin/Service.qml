@@ -8,6 +8,7 @@ import "basin"
 import "panes"
 import "ambient"
 import "puck"
+import "focus"
 import "basin" as Shared   // SceneClock.qml: one copy per component dir (tools/sync-shared.sh), named here once
 
 // Amplify service. Loaded two ways from the same file:
@@ -158,7 +159,10 @@ Item {
   Shared.SceneClock { id: sharedClock }
   // The ambient music field (task 523461dd): its own layer, made first so it sits below the others.
   AmbientLayer { sceneClock: sharedClock; accent: root.accent; animate: !root.still; trace: root.trace; logFps: root.logFps }
-  OrbsLayer { id: orbsLayer; sceneClock: sharedClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
+  OrbsLayer { id: orbsLayer; sceneClock: sharedClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps
+              focusOnClick: true; onFocusRequested: (f, id, x, y, r, scr) => focusLayer.open(f, id, x, y, r, scr) }
+  // The focused orb (task 85ff482a): a clicked orb flies to the centre as Meridian; no window until then.
+  FocusLayer { id: focusLayer; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
   BasinFeed { id: basinFeed; sceneClock: sharedClock }
   // Puck (task 23a62966): his own small window per screen, lower left.
   PuckLayer { sceneClock: sharedClock; animate: !root.still; trace: root.trace; logFps: root.logFps }

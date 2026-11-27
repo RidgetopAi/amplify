@@ -189,10 +189,18 @@ kill -0 "$VNCPID" 2>/dev/null && pass "wayvnc serves this run's compositor on it
 # enter before the button); after the clicks, wait for what they log.
 timeout 20 vncdo -s "$VNC" move "$OX" "$OY" pause 0.3 click 1 pause 0.3 \
   move "$((W / 2 - 40))" "$((H - 60))" pause 0.3 click 1
-clicked() { grep -aq "amplify: orb open http" "$RUN/plugin.log" && grep -q "harness: wallpaper click" "$RUN/harness.log"; }
+# The orb click flies it to the focused view (plugin/focus, task 85ff482a), whose window
+# takes input only on the globe and its panel, so the empty-desktop click still passes.
+clicked() { grep -aqE "amplify: orb (open|focus) http" "$RUN/plugin.log" && grep -q "harness: wallpaper click" "$RUN/harness.log"; }
 shot_wait 5 "both clicks' log lines" clicked
-grep -aq "amplify: orb open http" "$RUN/plugin.log" && pass "click on orb $OID opens its record ($(grep -ao "amplify: orb open .*" "$RUN/plugin.log" | head -1))" \
+grep -aqE "amplify: orb (open|focus) http" "$RUN/plugin.log" && pass "click on orb $OID opens its record ($(grep -aoE "amplify: orb (open|focus) .*" "$RUN/plugin.log" | head -1))" \
   || fail "click on orb $OID lost"
+# A right click on the focused globe (centre 0.5W, 0.52H) flies it home and its window goes.
+if grep -aq "amplify: orb focus http" "$RUN/plugin.log"; then
+  timeout 20 vncdo -s "$VNC" move "$((W / 2))" "$((H * 52 / 100))" pause 0.3 click 3
+  closed() { grep -aq "amplify: focus closed" "$RUN/plugin.log"; }
+  shot_wait 5 "the focused orb to close" closed && pass "right click on the focused globe flies it home" || fail "focused orb did not close"
+fi
 grep -q "harness: wallpaper click" "$RUN/harness.log" && pass "click on empty desktop passes through the mask" \
   || fail "empty-desktop click swallowed by the Amplify layer"
 

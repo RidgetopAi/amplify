@@ -18,6 +18,9 @@ Item {
   property var sceneClock: null
   // AMPLIFY_FPS=1 (Service.qml): log the frames each window swapped per second, every 5 s.
   property bool logFps: false
+  // Click flies the orb to the focused view (Service.qml, plugin/focus) instead of opening it.
+  property bool focusOnClick: false
+  signal focusRequested(var field, string id, real x, real y, real r, var screen)
 
   // The orbs' drawn shader programs on every screen, for the ready line (Service.qml).
   function shaders() {
@@ -81,6 +84,8 @@ Item {
         trace: orbsLayer.trace
         sceneClock: orbsLayer.sceneClock
         screenName: win.modelData.name
+        focusOnClick: orbsLayer.focusOnClick
+        onFocusRequested: (f, id, x, y, r) => orbsLayer.focusRequested(f, id, x, y, r, win.modelData)
       }
     }
   }

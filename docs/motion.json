@@ -179,6 +179,19 @@
       "code": [{ "file": "plugin/basin/BasinFeed.qml", "line": "Timer {", "count": 3 }], "parts": []
     },
     {
+      "id": "focus-globe", "comp": "focus", "what": "Meridian, the focused orb (task 85ff482a): a clicked orb flies from its desktop place to the centre and grows to the focused size (ease out 0.7 s), and home again (ease in); the hand spins it (drag, inertia with friction, loupe detent onto the nearest plaque)",
+      "record": "the clicked session's records at the scene clock (meridian.js globe: created_at -> longitude, kind -> latitude, trust band -> plaque brightness, claim_expires_at - now -> lit arc); the fly runs from the orb's layout position (orbs.js layout) to the focus centre",
+      "trigger": "a click on a desktop orb (OrbField focusRequested), a drag on the globe, Escape or right click (home)",
+      "start": "the orb's x, y and radius; the hand's last angle", "end": "the focus centre and radius; the plaque nearest the loupe centred under it",
+      "stop": "fly at its goal and spin settled (meridian.js step returns false): the FrameAnimation stops; nothing is drawn again until the record or the hand changes it (AMPLIFY_FPS=1 logs the focus window's frames every 5 s, the FocusLayer Timer)",
+      "code": [{ "file": "plugin/focus/Meridian.qml", "line": "FrameAnimation {" }, { "file": "plugin/focus/FocusLayer.qml", "line": "Timer {" }],
+      "parts": [{ "part": "globe", "axes": {
+        "x": { "kind": "tween", "min": 20, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "settle": 2 },
+        "y": { "kind": "tween", "min": 20, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "settle": 2 },
+        "length": { "kind": "tween", "min": 20, "eps": 0.5, "clear": 1, "minBetween": 3, "maxStep": 0.5, "settle": 2 },
+        "rotation": { "kind": "none", "why": "driven by the hand, not a record: drag, inertia and the detent are checked by plugin/focus/test/meridian.test.mjs" } } }]
+    },
+    {
       "id": "service-host", "comp": "service", "what": "Per-window swapped-frame logger (AMPLIFY_FPS=1, every 5 s) and the ready line",
       "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
       "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []

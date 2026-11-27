@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DECL = /\bEase\s*\{|Behavior on |\b[A-Z][A-Za-z]*Animation\b|\b[A-Z][A-Za-z]*Animator\b|\bTimer\s*\{|\bTransition\s*\{|^\s*rotation\s*:|\bRotation\s*\{/;
-const DIRS = { river: "plugin/river", orbs: "plugin/orbs", basin: "plugin/basin", service: "plugin",
+const DIRS = { river: "plugin/river", orbs: "plugin/orbs", basin: "plugin/basin", focus: "plugin/focus", service: "plugin",
                ambient: "plugin/ambient" };
 DIRS.puck = "plugin/puck";
 

@@ -16,7 +16,7 @@ SHARED=(
   "data/mandrel.js plugin/basin/mandrel.js plugin/orbs/mandrel.js plugin/river/mandrel.js"
   "data/amp/amp.js plugin/basin/amp.js"
   "fixtures/amplify-snapshot.json plugin/basin/amplify-snapshot.json plugin/orbs/amplify-snapshot.json plugin/river/amplify-snapshot.json"
-  "plugin/motion/Trace.qml plugin/basin/Trace.qml plugin/orbs/Trace.qml plugin/river/Trace.qml"
+  "plugin/motion/Trace.qml plugin/basin/Trace.qml plugin/orbs/Trace.qml plugin/river/Trace.qml plugin/focus/Trace.qml"
   "data/SceneClock.qml plugin/basin/SceneClock.qml plugin/orbs/SceneClock.qml plugin/river/SceneClock.qml"
   "plugin/shaders/river.frag.qsb plugin/river/river.frag.qsb"
   "data/mandrel.js plugin/puck/mandrel.js"

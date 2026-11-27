@@ -207,8 +207,17 @@ Item {
       foreground: field.foreground
       alarm: field.alarm
       warm: field.warm
-      onActivated: url => { console.log("amplify: orb open " + url); if (url) Qt.openUrlExternally(url) }
+      onActivated: url => field.activate(orb, url)
     }
+  }
+
+  // A click opens the orb's record, or, with focusOnClick (Service.qml, task 85ff482a), asks
+  // the focused orb (plugin/focus) to fly this one to the centre of its screen.
+  property bool focusOnClick: false
+  signal focusRequested(var field, string id, real x, real y, real r)
+  function activate(o, url) {
+    if (focusOnClick && o) { console.log("amplify: orb focus " + url + " " + o.id8); focusRequested(field, o.id, o.x, o.y, o.r); return }
+    console.log("amplify: orb open " + url); if (url) Qt.openUrlExternally(url)
   }
 
   // Input mask pieces for the layer window: only the orbs' hit circles.
