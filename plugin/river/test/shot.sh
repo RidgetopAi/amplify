@@ -2,7 +2,8 @@
 # Render the Current river headless from replayed fixtures and check what it
 # drew and how it moves.
 #
-#   plugin/river/test/shot.sh      # writes docs/shots/river-default.png, river-busy.png, river-in-service.png
+#   plugin/river/test/shot.sh      # writes docs/shots/river-default.png, river-busy.png, river-in-service.png,
+#                                  # river-service-focused.png, river-service-unfocused.png
 #
 # Same stack as tools/headless-shot.sh (sway headless + pixman, Quickshell on
 # llvmpipe, grim), at 1920x1080. Fixtures: fixtures/amplify-snapshot.json
@@ -18,7 +19,9 @@
 #   eddy:    animated, busy at 04:23:17Z (flow 0, one blocked task): the swirl turns on its own hull in 6/6 pairs;
 #   fx:      animated, busy at 04:01:47Z: the PASS ring and REJECT eddy move, then are static by 5 s and log done;
 #            everything off the water but the blocked swirl is static from 5 s to 6 s (tethers and gates settle);
-#   replay:  AMPLIFY_STILL=1, busy with the scene clock stepping (AMPLIFY_SCENE_STEP): a verdict effect shows for one step only.
+#   replay:  AMPLIFY_STILL=1, busy with the scene clock stepping (AMPLIFY_SCENE_STEP): a verdict effect shows for one step only;
+#   focus:   the whole plugin on three outputs, AMPLIFY_FPS=1: only the focused screen's river window steps and
+#            draws, the main windows swap nothing, focus moves the flow within a step, a fullscreen window stops it.
 # Trajectory checks (tools/motion/follow.mjs, spec docs/motion.json): settle, fx,
 # eddy and still run with AMPLIFY_TRACE=1, which logs every drawn axis of every
 # moving item (plugin/motion/Trace.qml) with the value its record asks for. The
@@ -257,6 +260,75 @@ at 1; grim "$OUT/river-in-service.png"; stop
 grep -q "amplify: ready layer=bottom" "$RUN/in-service.log" && grep -q "amplify: river lanes draft=9" "$RUN/in-service.log" \
   && pass "service: plugin mounts the river on the bottom layer" || fail "service: river not mounted"
 
+# ---------------------------------------------------------------- focus: the river's own window flows on the focused screen only
+# Task 56f55903 (decision 17ee105d): three outputs, the whole plugin animated with AMPLIFY_FPS=1 at the
+# capture (flow 1). AMPLIFY_FOCUS_FIXTURE stands in for Hyprland's focused monitor. Each 5 s fps line
+# measured whole inside a phase: the main amplify window (basin, panes, still water) swaps no frame on
+# any screen; the amplify-river window steps its water clock (~4/s, at most 1.5 frames a step) on the
+# focused screen only and swaps nothing elsewhere. Focus moved to HEADLESS-2: its water runs and
+# HEADLESS-1's stops within one step (250 ms), and the unfocused screen keeps its still frame. A
+# fullscreen window over the focused screen (plugin/ambient/test/cover.qml) stops its water too.
+export SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* 2>/dev/null | head -1)"
+nout() { (( $(swaymsg -t get_outputs | grep -c '"name": "HEADLESS-') == $1 )); }
+swaymsg create_output > /dev/null; swaymsg create_output > /dev/null; shot_wait 10 "three outputs" nout 3
+swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
+swaymsg output HEADLESS-3 resolution 2560x1440 position 3840 0 > /dev/null
+swaymsg 'for_window [title="amplify-ambient-cover"] fullscreen enable' > /dev/null
+FOCUS="$RUN/focus.txt"; echo HEADLESS-1 > "$FOCUS"
+start focus "$ROOT/plugin" "amplify: ready layer" AMPLIFY_FPS=1 AMPLIFY_FOCUS_FIXTURE="$FOCUS" AMPLIFY_SCENE_AT=2026-11-22T04:00:17Z \
+  AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme"
+L="$RUN/focus.log"
+# span <seconds>: the "<window> <screen> <fps> <steps/s>" lines logged over the next <seconds>.
+span() { local l0; l0=$(wc -l < "$L"); sleep "$1"
+  tail -n +"$((l0 + 1))" "$L" | grep -aoE "amplify: fps window=amplify(-river)? screen=[A-Z0-9-]* [0-9.]* steps=[0-9.]*" \
+    | sed 's/amplify: fps window=//; s/ screen=/ /; s/ steps=/ /'; }
+# flows <lines> <screen>: true when only <screen>'s river steps and draws (>= 3.5 steps/s, <= 1.5 frames
+# a step + 0.5/s), every other river and every main window swaps 0 frames, all 3 screens logged both.
+flows() { awk -v s="$2" '{ n[$1]++; sc[$1 " " $2] = 1 }
+  $1 == "amplify" && $3 > 0 { bad = bad " amplify@" $2 "=" $3 "fps" }
+  $1 == "amplify-river" && $2 == s && ($4 < 3.5 || $3 > 1.5 * $4 + 0.5) { bad = bad " river@" $2 "=" $3 "fps/" $4 }
+  $1 == "amplify-river" && $2 != s && ($3 > 0 || $4 > 0) { bad = bad " river@" $2 "=" $3 "fps/" $4 }
+  END { for (k in sc) m++; if (m != 6) bad = bad " screens logged " m "/6"; if (bad) { print bad; exit 1 } }' <<< "$1"; }
+rates() { awk '{ v[$1 "@" $2] = v[$1 "@" $2] " " $3 "/" $4 } END { for (k in v) printf "%s:%s; ", k, v[k] }' <<< "$1"; }
+sleep 6.5   # settle: the first fps line holds the start-up frames
+a=$(span 10.5); bad=$(flows "$a" HEADLESS-1)
+[[ $? == 0 ]] && pass "focus: on HEADLESS-1 only its river window steps and draws; main windows 0 fps on 3 screens ($(rates "$a"))" \
+  || fail "focus HEADLESS-1:$bad ($(rates "$a"))"
+grim -o HEADLESS-2 "$RUN/focus-u0.png"; sleep 1; grim -o HEADLESS-2 "$RUN/focus-u1.png"
+lf=$(wc -l < "$L"); t0=$(date +%s%3N); echo HEADLESS-2 > "$FOCUS"
+# after <screen> <runs|still>: the ms that screen's water last turned so since the switch.
+after() { tail -n +"$((lf + 1))" "$L" | grep -ao "amplify: river water screen=$1 $2 .* at=[0-9]*" | tail -1 | sed 's/.*at=//'; }
+moved() { [[ -n $(after HEADLESS-2 runs) && -n $(after HEADLESS-1 still) ]]; }
+shot_wait 5 "the water to follow focus" moved
+on=$(after HEADLESS-2 runs) off=$(after HEADLESS-1 still)
+(( ${on:-0} >= t0 && ${on:-0} - t0 <= 250 && ${off:-0} >= t0 && ${off:-0} - t0 <= 250 )) \
+  && pass "focus: moved to HEADLESS-2, its water runs $((on - t0)) ms and HEADLESS-1's stops $((off - t0)) ms after (within one 250 ms step)" \
+  || fail "focus: the water did not follow focus within one step (runs at +$(( ${on:-0} - t0 )) ms, stops at +$(( ${off:-0} - t0 )) ms)"
+grim -o HEADLESS-2 "$RUN/focus-f0.png"; sleep 0.5; grim -o HEADLESS-2 "$RUN/focus-f1.png"
+cp "$RUN/focus-f1.png" "$OUT/river-service-focused.png"
+# water <a> <b>: pixels that differ in open water (x 1000-1240, y 420-700 at 1920x1080: the band past
+# the claimed lane, clear of orbs, vessels and panes, which have windows and clocks of their own).
+water() { magick compare -metric AE <(magick "$1" -crop 240x280+1000+420 +repage png:-) <(magick "$2" -crop 240x280+1000+420 +repage png:-) null: 2>&1 | cut -d' ' -f1; }
+d0=$(water "$RUN/focus-u0.png" "$RUN/focus-u1.png") d1=$(water "$RUN/focus-f0.png" "$RUN/focus-f1.png")
+awk -v a="$d0" -v b="$d1" 'BEGIN { exit !(a == "0" && b ~ /^[0-9.]+$/ && b + 0 > 0) }' \
+  && pass "focus: HEADLESS-2's water held a still frame unfocused ($d0 px over 1 s) and flows once focused ($d1 px over 0.5 s)" \
+  || fail "focus: HEADLESS-2's water moved unfocused ($d0 px) or stayed still focused ($d1 px)"
+sleep 5   # the fps line holding the switch
+b=$(span 10.5); bad=$(flows "$b" HEADLESS-2)
+[[ $? == 0 ]] && pass "focus: on HEADLESS-2 only its river window steps and draws; HEADLESS-1 holds still ($(rates "$b"))" \
+  || fail "focus HEADLESS-2:$bad ($(rates "$b"))"
+grim -o HEADLESS-1 "$OUT/river-service-unfocused.png"
+swaymsg focus output HEADLESS-2 > /dev/null
+quickshell -p "$ROOT/plugin/ambient/test/cover.qml" > "$RUN/cover.log" 2>&1 & CV=$!; PIDS+=($CV)
+covered() { grep -aq "amplify: river water screen=HEADLESS-2 still focused=true covered=true" "$L"; }
+shot_wait 10 "the cover over HEADLESS-2" covered
+sleep 5.5; c=$(span 5.5); shot_stop "$CV"
+bad=$(awk '$1 == "amplify-river" && $2 == "HEADLESS-2" { n++ } $3 > 0 || $4 > 0 { bad = bad " " $1 "@" $2 "=" $3 "fps/" $4 }
+  END { if (!n) bad = bad " no HEADLESS-2 river line"; if (bad) { print bad; exit 1 } }' <<< "$c"); ok=$?
+covered && (( ok == 0 )) && pass "focus: a fullscreen window over the focused HEADLESS-2 stops its water; nothing draws ($(rates "$c"))" \
+  || fail "focus: the covered focused screen keeps its water running:$bad"
+stop
+
 # ---------------------------------------------------------------- runtime log
 bad=""
 for f in "${RUNS[@]}"; do
@@ -265,5 +337,5 @@ for f in "${RUNS[@]}"; do
 done
 [[ -z $bad ]] && pass "log: no QML errors or binding loops in ${#RUNS[@]} runs" || fail "log: QML errors or binding loops in$bad"
 
-echo "shot: $checks checks, $fails failed; wrote docs/shots/river-{default,busy,in-service}.png"
+echo "shot: $checks checks, $fails failed; wrote docs/shots/river-{default,busy,in-service,service-focused,service-unfocused}.png"
 exit "$fails"
