@@ -46,7 +46,7 @@ sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
 swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1 && ls "$XDG_RUNTIME_DIR"/sway-ipc.* >/dev/null 2>&1; }
 shot_wait 10 "sway's sockets" swayup || exit 1
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
-export SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* | head -1)" QT_QPA_PLATFORM=wayland
+export SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* | head -1)" QT_QPA_PLATFORM=wayland QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=60000
 
 export AMBIENT_STUB_DIR="$RUN/stub"; mkdir -p "$AMBIENT_STUB_DIR"
 MPRIS="$RUN/mpris"

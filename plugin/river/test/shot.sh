@@ -89,7 +89,7 @@ sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
 swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1; }
 shot_wait 10 "sway's socket" swayup || exit 1
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
-export QT_QPA_PLATFORM=wayland
+export QT_QPA_PLATFORM=wayland QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=60000
 
 checks=0 fails=0 RUNS=()
 pass() { checks=$((checks + 1)); echo "PASS $*"; }
