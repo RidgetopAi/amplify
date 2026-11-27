@@ -82,8 +82,11 @@ declare -A CMD=(
   [mutate]="node --test tools/motion/test/mutate.test.mjs"
   [river-shot]="plugin/river/test/shot.sh" [orbs-shot]="plugin/orbs/test/shot.sh" [headless]="tools/headless-shot.sh"
   [headless-pair]="tools/headless-pair.sh"
+  [ambient]="node --test plugin/ambient/test/ plugin/perf/test/"
+  [ambient-shot]="plugin/ambient/test/shot.sh"
 )
 ORDER=(data orbs river motion spec qsb mutate headless headless-pair orbs-shot river-shot)   # cheapest first
+ORDER+=(ambient ambient-shot)   # task 523461dd; ambient before its render gate
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
@@ -140,6 +143,7 @@ gate() {
   flock -n 9 || { echo "mutate: runtime dir $rt is in use by another run" > "$OUT/$id-$g.log"; exec 9<&-; echo busy; return; }
   local SLOTS=() fd
   [[ $g == river-shot ]] && render_slot 1
+  [[ $g == ambient-shot ]] && render_slot 1
   [[ $g == orbs-shot ]] && render_slot "$RENDER"
   [[ $g == headless ]] && render_slot 1
   [[ $g == headless-pair ]] && render_slot 2

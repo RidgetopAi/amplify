@@ -6,6 +6,7 @@ import "orbs"
 import "river"
 import "basin"
 import "panes"
+import "ambient"
 import "basin" as Shared   // SceneClock.qml: one copy per component dir (tools/sync-shared.sh), named here once
 
 // Amplify service. Loaded two ways from the same file:
@@ -154,6 +155,8 @@ Item {
   // to their own sceneClock property (null), and each screen's river made its own clock and,
   // live, its own fetch (defect a5d1ffa7).
   Shared.SceneClock { id: sharedClock }
+  // The ambient music field (task 523461dd): its own layer, made first so it sits below the others.
+  AmbientLayer { sceneClock: sharedClock; accent: root.accent; animate: !root.still; trace: root.trace; logFps: root.logFps }
   OrbsLayer { id: orbsLayer; sceneClock: sharedClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps }
   BasinFeed { id: basinFeed; sceneClock: sharedClock }
 
