@@ -182,6 +182,50 @@
       "id": "service-host", "comp": "service", "what": "Per-window swapped-frame logger (AMPLIFY_FPS=1, every 5 s) and the ready line",
       "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
       "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []
+    },
+    {
+      "id": "puck-blink", "comp": "puck", "what": "Puck blinks once (lids shut, held, and open, 300 ms)",
+      "record": "the scene's newest activity, Mandrel.lastActivityMs (session last_activity_at, task updated_at, record created_at), the moment the caption reads (task 23a62966)",
+      "trigger": "it moves later than the one Puck saw (puck.js blinks); the first scene is the baseline", "start": "lid 0 (open)", "end": "lid 0 after 1",
+      "stop": "the SequentialAnimation ends; a held replay never moves the activity, so it never runs there; !animate (still) never starts it",
+      "code": [{ "file": "plugin/puck/Puck.qml", "line": "SequentialAnimation {" },
+               { "file": "plugin/puck/Puck.qml", "line": "NumberAnimation { target: puck; property: \"lid\"", "count": 2 },
+               { "file": "plugin/puck/Puck.qml", "line": "PauseAnimation {" }],
+      "parts": [{ "part": "lid", "axes": { "lid": { "kind": "pulse", "lo": 0, "hi": 1, "tol": 0.02 } } }]
+    },
+    {
+      "id": "puck-glance", "comp": "puck", "what": "Puck's eyes (cel: the face decal; figurine: the head and pupils) glance toward the pointer and back",
+      "record": "pointer on Puck (input, his hit area; puck.js look); off him the eyes face the viewer (REST_LOOK). No Mandrel record moves it",
+      "trigger": "the pointer enters, moves on or leaves Puck", "start": "the drawn glance", "end": "toward the pointer, -1..1 per axis",
+      "stop": "springs settle (epsilon 0.003); with no pointer on him nothing moves",
+      "code": [{ "file": "plugin/puck/Puck.qml", "line": "Behavior on lookX" }, { "file": "plugin/puck/Puck.qml", "line": "Behavior on lookY" }],
+      "parts": [{ "part": "glance", "axes": {
+        "x": { "kind": "spring", "min": 0.1, "eps": 0.02, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 2 },
+        "y": { "kind": "spring", "min": 0.1, "eps": 0.02, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 2 } } }]
+    },
+    {
+      "id": "puck-finger", "comp": "puck", "what": "Puck's raised finger goes fully up, or back to half raised",
+      "record": "scene.needsYou (tasks blocked on a human, open decisions, lost sessions): up while there is one (puck.js raise); also up while the pointer is on him",
+      "trigger": "needs-you rows appear or all go; the pointer enters or leaves", "start": "the drawn raise", "end": "1 (up) or 0.55 (half)",
+      "stop": "spring settles (epsilon 0.003)",
+      "code": [{ "file": "plugin/puck/Puck.qml", "line": "Behavior on raise" }],
+      "parts": [{ "part": "finger", "axes": {
+        "raise": { "kind": "spring", "min": 0.1, "eps": 0.02, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "overshoot": 0.15, "settle": 2 } } }]
+    },
+    {
+      "id": "puck-mouth", "comp": "puck", "what": "Puck's curious mouth widens into a smile and back",
+      "record": "pointer on Puck (input, puck.js mouth/mouthHalf): curious at rest (bend 0.7, never below 0), smile 1.9 on hover. No Mandrel record moves it",
+      "trigger": "the pointer enters or leaves", "start": "the drawn bend and width", "end": "the target",
+      "stop": "NumberAnimation ends (280 ms)",
+      "code": [{ "file": "plugin/puck/Puck.qml", "line": "Behavior on mouth {" }, { "file": "plugin/puck/Puck.qml", "line": "Behavior on mouthHalf" }],
+      "parts": [{ "part": "mouth", "axes": {
+        "bend": { "kind": "tween", "min": 0.2, "eps": 0.01, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 1 },
+        "half": { "kind": "tween", "min": 0.02, "eps": 0.003, "clearFrac": 0.05, "minBetween": 3, "maxStep": 0.5, "settle": 1 } } }]
+    },
+    {
+      "id": "puck-host", "comp": "puck", "what": "Per-window swapped-frame logger of the Puck layer (AMPLIFY_FPS=1, every 5 s)",
+      "record": "-", "trigger": "AMPLIFY_FPS=1", "start": "-", "end": "-", "stop": "-", "draws": false,
+      "code": [{ "file": "plugin/puck/PuckLayer.qml", "line": "Timer {" }], "parts": []
     }
   ],
   "scenarios": {
@@ -203,6 +247,10 @@
                 "orbs.orb.form": 1, "orbs.orb.energy": 2, "orbs.orb.length": 3, "orbs.orb.rotation": 5, "orbs.clock.x": 1 },
       "keyed": ["orbs.orb"] },
     "service-still": { "run": "plugin/orbs/test/shot.sh layer: AMPLIFY_STILL=1 with AMPLIFY_TRACE=1", "still": true, "want": {},
-      "traced": ["river.water", "river.vessel", "orbs.orb", "orbs.clock", "basin.pool", "basin.row"] }
+      "traced": ["river.water", "river.vessel", "orbs.orb", "orbs.clock", "basin.pool", "basin.row"] },
+    "puck": { "run": "plugin/puck/test/shot.sh motion: the motion sheet from 02:29:00Z, replay stepped 10 s a second (newest activity moves, the first needs-you row appears), pointer on him at 4 s, off at 6.5 s",
+      "want": { "puck.lid.lid": 1, "puck.glance.x": 2, "puck.glance.y": 2, "puck.finger.raise": 1, "puck.mouth.bend": 2, "puck.mouth.half": 2 } },
+    "puck-still": { "run": "plugin/puck/test/shot.sh motion: the same with AMPLIFY_STILL=1", "still": true, "want": {},
+      "traced": ["puck.lid", "puck.glance", "puck.finger", "puck.mouth"] }
   }
 }
