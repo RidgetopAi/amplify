@@ -158,6 +158,21 @@
       "parts": []
     },
     {
+      "id": "ambient-field", "comp": "ambient", "what": "Ambient field along each screen's foot: its height is the active sessions; while MPRIS reports Playing on an uncovered screen, cava's bands scale it (task 523461dd)",
+      "record": "scene.counts.liveness live + forming + quiet (ambient.js fieldBase, viewer contract 22d73eeb); cava bands only multiply it (0.6..1.4)",
+      "trigger": "the scene's active count changes; cava frames while Playing", "start": "the resting field", "end": "the resting field when playback stops or the screen is covered",
+      "stop": "not Playing (cava not running), every screen covered or fullscreen, or !animate: no frames; with data unchanged it draws 0 fps. At most 30 frames/s (perf.js FPS_CAP)",
+      "code": [],
+      "parts": [{ "part": "field", "axes": {
+        "base": { "kind": "step", "eps": 0.001 },
+        "music": { "kind": "none", "why": "audio frames, not a record: plugin/ambient/test/shot.sh checks cava runs only while Playing, the 30 fps cap and the pause when covered" } } }]
+    },
+    {
+      "id": "ambient-host", "comp": "ambient", "what": "Per-window swapped-frame logger of the ambient layer (AMPLIFY_FPS=1, every 5 s)",
+      "record": "-", "trigger": "AMPLIFY_FPS=1", "start": "-", "end": "-", "stop": "-", "draws": false,
+      "code": [{ "file": "plugin/ambient/AmbientLayer.qml", "line": "Timer {" }], "parts": []
+    },
+    {
       "id": "basin-feed", "comp": "basin", "what": "Amp stream retry, list polling, 15 s rebuild (the Mandrel scene comes from the scene clock)",
       "record": "amp top / threads list", "trigger": "stream down / clock", "start": "-", "end": "-",
       "stop": "fixture or pinned clock", "draws": false,

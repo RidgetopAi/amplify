@@ -2706,6 +2706,72 @@
    "gates": [
     "headless"
    ]
+  },
+  {
+   "id": "A1-cava-while-paused",
+   "source": "523461dd done-when 4",
+   "class": "ambient cava gate",
+   "note": "cava starts whatever MPRIS reports",
+   "edits": [
+    {
+     "file": "plugin/ambient/ambient.js",
+     "from": "return !!(o && o.playing && o.drawing > 0);",
+     "to": "return !!(o && o.drawing > 0);"
+    }
+   ],
+   "gates": [
+    "ambient",
+    "ambient-shot"
+   ]
+  },
+  {
+   "id": "A2-render-when-covered",
+   "source": "523461dd done-when 4",
+   "class": "ambient pause",
+   "note": "a covered screen keeps drawing the music",
+   "edits": [
+    {
+     "file": "plugin/ambient/AmbientLayer.qml",
+     "from": "A.fieldLevels(ambient.base.level, win.live ? ambient.bands : null)",
+     "to": "A.fieldLevels(ambient.base.level, ambient.bands)"
+    }
+   ],
+   "gates": [
+    "ambient-shot"
+   ]
+  },
+  {
+   "id": "A3-no-frame-cap",
+   "source": "523461dd done-when 2",
+   "class": "ambient 30 fps cap",
+   "note": "every cava frame is drawn",
+   "edits": [
+    {
+     "file": "plugin/perf/perf.js",
+     "from": "            if (nowMs - last < interval - 1) return false;\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "ambient",
+    "ambient-shot"
+   ]
+  },
+  {
+   "id": "A4-music-adds-light",
+   "source": "523461dd done-when 1",
+   "class": "ambient only modulates",
+   "note": "music lights a field no session drives",
+   "edits": [
+    {
+     "file": "plugin/ambient/ambient.js",
+     "from": "out.push(base * envelope(i, n) * m);",
+     "to": "out.push((base + 0.2) * envelope(i, n) * m);"
+    }
+   ],
+   "gates": [
+    "ambient"
+   ]
   }
  ]
 }
