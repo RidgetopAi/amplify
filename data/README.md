@@ -17,6 +17,7 @@ The data layer reads only `MANDREL_URL` and `MANDREL_VIEWER_TOKEN` (`resolveConf
   - `links[]`: `{from, to, kind, at, taskId, resolved}`, from `outbound_link_activity` / `inbound_link_activity` `.to_session`, deduplicated.
   - `tasks[]` have `lane, eddy, needsYou, hidden`, and `lanes` groups the visible ones.
   - `needsYou[]`: tasks blocked on a human, open decisions, and lost sessions, oldest first.
+  - `latest[]` entries carry `fullTitle` (the whole first line; `title` is cut at 120), and `records` holds the newest `context`, `decision` and `task` of them (or null) plus `times`, every record's created time, newest first (the panes, `plugin/panes`).
 - `tickScene(scene, now)` re-derives liveness on the client clock between refetches (run it once per animation tick).
 - `createEventStream({config, transport, timers, onChange, debounceMs, heartbeatTimeoutMs})` runs `POST /api/events/ticket`, then `GET /api/events?ticket=`. Each entity event schedules one debounced `onChange` (refetch). Silence longer than `heartbeatTimeoutMs` drops the stream and reconnects with a fresh ticket.
 - `replayScene(snapshot, ms)` is the snapshot rewound to virtual time `ms` (a frames fixture uses its last frame at or before `ms`), labelled `REPLAYED SNAPSHOT · <label>`.
