@@ -3114,6 +3114,55 @@
    "gates": [
     "gles"
    ]
+  },
+  {
+   "id": "MF3-rim-hides-plaques",
+   "source": "7fe21433 (decision c197bf39)",
+   "class": "focus loupe",
+   "note": "the old rule again: a plaque other than the detent's target that crosses the loupe's rim gets brightness 0 (hidden), so neighbours vanish around the loupe and during drags",
+   "edits": [
+    {
+     "file": "plugin/focus/Meridian.qml",
+     "from": "    function b(i) { var p = m.plaques[i]; return p ? p.bright : 0 }",
+     "to": "    function b(i) { var p = m.plaques[i]; if (!p) return 0; if (m.land > 0 && i !== m.under) { var lo = Infinity, hi = 0; for (var u = 0; u <= 8; u++) for (var v = 0; v <= 2; v++) { var W = G.toWorld(G.objOf(p.lon + (u / 4 - 1) * G.lonHalf(p.hw, p.lat), p.lat + (v - 1) * p.hh), m.yaw, m.pitch), pp = G.project(W), q = 1 + 5 * W[2] >= 0 ? Infinity : G.loupeQ(pp[0], pp[1]); lo = Math.min(lo, q); hi = Math.max(hi, q) } if (hi >= G.LOUPE.clear && lo < 1.03) return 0 } return p.bright }"
+    }
+   ],
+   "gates": [
+    "focus-shot"
+   ]
+  },
+  {
+   "id": "MF4-shader-drops-outside-dim",
+   "source": "7fe21433 (decision c197bf39)",
+   "class": "focus loupe",
+   "note": "meridian.frag draws plaque text outside the loupe at full brightness: the dimOut uniform is ignored",
+   "edits": [
+    {
+     "file": "shaders/meridian.frag",
+     "from": "        float plqL = inL ? 1.0 : mix(1.0, dimOut, land);",
+     "to": "        float plqL = 1.0;"
+    }
+   ],
+   "gates": [
+    "focus-shot"
+   ]
+  },
+  {
+   "id": "MF5-loupe-dim-off",
+   "source": "7fe21433 (decision c197bf39)",
+   "class": "focus loupe",
+   "note": "meridian.js sets the outside-the-loupe plaque brightness to 1: no dimming, in the uniform and in plaqueLight",
+   "edits": [
+    {
+     "file": "plugin/focus/meridian.js",
+     "from": "clear: 0.86, dim: 0.6 };",
+     "to": "clear: 0.86, dim: 1 };"
+    }
+   ],
+   "gates": [
+    "focus",
+    "focus-shot"
+   ]
   }
  ]
 }

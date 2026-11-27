@@ -44,7 +44,8 @@
 # (tools/headless-shot.sh), headless-pair (tools/headless-pair.sh), install (install/test.sh), gles
 # (tools/check-gles.sh: the committed .qsb's GLSL 100 es and 120 variants have no array constructors
 # and compile under glslangValidator), gles-src (tools/check-gles.sh --build: the same on the .qsb
-# rebuilt from source). The render gates need
+# rebuilt from source), focus-shot (plugin/focus/test/shot.sh focus loupe drag: the focus shots and
+# their loupe-rim pixel check). The render gates need
 # the stack in tools/headless-shot.sh and HEADLESS_MESA without a GPU. A critic who finds a surviving mutation adds it to
 # tools/motion/mutations.json.
 set -uo pipefail
@@ -92,6 +93,7 @@ declare -A CMD=(
   [basin-shot]="plugin/basin/test/shot.sh"
   [install]="bash install/test.sh"
   [gles]="tools/check-gles.sh" [gles-src]="tools/check-gles.sh --build"
+  [focus-shot]="plugin/focus/test/shot.sh focus loupe drag"
 )
 ORDER=(data orbs river focus motion spec qsb mutate headless headless-pair orbs-shot river-shot)   # cheapest first
 ORDER+=(ambient ambient-shot)   # task 523461dd; ambient before its render gate
@@ -101,6 +103,7 @@ ORDER=(puck "${ORDER[@]}" puck-shot)
 ORDER+=(basin-shot)   # task 205c319c: basin card and ambient caption layout
 ORDER=(install "${ORDER[@]}")   # task 45de8d89: install/test.sh (one-command install, config file, demo mode)
 ORDER=(gles gles-src "${ORDER[@]}")   # task 3432bf5a: GLSL 100 es / 120 variants (glslangValidator, no array constructors)
+ORDER+=(focus-shot)   # task 7fe21433: the loupe's rim on the focus shots (plugin/focus/test/rim.mjs)
 
 # WORK holds the base copy, each run's scratch copy, runtime dir and result.
 WORK="$(mktemp -d)"
@@ -163,6 +166,7 @@ gate() {
   [[ $g == headless ]] && render_slot 1
   [[ $g == headless-pair ]] && render_slot 2
   [[ $g == puck-shot ]] && render_slot 1
+  [[ $g == focus-shot ]] && render_slot 1
   local env=(MUTATE_RUN="$rt" SHOT_RUNTIME_DIR="$rt" TMPDIR="$rt")
   (cd "$WORK/scr-$n" && exec env "${env[@]}" timeout -k 10 "$GATE_TIMEOUT" ${CMD[$g]}) > "$OUT/$id-$g.log" 2>&1
   rc=$?

@@ -27,13 +27,14 @@ layout(std140, binding = 0) uniform buf {
     float dorm;      // 1 dormant: cold moonlight
     float ended;     // 1 ended: eclipse
     float nPlq;      // plaques in use (<= 8)
+    float dimOut;    // plaque text brightness outside the loupe, a share of inside (meridian.js LOUPE.dim)
     vec4 loupe;      // x, y, radius (globe radii, screen space, y up), magnification
     vec4 sun;        // sun direction (world)
     vec4 marksA;     // time meridians (lon): 1m 5m 15m 1h
     vec4 marksB;     // 6h 1d
     vec4 plq0; vec4 plq1; vec4 plq2; vec4 plq3;   // lon, lat, half width, half height (radians of arc)
     vec4 plq4; vec4 plq5; vec4 plq6; vec4 plq7;
-    vec4 brightA;    // plaques 0..3 trust brightness; 0 = not drawn (it would cross the loupe rim)
+    vec4 brightA;    // plaques 0..3 trust brightness; 0 = slot unused
     vec4 brightB;    // plaques 4..7
     vec4 atm;        // rim light (role tint)
     vec4 leaseCol;
@@ -141,7 +142,9 @@ void main() {
             em += leaseCol.rgb * on * band * tick * 1.25 * land;
             em += leaseCol.rgb * smoothstep(0.05, 0.03, length(vec2((dl - leaseLon) * cl, lat))) * 1.4 * land;
         }
-        // Plaques: the record's text (atlas slot i), brightness = trust.
+        // Plaques: the record's text (atlas slot i), brightness = trust. Every plaque is drawn; the
+        // loupe's rim cuts one like real glass: magnified inside, unmagnified and dimmed outside.
+        float plqL = inL ? 1.0 : mix(1.0, dimOut, land);
         for (int i = 0; i < 8; i++) {
             if (float(i) >= nPlq) break;
             vec4 q = plq(i);
@@ -153,7 +156,7 @@ void main() {
                 vec2 o = vec2(mod(fi, 4.0) * 0.25, floor(fi / 4.0) * 0.5);
                 vec4 tx = texture(atlas, o + vec2(uv.x, 1.0 - uv.y) * vec2(0.25, 0.5));
                 alb = mix(alb, alb * 0.35, tx.a * 0.7);
-                em += tx.rgb * b * 1.15;
+                em += tx.rgb * b * 1.15 * plqL;
             }
         }
         // Sun = liveness: day, dusk, night, moonlight, eclipse.

@@ -51,9 +51,6 @@ Item {
 
   function close() { if (goal !== 0) { goal = 0; flyT = fly; if (!animate) { fly = 0; m.closed() } } }
 
-  // Plaques drawn now (meridian.js shown): none is ever cut by the loupe's rim. Before the
-  // orb lands the loupe is not there, so all show.
-  readonly property var vis: land > 0 ? G.shown(plaques, yaw, pitch, under) : plaques.map(function () { return true })
   function syncSpin() { yaw = spin.yaw; pitch = spin.pitch; under = spin.target }
   function refresh() {
     if (!field || !field.scene) return
@@ -98,7 +95,8 @@ Item {
       syncSpin()
     }
     if (!flying && !moving) console.log("amplify: focus settled " + sessionId.slice(0, 8) + " loupe "
-                                        + (under >= 0 && plaques[under] ? plaques[under].kind + " " + plaques[under].id8 : "none"))
+                                        + (under >= 0 && plaques[under] ? plaques[under].kind + " " + plaques[under].id8 : "none")
+                                        + " yaw " + yaw.toFixed(5) + " pitch " + pitch.toFixed(5))
   }
 
   // Drawn: the globe's centre and radius against what the focus asks for (fly in from the
@@ -188,12 +186,14 @@ Item {
     property real dorm: m.g ? m.g.dorm : 0
     property real ended: m.g ? m.g.ended : 0
     property real nPlq: m.plaques.length
+    property real dimOut: G.LOUPE.dim
     property vector4d loupe: Qt.vector4d(G.LOUPE.x, G.LOUPE.y, G.LOUPE.r, G.LOUPE.mag)
     property vector4d sun: m.g ? Qt.vector4d(m.g.sun[0], m.g.sun[1], m.g.sun[2], 0) : Qt.vector4d(0, 0, 1, 0)
     property vector4d marksA: Qt.vector4d(G.lonOf(60), G.lonOf(300), G.lonOf(900), G.lonOf(3600))
     property vector4d marksB: Qt.vector4d(G.lonOf(21600), G.lonOf(86400), 0, 0)
     function q(i) { var p = m.plaques[i]; return p ? Qt.vector4d(p.lon, p.lat, p.hw, p.hh) : Qt.vector4d(9, 9, 0, 0) }
-    function b(i) { var p = m.plaques[i]; return p && m.vis[i] ? p.bright : 0 }
+    // Every plaque is drawn at its trust brightness; the loupe's rim may cut one (meridian.js LOUPE).
+    function b(i) { var p = m.plaques[i]; return p ? p.bright : 0 }
     property vector4d plq0: q(0)
     property vector4d plq1: q(1)
     property vector4d plq2: q(2)
