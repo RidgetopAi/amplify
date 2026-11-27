@@ -48,5 +48,6 @@ journalctl --user -t omarchy-shell | grep amplify | tail
 - `install/test.sh` checks the install contract: a root manifest that validates, `omarchy plugin add` run against a clone, config file reading, demo fallback and `configure.sh`. It uses fixture values and a throwaway HOME.
 - `tools/test-install-plugin.sh` tests the checkout installer against stub Omarchy commands.
 - `tools/sync-shared.sh` copies shared sources (for example `data/mandrel.js` and `data/SceneClock.qml`) into `plugin/`. Edit the source, never a copy.
+- `tools/check-gles.sh` checks the GLSL 100 es and 120 variants of every shipped `.qsb` with `glslangValidator` and rejects array constructors, which NVIDIA's GLES path refuses even though headless Mesa draws them (`--build` rebuilds the `.qsb` first).
 - `tools/mutate.sh` runs the mutation catalogue in `tools/motion/mutations.json`.
 - For the data layer, see `data/README.md`. For the plugin skeleton and the headless render proof, see `docs/spike/REPORT.md`.

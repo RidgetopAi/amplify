@@ -22,6 +22,15 @@ export function plan(tree, mut) {
             else files[e.file] = b.subarray(0, e.truncate);
             continue;
         }
+        // { file, copy: path }: replace the file with another file of the tree, byte for byte
+        // (ship an old binary, such as fixtures/shaders/meridian-array-ctor.frag.qsb).
+        if (e.copy !== undefined) {
+            const src = path.join(tree, e.copy);
+            if (!fs.existsSync(path.join(tree, e.file)) || !fs.existsSync(src)) stale.push(`${e.file} or ${e.copy} missing`);
+            else if (fs.readFileSync(src).equals(fs.readFileSync(path.join(tree, e.file)))) stale.push(`${e.file} is already ${e.copy}`);
+            else files[e.file] = fs.readFileSync(src);
+            continue;
+        }
         const s = read(e.file), n = s.split(e.from).length - 1;
         if (n !== 1) { stale.push(`${e.file}: "${e.from.slice(0, 60)}" matches ${n} times`); continue; }
         files[e.file] = s.replace(e.from, () => e.to);

@@ -3019,6 +3019,37 @@
    "gates": [
     "install"
    ]
+  },
+  {
+   "id": "GL1-meridian-array-ctor",
+   "source": "3432bf5a",
+   "class": "GLSL ES 1.00 shader variant",
+   "note": "meridian.frag builds its plaques with an array constructor again (vec4[8](plq0, ...)); NVIDIA rejects the GLSL 100 es variant and draws no globe, headless Mesa draws it",
+   "edits": [
+    {
+     "file": "shaders/meridian.frag",
+     "from": "            vec4 q = plq(i);\n",
+     "to": "            vec4 P[8] = vec4[8](plq0, plq1, plq2, plq3, plq4, plq5, plq6, plq7);\n            vec4 q = P[i];\n"
+    }
+   ],
+   "gates": [
+    "gles-src"
+   ]
+  },
+  {
+   "id": "GL2-old-meridian-qsb-shipped",
+   "source": "3432bf5a",
+   "class": "GLSL ES 1.00 shader variant",
+   "note": "the fixed source ships main's meridian.frag.qsb (sha256 acc889b2...), whose GLSL 100 es and 120 variants keep the array constructors",
+   "edits": [
+    {
+     "file": "plugin/shaders/meridian.frag.qsb",
+     "copy": "fixtures/shaders/meridian-array-ctor.frag.qsb"
+    }
+   ],
+   "gates": [
+    "gles"
+   ]
   }
  ]
 }
