@@ -3019,6 +3019,70 @@
    "gates": [
     "install"
    ]
+  },
+  {
+   "id": "QV1-qsb-mismatch-hidden",
+   "source": "1f323acc (critic gap G1 of verdict 0ba2e697)",
+   "class": "committed qsb toolchain",
+   "note": "build-shaders --check no longer compares the qsb version with QSB_PIN, so another qsb flags every file instead of naming the toolchain mismatch",
+   "edits": [
+    {
+     "file": "tools/build-shaders.sh",
+     "from": "if [[ $have != \"$QSB_PIN\" ]]; then",
+     "to": "if [[ -z $have ]]; then"
+    }
+   ],
+   "gates": [
+    "mutate"
+   ]
+  },
+  {
+   "id": "FL1-flow-search-60",
+   "source": "1f323acc (G3: flow shift search)",
+   "class": "river row 1 check",
+   "note": "frames.mjs flow searches only shifts up to 60 px again, so under load the downstream peak is clipped",
+   "edits": [
+    {
+     "file": "tools/motion/frames.mjs",
+     "from": "    const S = 240;\n",
+     "to": "    const S = 60;\n"
+    }
+   ],
+   "gates": [
+    "motion"
+   ]
+  },
+  {
+   "id": "CJ3-gate-eases-holds-jumps",
+   "source": "1f323acc (defect 14156a9b of verdict 05ad7e8a)",
+   "class": "river row 2",
+   "note": "the gate eases 40% of the way, holds 300 ms mid-path, then jumps the rest: the jump after a hold must fail maxStep",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }",
+     "to": "Behavior on gx { id: gxb; enabled: river.animate; SequentialAnimation { NumberAnimation { duration: 400; to: gate.gx + 0.4 * (gxb.targetValue - gate.gx) } PauseAnimation { duration: 300 } NumberAnimation { duration: 0 } } }"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "CJ4-gate-eases-jumps",
+   "source": "1f323acc (defect 14156a9b of verdict 05ad7e8a)",
+   "class": "river row 2",
+   "note": "the gate eases 40% of the way, then jumps the rest with no hold",
+   "edits": [
+    {
+     "file": "plugin/river/River.qml",
+     "from": "Behavior on gx { enabled: river.animate; SpringAnimation { spring: 1.2; damping: 0.4; epsilon: 0.2 } }",
+     "to": "Behavior on gx { id: gxb; enabled: river.animate; SequentialAnimation { NumberAnimation { duration: 400; to: gate.gx + 0.4 * (gxb.targetValue - gate.gx) } NumberAnimation { duration: 0 } } }"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
   }
  ]
 }

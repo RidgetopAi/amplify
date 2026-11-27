@@ -259,3 +259,30 @@ cleanup > /dev/null; [[ -d $RUN ]] && echo "gate kept" || echo "gate removed"; r
         assert.match(r.stdout, /^gate removed$/m, `${gate}: cleanup() in the gate's shell left the run dir`);
     }
 });
+
+// build-shaders.sh --check (task 1f323acc G1): qsb output is byte-identical only within one
+// version, so a qsb other than the pinned one gets one toolchain message and exit 2, not a
+// "differs" line per file. A stub qsb stands in for both versions; it writes junk, so with
+// the pinned version the per-file comparison still runs and flags every file.
+test("build-shaders --check with another qsb version says so once and exits 2; the pinned version compares files", (ctx) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "qsb-stub-"));
+    ctx.after(() => fs.rmSync(d, { recursive: true, force: true }));
+    const pin = fs.readFileSync(path.join(root, "tools/build-shaders.sh"), "utf8").match(/^QSB_PIN=(\S+)$/m)[1];
+    const run = (version) => {
+        const q = path.join(d, `qsb-${version}`);
+        fs.writeFileSync(q, `#!/usr/bin/env bash
+[[ $1 == --version ]] && { echo "qsb ${version}"; exit 0; }
+while (( $# )); do [[ $1 == -o ]] && { echo junk > "$2"; shift; }; shift; done
+`, { mode: 0o755 });
+        return spawnSync(path.join(root, "tools/build-shaders.sh"), ["--check"], { cwd: root, encoding: "utf8", env: { ...process.env, QSB: q } });
+    };
+    const other = run("6.8.3");
+    assert.equal(other.status, 2);
+    const lines = other.stderr.trim().split("\n");
+    assert.equal(lines.length, 1, other.stderr);
+    assert.match(lines[0], new RegExp(`toolchain mismatch: qsb 6\\.8\\.3 .*built by qsb ${pin.replace(/\./g, "\\.")}`));
+    const pinned = run(pin);
+    assert.equal(pinned.status, 1);
+    assert.doesNotMatch(pinned.stderr, /toolchain/);
+    assert.match(pinned.stderr, /orbbeam\.frag\.qsb \(\d+ bytes\) differs from its source's build/);
+});

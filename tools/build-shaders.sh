@@ -11,14 +11,25 @@
 # --check (task 179bbd77) is the gate on what ships: every render gate rebuilds the .qsb
 # first, so it never loads the committed ones. It fails when a committed .qsb (or the
 # river's copy) differs from what its source compiles to (stale, truncated or missing), or
-# has no source. qsb output is deterministic for one qsb version (6.12.0 built these).
+# has no source. qsb output is byte-deterministic only for one qsb version, so --check
+# first compares `qsb --version` with QSB_PIN, the version that built the committed .qsb,
+# and on a mismatch prints one toolchain message and exits 2 instead of flagging every
+# file (task 1f323acc). Rebuilding with another qsb only warns; commit its output only
+# together with a new QSB_PIN.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+QSB_PIN=6.12.0
 # env-read: QSB is the qsb binary (default: qsb on PATH, else Arch's /usr/lib/qt6/bin/qsb).
 QSB="${QSB:-$(command -v qsb || command -v /usr/lib/qt6/bin/qsb || true)}"
 [[ -x $QSB ]] || { echo "build-shaders: qsb not found (Arch: qt6-shadertools; set QSB=)" >&2; exit 1; }
 CHECK=0; [[ ${1:-} == --check ]] && CHECK=1
+have=$("$QSB" --version 2>&1 | awk '$1 == "qsb" { print $2; exit }' || true)
+if [[ $have != "$QSB_PIN" ]]; then
+  msg="qsb ${have:-of unknown version} at $QSB, but the committed .qsb were built by qsb $QSB_PIN, and qsb output is byte-identical only within one version"
+  (( CHECK )) && { echo "build-shaders: toolchain mismatch: $msg; run --check with qsb $QSB_PIN (nixpkgs qt6.qtshadertools, or set QSB=)" >&2; exit 2; }
+  echo "build-shaders: warning: $msg; do not commit these .qsb unless QSB_PIN in tools/build-shaders.sh moves to $have" >&2
+fi
 # Where the .qsb go: the tree itself, or for --check a temp copy of its layout.
 DEST="$ROOT"
 if (( CHECK )); then DEST="$(mktemp -d)"; trap 'rm -rf "$DEST"' EXIT; mkdir -p "$DEST/plugin/basin"; fi

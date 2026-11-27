@@ -187,3 +187,31 @@ test("a mutation of a shared source reaches the plugin's copies of it, as the sy
     assert.notEqual(src, fs.readFileSync(path.join(root, "data/mandrel.js"), "utf8"), "the source is mutated");
     for (const c of ["basin", "orbs", "river"]) assert.equal(fs.readFileSync(path.join(t, "plugin", c, "mandrel.js"), "utf8"), src, `plugin/${c}/mandrel.js`);
 });
+
+// frames.mjs flow (task 1f323acc): under load grim takes 0.3-0.9 s a frame, so frames asked
+// for 0.2 s apart land 60-100 px of travel apart. Three synthetic frames of streaks along x
+// (the same at every depth), 90 px apart: read as downstream, and in reverse as upstream.
+test("frames flow: a 90 px shift between frames reads downstream; the reversed frames read upstream", (ctx) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "flow-"));
+    ctx.after(() => fs.rmSync(d, { recursive: true, force: true }));
+    const W = 960, H = 540;   // half size: frames.mjs scales the water band by height
+    let seed = 7;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const knots = Array.from({ length: 80 }, rnd);   // smooth streaks: one knot per 32 px, cosine-blended
+    const streak = (x) => { const u = ((x % 2560) + 2560) % 2560 / 32, i = Math.floor(u), f = (1 - Math.cos((u - i) * Math.PI)) / 2;
+                            return knots[i % 80] * (1 - f) + knots[(i + 1) % 80] * f; };
+    const frame = (p) => {
+        const px = Buffer.alloc(W * H * 3);
+        for (let x = 0; x < W; x++) { const v = Math.round(40 + 160 * streak(x - p)); for (let y = 0; y < H; y++) px.fill(v, (y * W + x) * 3, (y * W + x) * 3 + 3); }
+        const f = path.join(d, `f${p}.png`);
+        assert.equal(spawnSync("magick", ["-size", `${W}x${H}`, "-depth", "8", "rgb:-", f], { input: px }).status, 0);
+        return f;
+    };
+    const f = [0, 90, 180].map(frame);
+    const flow = (...xs) => spawnSync("node", [path.join(root, "tools/motion/frames.mjs"), "flow", ...xs], { encoding: "utf8" });
+    const down = flow(...f), up = flow(...[...f].reverse());
+    assert.equal(down.status, 0, down.stdout);
+    assert.match(down.stdout, /streaks moved 90 px/);
+    assert.equal(up.status, 1, up.stdout);
+    assert.match(up.stdout, /streaks moved -90 px/);
+});
