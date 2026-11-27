@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Render the panes (task bc45ee1d) headless and write docs/shots/:
-#   plugin/panes/test/shot.sh           # panes-switch.png (sheet + idle budget), then panes.png (service)
+#   plugin/panes/test/shot.sh           # panes-switch.png (sheet + idle budget), then panes.png and panes-stats.png (stats)
 #   plugin/panes/test/shot.sh sheet     # only the sheet
 #   plugin/panes/test/shot.sh service   # only the whole plugin
+#   plugin/panes/test/shot.sh stats     # the whole plugin at 1920x1080 and 2560x1440: panes-stats.png
 # sheet: plugin/panes/test/shell.qml, the replayed capture with the real project list: no records
 #   (every field null), closed, and the switcher open. Then the idle budget: the feeds hand the
 #   panes new but equal rows every second, and the sheet must swap no frame 3 to 9 s after the draw.
 # service: the whole plugin (quickshell -p plugin/) at 1920x1080, as installed: the panes'
-#   model line in the log, no QML errors, and the capture.
+#   model line in the log, every stat note drawn whole, no QML errors, and the capture.
 # Same stack as plugin/orbs/test/shot.sh: sway (headless, pixman), quickshell, grim, and
 # Mesa llvmpipe through HEADLESS_MESA when there is no GPU.
 # Exit status is the number of failed checks.
@@ -85,20 +86,46 @@ sheet() {
   return $bad
 }
 
+# service [<w> <h>]: the whole plugin at that size (default 1920x1080); writes panes.png at
+# 1920x1080 and the panes' header and stat tiles to $RUN/stats-<w>.png; every stat note
+# ("TASKS IN FLIGHT" and the others, task 32f5427b) must be drawn whole: not elided, wrapped
+# when wider than its tile, inside the tile ("amplify: panes@<screen> note" lines, Panes.qml).
 service() {
-  compositor 1920 1080 || return 1
+  local w=${1:-1920} h=${2:-1080}
+  compositor "$w" "$h" || return 1
   AMPLIFY_THEME_DIR="$ROOT/tools/harness/theme" AMPLIFY_AMP_FIXTURE="$ROOT/data/amp/fixtures/top-capture.jsonl" \
     quickshell -p "$ROOT/plugin" > "$RUN/service.log" 2>&1 & local qs=$! bad=0
   readyin() { grep -q "amplify: ready" "$RUN/service.log" && grep -q "amplify: panes@" "$RUN/service.log"; }
   shot_wait 30 "the plugin's ready line and the panes' model line" readyin || bad=1
   # Settle window: the basin rows' 1.4 s glide-in and the pool's 1.6 s fill.
   sleep 3
-  if grim "$OUT/panes.png"; then echo "shot: wrote docs/shots/panes.png"; else bad=1; fi
-  grep -a "amplify: panes@" "$RUN/service.log" | tail -1 | sed "s/^.*amplify: /shot: /"
+  if grim "$RUN/service-$w.png"; then
+    [[ $w == 1920 ]] && cp "$RUN/service-$w.png" "$OUT/panes.png" && echo "shot: wrote docs/shots/panes.png"
+    magick "$RUN/service-$w.png" -crop 640x170+$((w - 28 - 640))+76 +repage "$RUN/stats-$w.png"
+  else bad=1; fi
+  grep -a "amplify: panes@" "$RUN/service.log" | grep -v " note " | tail -1 | sed "s/^.*amplify: /shot: /"
+  local n
+  n=$(grep -a "amplify: panes@[^ ]* note " "$RUN/service.log" | sed 's/.*amplify: panes@[^ ]* note //' \
+    | awk '{ last[$1] = $0 } END { for (k in last) print last[k] }' | sort)
+  sed "s/^/shot: ${w}x$h note /" <<< "$n"
+  if (( $(grep -c . <<< "$n") == 4 )) && [[ -z $(awk '$3 != 0 || ($4 > $5 + 1 && $2 < 2) || $6 > $7' <<< "$n") ]]; then
+    echo "shot: ${w}x$h: every stat note drawn whole"
+  else echo "shot: ${w}x$h: a stat note is cut or missing (key lines truncated naturalWidth width bottom tileHeight)"; bad=1; fi
   if grep -E "$ERRS" "$RUN/service.log" | grep -v "^qt.qpa"; then echo "shot: service logged errors (above)"; bad=1; fi
   shot_stop "$qs"
   return $bad
 }
 
-for part in ${1:-sheet service}; do "$part" || fails=$((fails + 1)); done
+# stats: service at 1920x1080 and 2560x1440, then docs/shots/panes-stats.png (both headers, stacked).
+stats() {
+  local bad=0
+  service 1920 1080 || bad=1
+  service 2560 1440 || bad=1
+  if (( bad == 0 )) && magick "$RUN/stats-1920.png" "$RUN/stats-2560.png" -append "$OUT/panes-stats.png"; then
+    echo "shot: wrote docs/shots/panes-stats.png"
+  fi
+  return $bad
+}
+
+for part in ${1:-sheet stats}; do "$part" || fails=$((fails + 1)); done
 exit "$fails"

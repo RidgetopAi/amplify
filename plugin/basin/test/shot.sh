@@ -8,7 +8,12 @@
 #   2. music paused, then playing (stub cava and MPRIS, as plugin/ambient/test/shot.sh):
 #      the strip under the field where the orbs' scene caption is drawn stays dark (its
 #      blue cast under 10, as the bare wallpaper), while the field above it is lit;
-#   3. no QML errors.
+#      and the field stops short of the basin's column (task 32f5427b): no music light
+#      behind the lower card (its blue cast below 0; warm card on dark, lit it reads ~+15);
+#   3. the panes' stat notes ("TASKS IN FLIGHT" and the others, task 32f5427b) are drawn
+#      whole: not elided, wrapped when wider than the tile, inside the tile; from the
+#      "amplify: panes@<screen> note" lines (Panes.qml);
+#   4. no QML errors.
 # Shots go to docs/shots/basin-cards.png and docs/shots/ambient-caption.png only when
 # every check passed. Exit status = number of failed checks.
 # Needs: sway, grim, quickshell, ImageMagick (magick); HEADLESS_MESA without a GPU.
@@ -89,12 +94,32 @@ foot() {
     && pass "$name: the caption strip stays dark under a lit field" || fail "$name: the field runs through the caption strip (strip ${s% *}, field ${s#* })"
 }
 
+# basincol <name> <png>: the lower basin card (the basin's foot: right margin 28, bottom 30) shows no ambient light.
+basincol() {
+  local c; c=$(magick "$2" -crop 460x50+$((W - 500))+$((H - 80)) +repage -format "%[fx:255*(mean.b-mean.r)]" info:)
+  echo "$1: lower basin card blue cast $c"
+  awk -v c="$c" 'BEGIN { exit !(c < 0) }' && pass "$1: no ambient light behind the lower basin card" \
+    || fail "$1: the ambient field shows behind the lower basin card (blue cast $c)"
+}
+# notes <name> <log>: each stat tile's last note line, "<key> <lines> <truncated> <natural width> <width> <bottom> <tile height> <text>".
+notes() {
+  local n bad
+  n=$(grep -a "amplify: panes@[^ ]* note " "$2" | sed 's/.*amplify: panes@[^ ]* note //' \
+    | awk '{ last[$1] = $0 } END { for (k in last) print last[k] }' | sort)
+  echo "$1 notes (key lines truncated naturalWidth width bottom tileHeight text):"; sed 's/^/  /' <<< "$n"
+  (( $(grep -c . <<< "$n") == 4 )) && pass "$1: 4 stat notes laid out" || fail "$1: $(grep -c . <<< "$n") stat notes laid out (want 4)"
+  bad=$(awk '$3 != 0 || ($4 > $5 + 1 && $2 < 2) || $6 > $7 { print $1 }' <<< "$n")
+  [[ -z $bad ]] && pass "$1: every stat note is whole (wrapped where wider than its tile)" || fail "$1: stat notes cut: $bad"
+}
+
 # 1. Two items, paused, still.
 echo Paused > "$MPRIS"
 start "$RUN/two.log" 2 AMPLIFY_STILL=1 || fail "two items: plugin did not settle"
 grim "$RUN/two.png"
 layout "two items" "$RUN/two.log" 2
 foot "paused" "$RUN/two.png"
+basincol "paused" "$RUN/two.png"
+notes "two items" "$RUN/two.log"
 err=$(qmlerr "$RUN/two.log"); (( err == 0 )) && pass "two items: no QML errors" || fail "two items: $err QML errors"
 shot_stop "$QS"
 
@@ -105,6 +130,8 @@ grep -aq "ambient cava start" "$RUN/three.log" && pass "playing: cava started" |
 grim "$RUN/three.png"
 layout "three items" "$RUN/three.log" 3
 foot "playing" "$RUN/three.png"
+basincol "playing" "$RUN/three.png"
+notes "three items" "$RUN/three.log"
 err=$(qmlerr "$RUN/three.log"); (( err == 0 )) && pass "three items: no QML errors" || fail "three items: $err QML errors"
 shot_stop "$QS"
 

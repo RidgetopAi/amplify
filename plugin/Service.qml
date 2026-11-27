@@ -158,7 +158,9 @@ Item {
   // live, its own fetch (defect a5d1ffa7).
   Shared.SceneClock { id: sharedClock }
   // The ambient music field (task 523461dd): its own layer, made first so it sits below the others.
-  AmbientLayer { sceneClock: sharedClock; accent: root.accent; animate: !root.still; trace: root.trace; logFps: root.logFps }
+  // It leaves the basin's column dark (Basin.qml width 500, its right margin 28 below, and a 24 px gap).
+  AmbientLayer { sceneClock: sharedClock; accent: root.accent; animate: !root.still; trace: root.trace; logFps: root.logFps
+                 clearRight: 28 + 500 + 24 }
   OrbsLayer { id: orbsLayer; sceneClock: sharedClock; accent: root.accent; foreground: root.foreground; animate: !root.still; trace: root.trace; logFps: root.logFps
               focusOnClick: true; onFocusRequested: (f, id, x, y, r, scr) => focusLayer.open(f, id, x, y, r, scr) }
   // The focused orb (task 85ff482a): a clicked orb flies to the centre as Meridian; no window until then.

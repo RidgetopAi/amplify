@@ -138,16 +138,30 @@ Item {
     Grid {
       id: stats
       columns: 4; columnSpacing: 8
+      // Every tile as tall as the tallest: a note that does not fit on one line wraps, whole,
+      // instead of being cut (task 32f5427b: "most in verifying · 12 merged" in JetBrains Mono).
+      property real tileHeight: 66
+      function fit() {
+        var h = 66
+        for (var i = 0; i < tiles.count; i++) { var t = tiles.itemAt(i); if (t) h = Math.max(h, t.need) }
+        tileHeight = h
+      }
       Repeater {
+        id: tiles
         model: panes.model.stats
+        onItemAdded: stats.fit()
+        onItemRemoved: stats.fit()
         Rectangle {
           id: tile
           required property var modelData
-          width: (body.width - 3 * stats.columnSpacing) / 4; height: 66; radius: 11
+          readonly property real need: tileCol.y + tileCol.implicitHeight + 7
+          onNeedChanged: stats.fit()
+          width: (body.width - 3 * stats.columnSpacing) / 4; height: stats.tileHeight; radius: 11
           readonly property color tint: tile.modelData.warm ? panes.warm : panes.cool
           color: Qt.rgba(tile.tint.r, tile.tint.g, tile.tint.b, tile.modelData.warm ? 0.12 : 0.05)
           border.width: 1; border.color: Qt.rgba(tile.tint.r, tile.tint.g, tile.tint.b, tile.modelData.warm ? 0.4 : 0.14)
           Column {
+            id: tileCol
             x: 12; y: 7; width: parent.width - 24; spacing: 1
             Text {
               text: tile.modelData.value
@@ -161,10 +175,17 @@ Item {
               font.family: panes.mono; font.pixelSize: 9; font.letterSpacing: 1.1
             }
             Text {
-              width: parent.width; elide: Text.ElideRight
+              id: note
+              width: parent.width; wrapMode: Text.Wrap
               text: tile.modelData.note
               color: tile.modelData.warm ? "#b08f80" : panes.dim
               font.family: panes.mono; font.pixelSize: 10
+              // The note as laid out, for the whole-note check (plugin/basin/test/shot.sh):
+              // "<lines> <truncated> <natural width> <width> <bottom in the tile> <tile height>".
+              readonly property string laid: [lineCount, truncated ? 1 : 0, Math.ceil(implicitWidth), Math.floor(width),
+                Math.round(tileCol.y + y + height), Math.round(tile.height)].join(" ")
+              onLaidChanged: console.log("amplify: panes" + (panes.screenName ? "@" + panes.screenName : "") + " note "
+                                         + tile.modelData.key + " " + laid + " " + text)
             }
           }
         }
