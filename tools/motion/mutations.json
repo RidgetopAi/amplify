@@ -2826,6 +2826,38 @@
    "gates": [
     "headless"
    ]
+  },
+  {
+   "id": "MF1-trust-to-hue",
+   "source": "85ff482a (doneWhen 4)",
+   "class": "focus mapping",
+   "note": "plaques show trust as hue (three colours) at full brightness instead of brightness in their kind's colour",
+   "edits": [
+    {
+     "file": "plugin/focus/meridian.js",
+     "from": "bright: brightness(r.trust), color: KIND_COLOR[r.kind],",
+     "to": "bright: 1, color: [\"#ff6b6b\", \"#ffd166\", \"#06d6a0\"][Math.round(brightness(r.trust) * 2) % 3],"
+    }
+   ],
+   "gates": [
+    "focus"
+   ]
+  },
+  {
+   "id": "MF2-loupe-detent-off",
+   "source": "85ff482a (doneWhen 4)",
+   "class": "focus spin",
+   "note": "a thrown globe coasts to a stop wherever friction leaves it: no detent settles a plaque under the loupe",
+   "edits": [
+    {
+     "file": "plugin/focus/meridian.js",
+     "from": "if (Math.abs(st.vy) < DETENT_SPEED) detentTo(st, nearest(st, pl), pl);",
+     "to": "if (Math.abs(st.vy) < 1e-4) { st.vy = 0; st.mode = \"idle\"; }"
+    }
+   ],
+   "gates": [
+    "focus"
+   ]
   }
  ]
 }

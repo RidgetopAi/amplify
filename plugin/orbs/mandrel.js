@@ -362,6 +362,9 @@ function buildScene(inputs, opts) {
         if (m !== null) records.times.push(m);
         if (records[r.kind] === null) records[r.kind] = r;
     });
+    // allRecords: every record, newest first, before the cut; the focused orb (plugin/focus,
+    // task 85ff482a) reads one session's own. records above keeps the panes shape.
+    var allRecords = latest.slice();
     latest = latest.slice(0, opts.latestLimit || 12);
 
     var needsYou = [];
@@ -406,6 +409,7 @@ function buildScene(inputs, opts) {
         lanes: lanes,
         latest: latest,
         records: records,
+        allRecords: allRecords,
         needsYou: needsYou,
         counts: { liveness: livenessCounts, tasks: tasks.filter(function (x) { return !x.hidden; }).length,
                   needsYou: needsYou.length }

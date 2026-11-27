@@ -11,7 +11,8 @@ The data layer reads only `MANDREL_URL` and `MANDREL_VIEWER_TOKEN` (`resolveConf
 - `loadScene(fetchJson, opts)` fetches `/api/sessions`, `/api/sessions/:id` for open sessions, `/api/tasks`, `/api/contexts`, `/api/decisions`, and `/api/projects`, then calls `buildScene`.
 - `fetcherFor(cfg, transport, snapshot)` returns the live fetcher, or the replay fetcher when unconfigured. `xhrTransport()` is for QML; `node.fetchTransport()` is for Node.
 - `buildScene(inputs, {now, baseUrl, projectId, mode, label})` returns:
-  `{ meta, projects[], sessions[], orbs[], links[], tasks[], lanes{draft..deployed}, latest[], needsYou[], counts }`.
+  `{ meta, projects[], sessions[], orbs[], links[], tasks[], lanes{draft..deployed}, latest[], records{}, allRecords[], needsYou[], counts }`.
+  - `latest[]` is the newest 12 contexts, decisions and tasks; `allRecords[]` is all of them, newest first (the focused orb reads a session's own); `records{}` is `{context, decision, task, times[]}`, the newest of each kind and every created time (the panes).
   - `sessions[]`: `id, id8, url, title, displayTitle, actor, role, orbName, threadId, threadUrl, liveness, serverLiveness, creationReason`, timestamps, `counts`, `totalTokens`, `latestActivity`, `punchActivity`, `loopActivities`.
   - `orbs[]`: sessions that have not ended: `sessionId, name, role, liveness, threadUrl, taskId, url`.
   - `links[]`: `{from, to, kind, at, taskId, resolved}`, from `outbound_link_activity` / `inbound_link_activity` `.to_session`, deduplicated.
