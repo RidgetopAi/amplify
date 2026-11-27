@@ -185,30 +185,52 @@ test("null fields: a session with no records of its own draws an empty globe, an
   assert.equal(st.mode, "idle");
 });
 
-test("the loupe never cuts a plaque: every drawn plaque is wholly inside its clear glass or wholly outside its rim", () => {
+// Decision c197bf39 (option B): every plaque that faces you is drawn; the loupe's rim cuts one
+// like real glass, and its text outside the loupe is dimmed so the record under it stays the focus.
+// The screen is sampled through plaqueLight (meridian.frag's plaque term); facing comes from the
+// plaque's own centre, not from that sampling.
+test("the rim cuts plaques, never hides them: every plaque that faces you is lit, dimmer outside the loupe", () => {
   const pl = G.globe(scene(), COORD, NOW).plaques;
-  const st = G.spin(0, 0);
-  // Every orientation a throw passes through, and every detent.
+  // Throws pass through every yaw with no plaque under the loupe (target -1); and every detent.
   const orients = [];
-  for (let y = -3; y <= 0.5; y += 0.05) for (const p of [-0.3, 0, 0.3, 0.6]) orients.push([y, p, -1]);
-  pl.forEach((p, i) => { const d = G.detentFor(p, 0); orients.push([d.yaw, d.pitch, i]); });
-  let hidden = 0;
-  for (const [yaw, pitch, target] of orients) {
-    const vis = G.shown(pl, yaw, pitch, target);
-    if (target >= 0) assert.ok(vis[target], "the plaque under the loupe is always drawn");
+  for (let y = -3; y <= 0.5; y += 0.1) for (const p of [-0.3, 0, 0.3, 0.6]) orients.push([y, p]);
+  pl.forEach((p) => { const d = G.detentFor(p, 0); orients.push([d.yaw, d.pitch]); });
+  let cut = 0;
+  for (const [yaw, pitch] of orients) {
+    const st = G.spin(yaw, pitch), seen = pl.map(() => ({ in: 0, out: 0, lightIn: 0, lightOut: 0 }));
+    for (let x = -1; x <= 1; x += 0.02) for (let y = -1; y <= 1; y += 0.02) {
+      const { i, light } = G.plaqueLight(st, x, y, pl);
+      if (i < 0) continue;
+      const k = Math.hypot(x - G.LOUPE.x, y - G.LOUPE.y) < G.LOUPE.r ? "in" : "out";
+      seen[i][k]++; seen[i][k === "in" ? "lightIn" : "lightOut"] = light;
+    }
     pl.forEach((p, i) => {
-      if (!vis[i]) { hidden++; return; }
-      // Sample its outline densely (independently of shown's sampling): no edge point on both sides of the rim band.
-      let inside = false, outside = false;
-      const half = p.hw / Math.cos(p.lat);
-      for (let a = 0; a <= 40; a++) for (let b = 0; b <= 10; b++) {
-        const W = G.toWorld(G.objOf(p.lon + (a / 20 - 1) * half, p.lat + (b / 5 - 1) * p.hh), yaw, pitch);
-        if (1 + 5 * W[2] >= 0) { outside = true; continue; }
-        const pp = G.project(W), q = G.loupeQ(pp[0], pp[1]);
-        if (q < 1) inside = true; else outside = true;
+      // Faces you: its centre is well on the near side of the horizon.
+      if (G.toWorld(G.objOf(p.lon, p.lat), yaw, pitch)[2] > -0.3) return;
+      const s = seen[i], at = `${p.id8} at yaw ${yaw.toFixed(2)} pitch ${pitch}`;
+      assert.ok(s.in + s.out > 20, `${at} is not drawn (${s.in} + ${s.out} points)`);
+      if (s.in) assert.equal(s.lightIn, p.bright, `${at}: full trust brightness under the loupe`);
+      if (s.out) assert.ok(s.lightOut > 0 && s.lightOut < p.bright, `${at}: dimmed outside the loupe (${s.lightOut})`);
+      if (s.in > 5 && s.out > 5) {
+        cut++;
+        assert.ok(s.lightOut <= 0.75 * s.lightIn && s.lightOut >= 0.4 * s.lightIn, `${at}: outside ${s.lightOut} vs inside ${s.lightIn}, dimmed but readable`);
       }
-      assert.ok(!(inside && outside), `${p.id8} drawn across the loupe rim at yaw ${yaw.toFixed(2)} pitch ${pitch}`);
     });
   }
-  assert.ok(hidden > 0, "some orientations do put a plaque across the rim (so the rule is exercised)");
+  assert.ok(cut > 20, `the rim cuts plaques in many orientations (${cut}), so the rule is exercised`);
+});
+
+// The focus sheet's own case (Brian's desktop, ebd3b02e): the newest record under the loupe, and
+// the neighbours that cross the rim (the old rule hid them) are drawn on both sides of it.
+test("with the newest record under the loupe its rim-crossing neighbours are drawn, cut by the rim", () => {
+  const g = G.globe(scene(), COORD, NOW), pl = g.plaques;
+  const d = G.detentFor(pl[g.newest], 0), st = G.spin(d.yaw, d.pitch);
+  const sides = pl.map(() => new Set());
+  for (let x = -1; x <= 1; x += 0.01) for (let y = -1; y <= 1; y += 0.01) {
+    const { i } = G.plaqueLight(st, x, y, pl);
+    if (i >= 0) sides[i].add(Math.hypot(x - G.LOUPE.x, y - G.LOUPE.y) < G.LOUPE.r ? "in" : "out");
+  }
+  assert.deepEqual([...sides[g.newest]], ["in"]);
+  const crossing = pl.filter((p, i) => sides[i].size === 2).map((p) => p.id8).sort();
+  assert.deepEqual(crossing, ["c755578f", "cae2c3da"]);
 });

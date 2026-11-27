@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Render the focused-orb proof shots headless (task 85ff482a) and check the idle budget:
-#   plugin/focus/test/shot.sh            # docs/shots/meridian.png, meridian-loupe.png, then idle
-#   plugin/focus/test/shot.sh focus|loupe|idle
+#   plugin/focus/test/shot.sh            # docs/shots/meridian.png, meridian-loupe.png, meridian-drag.png, then idle
+#   plugin/focus/test/shot.sh focus|loupe|drag|lease|idle ...   # only these, in this order
 # focus: the coord orb of the shipped capture flown to the centre, newest record under the loupe.
-# loupe: then a hand throw, coast and detent onto an older plaque.
+# loupe: then a hand throw, coast and detent onto an older plaque (8593dade; cae2c3da crosses the rim).
+# drag:  the hand mid-drag, still down (no plaque is the detent's target; 53163e57 crosses the rim).
+# Each of these then checks the loupe's rim on its shot (rim.mjs, decision c197bf39): every plaque
+# that faces you is drawn, and its text is dimmer outside the loupe than inside.
 # lease: data-core, which holds a claim: the lit arc east of now (meridian-lease.png, not committed).
 # idle:  the whole plugin (Service.qml) with AMPLIFY_FPS=1, held at 04:38:18Z (river at flow 0):
 #        an orb click (vncdo) focuses it, and once settled the focus window swaps no frame in a
@@ -49,16 +52,20 @@ errors() { grep -E "TypeError|ReferenceError|is not defined|Unable to assign|bin
 sheet() {
   local s=$1 log="$RUN/$1.log" n
   AMPLIFY_FOCUS_SHEET=$s quickshell -p "$SHEET" > "$log" 2>&1 & local qs=$!
-  # Settled once (landed); loupe: settled again after the throw.
-  [[ $s == loupe ]] && n=2 || n=1
-  done_() { (( $(grep -ac "amplify: focus settled" "$log") >= n )); }
+  # Settled once (landed); loupe: settled again after the throw; drag: then held mid-drag.
+  case $s in loupe|drag) n=2 ;; *) n=1 ;; esac
+  done_() { (( $(grep -acE "amplify: focus (settled|held)" "$log") >= n )); }
   local bad=0
   shot_wait 40 "the $s sheet to settle" done_ || bad=1
   # One frame after the settled line has been asked for and drawn: grim reads the last swapped buffer.
   sleep 0.5
-  if grim "$OUT/meridian${s/focus/}.png" 2>/dev/null; then :; fi
-  [[ $s != focus ]] && mv "$OUT/meridian$s.png" "$OUT/meridian-$s.png"
+  local png="$OUT/meridian.png"; [[ $s != focus ]] && png="$OUT/meridian-$s.png"
+  if grim "$png" 2>/dev/null; then :; fi
   echo "shot: $s: $(grep -a "amplify: focus" "$log" | sed 's/.*amplify: /  /' | tr '\n' ';')"
+  # The loupe's rim on the shot (decision c197bf39): every plaque drawn, text dimmed outside.
+  local at; at=$(grep -aE "amplify: focus (settled|held)" "$log" | tail -1 | sed -E 's/.*(settled|mid-drag) ([0-9a-f]{8}) .* yaw (\S+) pitch (\S+)$/\2 \3 \4/')
+  # shellcheck disable=SC2086
+  node "$ROOT/plugin/focus/test/rim.mjs" "$png" $at $([[ $s == drag ]] && echo cut) || { echo "shot: $s: the loupe's rim check failed"; bad=1; }
   if errors "$log"; then echo "shot: $s logged errors (above)"; bad=1; fi
   shot_stop "$qs"
   return $bad
@@ -100,7 +107,7 @@ idle() {
 }
 
 fails=0
-for s in ${1:-focus loupe lease idle}; do
+for s in ${*:-focus loupe drag lease idle}; do
   if [[ $s == idle ]]; then idle || fails=$((fails + 1)); else sheet "$s" || fails=$((fails + 1)); fi
 done
 echo "shot: $fails failed"

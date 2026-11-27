@@ -41,9 +41,12 @@ var SUN = {
 };
 var LIGHT = { live: 1.0, forming: 0.85, quiet: 0.7, lost: 0.55, dormant: 0.4, ended: 0.25 };
 // The fixed loupe, in globe radii (screen space, y up): centre, radius, magnification, the
-// rim's flattening (k) and where its rim band starts (clear): text must stay inside clear. Left
-// of centre, so with a record under it now and the lit future stay in view to its right.
-var LOUPE = { x: -0.4, y: -0.18, r: 0.52, mag: 1.5, k: 0.12, clear: 0.86 };
+// rim's flattening (k), where its rim band starts (clear: the plaque under it stays inside) and
+// how bright plaque text is outside it (dim; meridian.frag dimOut). Every plaque that faces you is
+// drawn; the rim cuts one like real glass (magnified inside, unmagnified and dimmed outside), so
+// the record under the loupe stays the focus and its neighbours stay readable (decision c197bf39).
+// Left of centre, so with a record under it now and the lit future stay in view to its right.
+var LOUPE = { x: -0.4, y: -0.18, r: 0.52, mag: 1.5, k: 0.12, clear: 0.86, dim: 0.6 };
 var CAM_Z = 5;
 var SCALE = CAM_Z / Math.sqrt(CAM_Z * CAM_Z - 1);
 
@@ -246,24 +249,6 @@ function plaqueInLoupe(p, yaw, pitch) {
     }
     return worst;
 }
-// Which plaques are drawn with the globe at (yaw, pitch): each is whole or not at all, so the
-// loupe never cuts one. The detent's target and every plaque wholly in the loupe's clear glass
-// or wholly outside its rim (RIM_MARGIN) show; one that crosses the rim is hidden until it is
-// clear of it. Points on the far side of the horizon count as outside.
-var RIM_MARGIN = 0.03;
-function shown(pl, yaw, pitch, target) {
-    var out = [];
-    for (var i = 0; i < pl.length; i++) {
-        var p = pl[i], lo = Infinity, hi = 0, half = lonHalf(p.hw, p.lat), N = 8;
-        for (var a = 0; a <= N; a++) for (var b = 0; b <= 2; b++) {
-            var W = toWorld(objOf(p.lon + (a / N * 2 - 1) * half, p.lat + (b - 1) * p.hh), yaw, pitch);
-            var q = 1 + CAM_Z * W[2] >= 0 ? Infinity : (function (pp) { return loupeQ(pp[0], pp[1]); })(project(W));
-            lo = Math.min(lo, q); hi = Math.max(hi, q);
-        }
-        out.push(i === target || hi < LOUPE.clear || lo >= 1 + RIM_MARGIN);
-    }
-    return out;
-}
 // The plaque drawn at screen p (globe radii, y up), through the loupe; -1 for none.
 function pick(st, px, py, pl) {
     var pp = throughLoupe(px, py), W = hit(pp[0], pp[1]);
@@ -274,6 +259,12 @@ function pick(st, px, py, pl) {
         if (Math.abs(wrap(ll[0] - q.lon)) * Math.cos(ll[1]) < q.hw && Math.abs(ll[1] - q.lat) < q.hh) return i;
     }
     return -1;
+}
+// What meridian.frag lights at screen p once landed: the plaque there (-1 none, as pick) and its
+// text's brightness, trust (bright) inside the loupe and LOUPE.dim of it outside.
+function plaqueLight(st, px, py, pl) {
+    var i = pick(st, px, py, pl), inL = Math.hypot(px - LOUPE.x, py - LOUPE.y) < LOUPE.r;
+    return { i: i, light: i < 0 ? 0 : pl[i].bright * (inL ? 1 : LOUPE.dim) };
 }
 
 // ---------------------------------------------------------------- spin physics

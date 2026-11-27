@@ -11,11 +11,13 @@ import "plugin/focus/meridian.js" as G
 // capture time); the coord orb amplify-coord (de463c37) is "clicked" and flies to the centre.
 //   AMPLIFY_FOCUS_SHEET=focus  landed: the newest record under the loupe        -> meridian.png
 //   AMPLIFY_FOCUS_SHEET=loupe  a hand throw west, coast, detent onto a plaque   -> meridian-loupe.png
+//   AMPLIFY_FOCUS_SHEET=drag   the hand mid-drag, held still before letting go   -> meridian-drag.png
 //   AMPLIFY_FOCUS_SHEET=lease  data-core (4af6ff22), which holds 0edf3b35: the lit arc  -> meridian-lease.png
-// Each logs "amplify: focus settled ..." when nothing moves any more; shot.sh captures then.
+// Each logs "amplify: focus settled ..." when nothing moves any more (drag: "held mid-drag");
+// shot.sh captures then.
 ShellRoot {
   id: root
-  // env-read: AMPLIFY_FOCUS_SHEET selects the sheet (focus | loupe).
+  // env-read: AMPLIFY_FOCUS_SHEET selects the sheet (focus | loupe | drag | lease).
   readonly property string sheet: Quickshell.env("AMPLIFY_FOCUS_SHEET") || "focus"
   // env-read: AMPLIFY_TRACE=1 logs the globe's drawn axes (tools/motion/follow.mjs).
   readonly property bool trace: Quickshell.env("AMPLIFY_TRACE") === "1"
@@ -51,13 +53,20 @@ ShellRoot {
         property bool thrown: false
         onMovingChanged: {}
         Timer {
-          // The hand: once landed, six 30 px moves 16 ms apart to the right, then let go.
-          running: root.sheet === "loupe" && parent.fly === 1 && !parent.thrown
+          // The hand: once landed, six 30 px moves 16 ms apart to the right, then let go (loupe);
+          // drag: seven moves and hold, the hand still down (no plaque is the detent's target).
+          running: (root.sheet === "loupe" || root.sheet === "drag") && parent.fly === 1 && !parent.thrown
           interval: 300
           onTriggered: {
             var v = parent
             v.thrown = true
-            for (var i = 0; i < 6; i++) G.drag(v.spin, 30, 0, 0.016, v.rad)
+            for (var i = 0; i < (root.sheet === "drag" ? 7 : 6); i++) G.drag(v.spin, 30, 0, 0.016, v.rad)
+            if (root.sheet === "drag") {
+              v.syncSpin()
+              console.log("amplify: focus held mid-drag " + v.sessionId.slice(0, 8) + " target " + v.spin.target
+                          + " yaw " + v.yaw.toFixed(5) + " pitch " + v.pitch.toFixed(5))
+              return
+            }
             G.release(v.spin); v.syncSpin(); v.moving = true
             console.log("amplify: focus thrown vy " + v.spin.vy.toFixed(3))
           }
