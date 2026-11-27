@@ -3163,6 +3163,38 @@
     "focus",
     "focus-shot"
    ]
+  },
+  {
+   "id": "PL1-ambient-under-basin",
+   "source": "32f5427b (desktop look 7632b63d)",
+   "class": "ambient field placement",
+   "note": "the field runs on under the basin's column: music light shows through the lower basin card",
+   "edits": [
+    {
+     "file": "plugin/ambient/AmbientLayer.qml",
+     "from": "        anchors.rightMargin: ambient.clearRight\n",
+     "to": ""
+    }
+   ],
+   "gates": [
+    "basin-shot"
+   ]
+  },
+  {
+   "id": "PL2-stat-note-one-line",
+   "source": "32f5427b (desktop look 7632b63d)",
+   "class": "panes stat note",
+   "note": "a stat note (TASKS IN FLIGHT's subtext) is clipped to one elided line again",
+   "edits": [
+    {
+     "file": "plugin/panes/Panes.qml",
+     "from": "width: parent.width; wrapMode: Text.Wrap\n              text: tile.modelData.note",
+     "to": "width: parent.width; elide: Text.ElideRight\n              text: tile.modelData.note"
+    }
+   ],
+   "gates": [
+    "basin-shot"
+   ]
   }
  ]
 }

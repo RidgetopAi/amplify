@@ -25,6 +25,9 @@ Item {
   property bool animate: true
   property bool trace: false
   property bool logFps: false
+  // Pixels at the right of each screen the field leaves dark: the basin's column (Service.qml),
+  // so no music light shows through its translucent cards (task 32f5427b).
+  property int clearRight: 0
 
   readonly property var base: A.fieldBase(sceneClock ? sceneClock.scene : null)
 
@@ -121,10 +124,12 @@ Item {
 
       // The field rests on a line above the foot's caption strip (task 205c319c): the orbs'
       // scene caption (OrbField.qml: 18 px from the bottom, one 11 px line) stays on dark.
+      // It stops short of the basin's column (clearRight, task 32f5427b).
       Item {
         id: field
         anchors.fill: parent
         anchors.bottomMargin: 40
+        anchors.rightMargin: ambient.clearRight
         Repeater {
           model: A.BARS
           Rectangle {

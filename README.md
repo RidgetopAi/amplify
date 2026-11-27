@@ -10,6 +10,9 @@ omarchy plugin add https://github.com/RidgetopAi/amplify --enable
 
 The repo root is the plugin. `manifest.json` points at `plugin/Service.qml`, and the compiled shaders and shared copies are committed, so `plugin add` needs no build step. Remove it with `omarchy plugin remove ridgetopai.amplify`, and update it with `omarchy plugin update ridgetopai.amplify`.
 
+- **Moving from a checkout install:** if you installed Amplify earlier with `tools/install-plugin.sh`, run `tools/install-plugin.sh --remove` from that checkout before `omarchy plugin add`. Otherwise `plugin add` stops with `plugin id 'ridgetopai.amplify' is already used by ~/.config/omarchy/plugins/ridgetopai.amplify/manifest.json`, and the shell keeps loading the old checkout.
+- **Updating:** `omarchy plugin update` shows the incoming diff in git's pager. Press `q` to leave it, or run `GIT_PAGER=cat omarchy plugin update ridgetopai.amplify` to print the diff without a pager.
+
 To work from a checkout instead, run `tools/install-plugin.sh`. It links `plugin/`, rebuilds the shaders (this needs `qt6-shadertools`) and enables the plugin. `tools/install-plugin.sh --remove` undoes it.
 
 ## Connect to Mandrel (optional)
