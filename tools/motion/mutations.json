@@ -2706,6 +2706,71 @@
    "gates": [
     "headless"
    ]
+  },
+  {
+   "id": "PK1-frown-restored",
+   "source": "23a62966 punch doneWhen 3 (builder pre-run)",
+   "class": "puck expression",
+   "note": "the orb-lab rest bend (-1.6): Puck frowns at rest",
+   "edits": [
+    {
+     "file": "plugin/puck/puck.js",
+     "from": "var MOUTH_REST = 0.7;",
+     "to": "var MOUTH_REST = -1.6;"
+    }
+   ],
+   "gates": [
+    "puck"
+   ]
+  },
+  {
+   "id": "PK1b-frown-in-shader",
+   "source": "23a62966 punch doneWhen 3 (builder pre-run)",
+   "class": "puck expression",
+   "note": "the cel shader re-maps the bend to the lab's frown at rest",
+   "edits": [
+    {
+     "file": "shaders/puck_cel.frag",
+     "from": "u.y - (-0.36 + mouth * fx * fx)",
+     "to": "u.y - (-0.36 + (mouth - 2.3) * fx * fx)"
+    }
+   ],
+   "gates": [
+    "puck"
+   ]
+  },
+  {
+   "id": "PK2-opens-web-url",
+   "source": "23a62966 punch doneWhen 3 (builder pre-run)",
+   "class": "puck click",
+   "note": "the click opens the Puck web URL instead of running amp-desktop --puck",
+   "edits": [
+    {
+     "file": "plugin/puck/Puck.qml",
+     "from": "    Quickshell.execDetached(argv)\n",
+     "to": "    Qt.openUrlExternally(\"https://ampcode.com/puck\")\n"
+    }
+   ],
+   "gates": [
+    "puck",
+    "puck-shot"
+   ]
+  },
+  {
+   "id": "PK3-blink-loops",
+   "source": "23a62966 punch doneWhen 3 (builder pre-run)",
+   "class": "puck budget",
+   "note": "the blink loops: the idle Puck window draws every frame",
+   "edits": [
+    {
+     "file": "plugin/puck/Puck.qml",
+     "from": "    id: blinkAnim\n",
+     "to": "    id: blinkAnim; loops: Animation.Infinite; running: true\n"
+    }
+   ],
+   "gates": [
+    "puck-shot"
+   ]
   }
  ]
 }

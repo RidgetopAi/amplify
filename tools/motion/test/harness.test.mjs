@@ -149,7 +149,7 @@ test("the spec check fails when a row is deleted or an animation is added withou
 test("the mutation catalogue applies to this tree and covers the river records", () => {
     const all = catalogue(), ids = all.map((m) => m.id);
     assert.equal(new Set(ids).size, ids.length, "ids unique");
-    const gates = new Set(["data", "orbs", "river", "motion", "spec", "qsb", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair"]);
+    const gates = new Set(["data", "orbs", "river", "motion", "spec", "qsb", "mutate", "river-shot", "orbs-shot", "headless", "headless-pair", "puck", "puck-shot"]);
     for (const m of all) {
         assert.deepEqual(plan(root, m).stale, [], m.id);
         assert.ok(m.gates.length && m.gates.every((g) => gates.has(g)), `${m.id} gates ${m.gates}`);
