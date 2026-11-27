@@ -3195,6 +3195,38 @@
    "gates": [
     "basin-shot"
    ]
+  },
+  {
+   "id": "RF1-water-clock-ignores-focus",
+   "source": "56f55903 (decision 17ee105d)",
+   "class": "river window focus",
+   "note": "every screen's river steps its water clock, not only the focused monitor's",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "readonly property bool focused: root.focusedScreen === \"\" || root.focusedScreen === win.modelData.name",
+     "to": "readonly property bool focused: true"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
+  },
+  {
+   "id": "RF2-river-back-in-main-window",
+   "source": "56f55903 (decision 17ee105d)",
+   "class": "river window split",
+   "note": "the river is drawn in the main window again, so each water step re-renders the basin and panes",
+   "edits": [
+    {
+     "file": "plugin/Service.qml",
+     "from": "      // The river's caption (River.qml, drawCaption false there), above its strip, drawn as it draws it.\n",
+     "to": "      River { anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still }\n      // The river's caption (River.qml, drawCaption false there), above its strip, drawn as it draws it.\n"
+    }
+   ],
+   "gates": [
+    "river-shot"
+   ]
   }
  ]
 }

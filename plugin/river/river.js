@@ -32,6 +32,13 @@ var LANE_PAD = 14;
 var MIN_LANE = 130;
 var MOOR_GAP = 132;        // minimum spacing between tether moorings
 var MARGIN_L = 0.025;      // river starts at 2.5 % of the width
+// The rows the river draws in (task 56f55903): its own window per screen (Service.qml) spans
+// them, so a water step re-renders only this strip. It holds the water band (centerY ± 1.03
+// halfWidth, 391..683), the moorings and holder names above it (from 264), the gate labels
+// below it (to 731) and the verdict effects. Outside it the water never moves
+// (shaders/river.frag: phase shapes only the band), so Service.qml draws it there, still.
+var STRIP_TOP = 240;
+var STRIP_BOTTOM = 770;
 
 // ---------------------------------------------------------------- geometry
 // Same curve as shaders/river.frag (keep in sync).

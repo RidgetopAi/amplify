@@ -1,7 +1,10 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
+import "river/river.js" as RiverJs
+import "perf/perf.js" as Perf
 import "orbs"
 import "river"
 import "basin"
@@ -44,6 +47,32 @@ Item {
 
   property color accent: "#89b4fa"
   property color foreground: "#cdd6f4"
+
+  // Where the river's water flows (task 56f55903, decision 17ee105d): only on the focused
+  // monitor, and not while a window covers it (perf.js, as AmbientLayer.qml pauses); every other
+  // river holds its last step, still, until focus comes to its screen.
+  // env-read: HYPRLAND_INSTANCE_SIGNATURE: under Hyprland, its focused monitor; tiled windows on a screen's shown workspace cover it.
+  readonly property bool hypr: (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "") !== ""
+  // env-read: AMPLIFY_FOCUS_FIXTURE names a file holding the focused screen's name, re-read when it
+  // changes; it stands in for Hyprland's focus (tests run under sway).
+  readonly property string focusFixture: Quickshell.env("AMPLIFY_FOCUS_FIXTURE") || ""
+  property string fixtureFocus: ""
+  FileView {
+    path: root.focusFixture
+    blockLoading: true
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.fixtureFocus = text().trim()
+  }
+  // The focused screen's name; "" when nothing says (no Hyprland, no fixture): every river flows.
+  readonly property string focusedScreen: focusFixture ? fixtureFocus
+    : hypr && Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+  // Every window as a plain object for perf.js screenState.
+  readonly property var tops: ToplevelManager.toplevels.values.map(function (t) {
+    return { fullscreen: t.fullscreen, maximized: t.maximized, minimized: t.minimized,
+             screens: t.screens.map(function (s) { return s.name }) }
+  })
 
   // omarchy-shell shell call ridgetopai.amplify refreshTheme ""
   function refreshTheme(arg) {
@@ -96,7 +125,7 @@ Item {
   // window that has drawn a frame with RHI shaders (it was drawn from the cache: the
   // effect that first loaded it may since be gone); otherwise pending.
   function programs() {
-    var st = {}, wins = orbsLayer.windows().concat(windows.instances)
+    var st = {}, wins = orbsLayer.windows().concat(rivers.instances, windows.instances)
     for (var w = 0; w < wins.length; w++) {
       var fx = wins[w].shaders()
       for (var i = 0; i < fx.length; i++) {
@@ -190,7 +219,50 @@ Item {
       // own click handling.
       mask: Region { item: basin.hitItem; Region { item: panes } }
 
-      River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }
+      // This screen's river window (above), and the river drawn there.
+      readonly property var rw: rivers.instances.filter(function (w) { return w.modelData === win.modelData })[0] || null
+      readonly property var river: rw ? rw.current : null
+
+      // The still water around the river's strip (task 56f55903): the river's own program with its
+      // light and gates, clipped to the rows above and below the strip. Outside the band the water
+      // does not depend on phase, so it meets the strip seamlessly and never redraws a water step.
+      Repeater {
+        id: stillWater
+        model: win.rw ? [[0, win.rw.stripTop], [win.rw.stripTop + win.rw.height, win.height]] : []
+        Item {
+          required property var modelData
+          y: modelData[0]; width: win.width; height: Math.max(0, modelData[1] - modelData[0]); clip: true
+          ShaderEffect {
+            readonly property var rv: win.river
+            y: -parent.y; width: win.width; height: win.height
+            property real phase: 0
+            property real light: rv && rv.lay ? rv.lay.light : 0.55
+            property real flow: rv && rv.lay ? rv.lay.flow : 0
+            property size size: Qt.size(rv ? rv.dw : 1920, 1080)
+            property vector4d g0: rv ? Qt.vector4d(rv.gateX(0), rv.gateX(1), rv.gateX(2), rv.gateX(3)) : Qt.vector4d(0, 0, 0, 0)
+            property vector4d g1: rv ? Qt.vector4d(rv.gateX(4), rv.gateX(5), rv.gateX(6), 0) : Qt.vector4d(0, 0, 0, 0)
+            fragmentShader: Qt.resolvedUrl("river/river.frag.qsb")
+          }
+        }
+      }
+      function stillShaders() {
+        var out = []
+        for (var i = 0; i < stillWater.count; i++) if (stillWater.itemAt(i)) out.push(stillWater.itemAt(i).children[0])
+        return out
+      }
+      // The river's caption (River.qml, drawCaption false there), above its strip, drawn as it draws it.
+      Item {
+        width: win.river ? win.river.dw : 0; height: 1080
+        scale: win.river ? win.river.k : 1; transformOrigin: Item.TopLeft
+        Text {
+          visible: text !== ""
+          anchors.horizontalCenter: parent.horizontalCenter
+          y: 40
+          text: win.river && win.river.feed ? win.river.feed.caption : ""
+          color: "#7d8799"
+          font { family: "JetBrains Mono, DejaVu Sans Mono, monospace"; pixelSize: 11; letterSpacing: 1.6 }
+        }
+      }
 
       Basin {
         id: basin
@@ -212,7 +284,9 @@ Item {
 
       // Counts the frames this window swaps (a FrameAnimation here would itself draw every frame).
       // With the river's water clock steps per second, so a frame drawn between steps shows (task aa5e593d),
-      // and the window's measured length in ms, as OrbsLayer logs it (task 85e35a5d).
+      // and the window's measured length in ms, as OrbsLayer logs it (task 85e35a5d). The river draws in
+      // its own window now (task 56f55903): its steps here should swap no frame of this one.
+      readonly property int riverSteps: win.river ? win.river.steps : 0
       property int swapped: 0
       property int stepsAt: 0
       property real windowAt: Date.now()
@@ -226,22 +300,25 @@ Item {
         onTriggered: {
           var t = Date.now()
           console.log("amplify: fps window=amplify screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1)
-                      + " steps=" + ((river.steps - win.stepsAt) / 5).toFixed(1) + " ms=" + Math.round(t - win.windowAt))
-          win.swapped = 0; win.stepsAt = river.steps; win.windowAt = t
+                      + " steps=" + ((win.riverSteps - win.stepsAt) / 5).toFixed(1) + " ms=" + Math.round(t - win.windowAt))
+          win.swapped = 0; win.stepsAt = win.riverSteps; win.windowAt = t
         }
       }
 
       // The ready line, after readyMs; when it reads pending, an "amplify: rendered" line
       // follows at the first frame after which nothing is pending any more.
-      function shaders() { return river.shaders().concat(basin.shaders()) }
+      function shaders() { return win.stillShaders().concat(basin.shaders()) }
+      // The river's programs on this screen: its strip window's and the still water here.
+      function riverShaders() { return (win.rw ? win.rw.shaders() : []).concat(win.stillShaders()) }
       // drawn: this window has shown a frame with RHI shaders (software rendering never does).
       property bool drawn: false
       property bool waiting: false
       function report(what) {
         return "amplify: " + what + " layer=" + root.layerName + " screen=" + win.modelData.name
           + " size=" + win.width + "x" + win.height + " "
-          + root.shaderReport({ orbs: orbsLayer.shaders(), river: river.shaders(), basin: basin.shaders() },
-                              { orbs: orbsLayer.windows().every(function (w) { return w.drawn }), river: win.drawn, basin: win.drawn })
+          + root.shaderReport({ orbs: orbsLayer.shaders(), river: win.riverShaders(), basin: basin.shaders() },
+                              { orbs: orbsLayer.windows().every(function (w) { return w.drawn }),
+                                river: win.drawn && !!win.rw && win.rw.drawn, basin: win.drawn })
       }
       // Traced, after this screen's ready or rendered line that is no longer pending: one
       // "amplify: program" line per program each group draws on this screen, with its status
@@ -250,7 +327,7 @@ Item {
       function logPrograms() {
         if (!root.trace) return
         var st = root.programs(), orbs = orbsLayer.windows().filter(function (w) { return w.modelData === win.modelData })
-        var groups = { orbs: orbs.length ? orbs[0].shaders() : [], river: river.shaders(), basin: basin.shaders() }
+        var groups = { orbs: orbs.length ? orbs[0].shaders() : [], river: win.riverShaders(), basin: basin.shaders() }
         for (var g in groups) {
           var at = {}, urls = []
           for (var i = 0; i < groups[g].length; i++) {
@@ -264,10 +341,11 @@ Item {
         }
       }
       Connections {
+        id: rendered
         target: win.contentItem.Window.window
         enabled: !win.drawn || win.waiting
         function onFrameSwapped() {
-          win.drawn = river.GraphicsInfo.shaderType === GraphicsInfo.RhiShader
+          win.drawn = basin.GraphicsInfo.shaderType === GraphicsInfo.RhiShader
           if (!win.waiting) return
           var line = win.report("rendered")
           if (line.indexOf("shader=pending") >= 0) return
@@ -276,6 +354,12 @@ Item {
           win.logPrograms()
         }
       }
+      // The river window's frames may come after this window's last one (it swaps none idle).
+      Connections {
+        target: win.rw ? win.rw.contentItem.Window.window : null
+        enabled: win.waiting
+        function onFrameSwapped() { rendered.onFrameSwapped() }
+      }
       Timer {
         interval: root.readyMs; running: true
         onTriggered: {
@@ -283,6 +367,83 @@ Item {
           win.waiting = line.indexOf("shader=pending") >= 0
           console.log(line)
           if (!win.waiting) win.logPrograms()
+        }
+      }
+    }
+  }
+
+  // The river (task 56f55903): its own window per screen, only the strip it draws in
+  // (river.js STRIP_TOP..STRIP_BOTTOM, scaled as River scales its 1080 rows), no input, under
+  // the main window: made after it, since a later window on the same layer sits lower. A water
+  // step re-renders this strip alone; the main window, with the basin and panes, draws the
+  // still water around it and swaps no frame while the data holds.
+  Variants {
+    id: rivers
+    model: Quickshell.screens
+
+    PanelWindow {
+      id: win
+      required property var modelData
+
+      screen: modelData
+      color: "transparent"
+      readonly property int stripTop: Math.floor(RiverJs.STRIP_TOP * win.modelData.height / 1080)
+      anchors { top: true; left: true; right: true }
+      margins.top: stripTop
+      implicitHeight: Math.max(1, Math.ceil(RiverJs.STRIP_BOTTOM * win.modelData.height / 1080) - stripTop)
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.namespace: "amplify-river"
+      WlrLayershell.layer: root.desktopLayer
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+      mask: Region {}
+
+      // The whole screen's river, shifted up so the strip shows its rows where they were.
+      Item {
+        y: -win.stripTop; width: win.width; height: win.modelData.height
+        River { id: river; anchors.fill: parent; sceneClock: sharedClock; screenName: win.modelData.name; animate: !root.still; trace: root.trace }
+      }
+      Binding { target: river; property: "drawCaption"; value: false }
+      Binding { target: river; property: "waterRuns"; value: win.flows }
+      // For the main window on this screen: the river it draws around, and its programs.
+      readonly property var current: river
+      function shaders() { return river.shaders() }
+
+      readonly property int tiled: {
+        if (!root.hypr) return 0
+        var m = Hyprland.monitorFor(win.modelData)
+        return m && m.activeWorkspace ? m.activeWorkspace.toplevels.values.length : 0
+      }
+      readonly property var st: Perf.screenState(root.tops, win.modelData.name, win.tiled)
+      readonly property bool focused: root.focusedScreen === "" || root.focusedScreen === win.modelData.name
+      readonly property bool flows: win.focused && Perf.shouldDraw(win.st)
+      function logFlow() {
+        console.log("amplify: river water screen=" + win.modelData.name + " " + (win.flows ? "runs" : "still")
+                    + " focused=" + win.focused + " covered=" + win.st.covered + " fullscreen=" + win.st.fullscreen
+                    + " at=" + Date.now())
+      }
+      onFlowsChanged: logFlow()
+      Component.onCompleted: logFlow()
+
+      // AMPLIFY_FPS=1: this window's frames and water steps per second, every 5 s (as the main window).
+      property int swapped: 0
+      property int stepsAt: 0
+      property real windowAt: Date.now()
+      // drawn: this window has shown a frame with RHI shaders (Service.programs, the ready line).
+      property bool drawn: false
+      Connections {
+        target: win.contentItem.Window.window
+        function onFrameSwapped() {
+          if (root.logFps) win.swapped++
+          if (!win.drawn) win.drawn = river.GraphicsInfo.shaderType === GraphicsInfo.RhiShader
+        }
+      }
+      Timer {
+        interval: 5000; repeat: true; running: root.logFps
+        onTriggered: {
+          var t = Date.now()
+          console.log("amplify: fps window=amplify-river screen=" + win.modelData.name + " " + (win.swapped / 5).toFixed(1)
+                      + " steps=" + ((river.steps - win.stepsAt) / 5).toFixed(1) + " ms=" + Math.round(t - win.windowAt))
+          win.swapped = 0; win.stepsAt = river.steps; win.windowAt = t
         }
       }
     }

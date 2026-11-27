@@ -30,6 +30,7 @@ Item {
   onShownMsChanged: if (trace && shownMs) console.log("amplify: scene " + traceKey + " at " + new Date(shownMs).toISOString()
                                                        + " clock " + (feed && feed.src ? feed.src.clockId : "none"))
   property bool animate: true
+  property bool drawCaption: true
   // Trace mode (AMPLIFY_TRACE=1, shot.sh): each moving item makes a Trace
   // (plugin/motion/Trace.qml) that logs what it draws as it changes, with the
   // value its record asks for, so tools/motion/follow.mjs checks the path
@@ -152,8 +153,11 @@ Item {
   // bounded number of frames instead of one per vsync on every screen. Each step adds
   // the real time since the last, so the flow keeps its speed. steps counts them
   // (AMPLIFY_FPS logs it with the window's frames).
+  // waterRuns: false holds the water still at its last step (Service.qml: off Hyprland's focused
+  // monitor, or under a window, task 56f55903); true again, it flows on from there.
+  property bool waterRuns: true
   readonly property real speed: R.flowSpeed(lay ? lay.flow : 0)
-  readonly property bool flowing: animate && visible && speed > 0
+  readonly property bool flowing: animate && visible && speed > 0 && waterRuns
   property real clockAt: 0
   property int steps: 0
   onFlowingChanged: clockAt = Date.now()
@@ -168,7 +172,7 @@ Item {
   }
   Loader {
     active: river.trace
-    sourceComponent: Trace { comp: "river"; part: "water"; ident: "phase"; v: ({ x: river.phase, "x:rate": river.animate && river.visible ? river.speed : 0 }) }
+    sourceComponent: Trace { comp: "river"; part: "water"; ident: "phase"; v: ({ x: river.phase, "x:rate": river.flowing ? river.speed : 0 }) }
   }
 
   Item {
@@ -568,8 +572,9 @@ Item {
     }
 
     // ---------------------------------------------------------------- caption
+    // drawCaption: false leaves it to Service.qml, which draws it above the river's strip.
     Text {
-      visible: text !== ""
+      visible: river.drawCaption && text !== ""
       anchors.horizontalCenter: parent.horizontalCenter
       y: 40
       // The one caption (Mandrel.sceneCaption, task 679fbbc5): the moment shown and its last

@@ -192,9 +192,9 @@
         "rotation": { "kind": "none", "why": "driven by the hand, not a record: drag, inertia and the detent are checked by plugin/focus/test/meridian.test.mjs" } } }]
     },
     {
-      "id": "service-host", "comp": "service", "what": "Per-window swapped-frame logger (AMPLIFY_FPS=1, every 5 s) and the ready line",
+      "id": "service-host", "comp": "service", "what": "Per-window swapped-frame loggers (AMPLIFY_FPS=1, every 5 s: the main window and, task 56f55903, the river window) and the ready line",
       "record": "-", "trigger": "AMPLIFY_FPS=1; start", "start": "-", "end": "-", "stop": "-", "draws": false,
-      "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 2 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []
+      "code": [{ "file": "plugin/Service.qml", "line": "Timer {", "count": 3 }, { "file": "plugin/orbs/OrbsLayer.qml", "line": "Timer {" }], "parts": []
     },
     {
       "id": "puck-blink", "comp": "puck", "what": "Puck blinks once (lids shut, held, and open, 300 ms)",

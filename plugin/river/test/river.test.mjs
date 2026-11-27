@@ -151,6 +151,29 @@ test("the water steps at most 4 times a second, 2 design px a step, and not at a
     assert.ok(lay.flow > 0 && R.waterStepMs(R.flowSpeed(lay.flow)) >= 250);
 });
 
+// Service.qml gives the river a window only STRIP_TOP..STRIP_BOTTOM tall (task 56f55903); what
+// falls outside it is cut off. River.qml: holder name 38 rows above the mooring, gate count text
+// 31 rows below the bank plus its 16 px line, hull rows ±34 with a swirl 33 rows tall.
+test("the river's strip holds its water band, moorings, hulls and gate labels at every aspect", () => {
+    for (const dw of [1440, 1920, 2560, 3840]) {
+        for (let x = 0; x <= dw; x += 4) {
+            const cy = R.centerY(x, dw), hw = R.halfWidth(x, dw);
+            assert.ok(cy - 1.03 * hw >= R.STRIP_TOP && cy + 1.03 * hw <= R.STRIP_BOTTOM, `band at x=${x} of ${dw}`);
+        }
+        for (const now of [T, T + 90 * 1000]) {
+            const lay = R.layout(R.replaySceneAt(M, busy, now), now, dw);
+            assert.ok(lay.tethers.length > 0);
+            for (const t of lay.tethers) assert.ok(t.my - 38 >= R.STRIP_TOP, `mooring of ${t.id8} at ${dw}`);
+            for (const v of lay.vessels) {
+                const y = R.centerY(v.x, dw) + v.off;
+                assert.ok(y - 33 >= R.STRIP_TOP && y + 33 <= R.STRIP_BOTTOM, `hull ${v.id8} at ${dw}`);
+            }
+            for (const g of lay.gates)
+                assert.ok(R.centerY(g.x, dw) + R.halfWidth(g.x, dw) + 31 + 22 <= R.STRIP_BOTTOM, `${g.label} label at ${dw}`);
+        }
+    }
+});
+
 test("the upstream row sits half a column off the centre row", () => {
     const lay = R.layout(R.replaySceneAt(M, snapshot, captured), captured, W);
     const draft = lay.vessels.filter((v) => v.lane === "draft");
