@@ -60,7 +60,7 @@ printf 'output HEADLESS-1 resolution %sx%s position 0 0\ndefault_border none\n' 
 sway -c "$RUN/sway.cfg" > "$RUN/sway.log" 2>&1 & PIDS+=($!)
 swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1; }
 shot_wait 10 "sway's socket" swayup || exit 1
-export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")" QT_QPA_PLATFORM=wayland
+export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")" QT_QPA_PLATFORM=wayland QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=60000
 
 # Quickshell resolves imports only inside the shell file's folder, so the sheet runs from the repo root.
 cp "$ROOT/plugin/orbs/test/shell.qml" "$SHEET"

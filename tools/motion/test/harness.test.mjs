@@ -164,6 +164,27 @@ test("the mutation catalogue applies to this tree and covers the river records",
     assert.ok(all.filter((m) => m.source.startsWith("05a122b0") || m.source.startsWith("07b07aed")).length >= 51, "the 51 river mutations");
 });
 
+// The render gates' shot scripts (task 0facd40c). Each sets a long Qt Wayland frame-callback
+// timeout: at the default, a loaded headless sway's late callbacks make Qt draw an extra frame
+// on re-expose, and the frame checks flake (verdict 70d410ea F1). And each stops what it
+// started with shot_stop (tools/shot-reap.sh): a bare kill then wait can block until
+// mutate.sh's gate timeout (task 859896c9; 5b1ac06d G2). Allowed: a kill -0 probe, and the
+// cleanup's kill of every pid after which shot_reap runs before its wait.
+test("every shot script sets the frame-callback timeout and has no bare kill or wait", () => {
+    const shots = ["tools/headless-shot.sh", ...fs.readdirSync(path.join(root, "plugin")).map((c) => `plugin/${c}/test/shot.sh`)]
+        .filter((f) => fs.existsSync(path.join(root, f)));
+    assert.ok(shots.length >= 8, shots.join(" "));
+    for (const f of shots) {
+        const lines = fs.readFileSync(path.join(root, f), "utf8").split("\n").filter((l) => !/^\s*#/.test(l));
+        const qpa = lines.filter((l) => l.includes("QT_QPA_PLATFORM=wayland"));
+        assert.ok(qpa.length, `${f} sets QT_QPA_PLATFORM=wayland`);
+        for (const l of qpa) assert.ok(Number(/QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=(\d+)/.exec(l)?.[1]) >= 60000, `${f}: ${l.trim()}`);
+        const bare = lines.filter((l) => /(^|[\s;&|({])(kill|wait)(?=[\s;)]|$)/.test(
+            l.replaceAll('kill "${PIDS[@]}" 2>/dev/null; shot_reap; wait 2>/dev/null', "").replace(/\bkill -0 /g, "")));
+        assert.deepEqual(bare, [], `${f}: a bare kill or wait (use shot_stop)`);
+    }
+});
+
 // Critic gap G1 (verdict 0d8e0859): a frame-rate tween on an eased orb axis the live-orbs
 // window never changes survived every gate. Every eased orbs-orb axis carries a pace floor
 // (follow.mjs), and the catalogue tweens each on Qt's driver (form: OF2).

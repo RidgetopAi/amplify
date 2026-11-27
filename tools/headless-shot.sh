@@ -82,7 +82,10 @@ swayup() { ls "$XDG_RUNTIME_DIR"/wayland-? >/dev/null 2>&1 && ls "$XDG_RUNTIME_D
 shot_wait 10 "sway's sockets" swayup
 export WAYLAND_DISPLAY="$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-? | head -1)")"
 export SWAYSOCK="$(ls "$XDG_RUNTIME_DIR"/sway-ipc.* | head -1)"
-export QT_QPA_PLATFORM=wayland
+# Under load this headless sway answers frame callbacks late; at Qt's default timeout (100 ms)
+# the window counts as unexposed and draws an extra frame on re-expose (about 1.35 frames a
+# step, verdict 70d410ea F1), so the frame checks below flaked. Every shot script sets it.
+export QT_QPA_PLATFORM=wayland QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=60000
 
 quickshell -p "$ROOT/tools/harness" > "$RUN/harness.log" 2>&1 & PIDS+=($!)
 # The harness is up once its wallpaper and its app window have each drawn a frame and sway
@@ -421,14 +424,14 @@ mv "$RUN/plugin-main.log" "$RUN/plugin.log"
 #    workers) over 20 s, each amplify-orbs
 #    window draws no more than its clock: at most 8.6 steps/s
 #    (125 ms), at most 9 frames/s in any 5 s, and over the whole span no more frames than
-#    the steps it logged, plus one a second for the scene's once-a-second data tick
-#    (unloaded, every line reads frames = steps + 1/s) and 2 at the span's edges, so nothing
-#    (a tween on Qt's animation driver) draws between steps. Judged over the span, not per
-#    5 s line (task 85e35a5d): a step's frame swaps a little after it, so under load one
-#    lands in the next line (5.0 fps over 3.8 steps/s), which the span's sum cancels; only
-#    its start can take one from before (a pending step and tick swap as one frame), and the
-#    span (measured, the lines' ms) can hold one more tick than whole seconds. A tween
-#    between steps draws tens of frames over the bound.
+#    the steps it logged plus 2 at the span's edges, so nothing (a tween on Qt's animation
+#    driver, a repaint once a second) draws between steps. The held scene clock never ticks
+#    (task 679fbbc5), so there is no data-tick allowance (task 5b1ac06d): every line reads
+#    frames = steps, loaded too with the frame-callback timeout above (task 0facd40c). Judged
+#    over the span, not per 5 s line (task 85e35a5d): a step's frame swaps a little after it,
+#    so under load one lands in the next line (5.0 fps over 3.8 steps/s), which the span's
+#    sum cancels; only its edges can take one from outside. A tween between steps draws tens
+#    of frames over the bound, a once-a-second repaint about 20.
 swaymsg output HEADLESS-1 resolution 1920x1080 position 0 0 > /dev/null
 swaymsg output HEADLESS-2 resolution 1920x1080 position 1920 0 > /dev/null
 swaymsg create_output > /dev/null; shot_wait 10 "a third output" outputs 3
@@ -507,10 +510,10 @@ out=$(fpsrun "$RUN/live-orbs.log" 20)
 pct=$(head -1 <<< "$out") fps=$(tail -n +2 <<< "$out"); showfps "live orbs" "$fps"
 echo "  live orbs: Quickshell at $pct % of one core"
 # Per 5 s line: frames/s over 9 or steps/s over 8.6. Per screen over the span: frames over
-# steps + 1 a second (its lines' summed ms) + 2; a line without steps or ms fails it.
+# steps + 2; a line without steps or ms fails it.
 over=$(awk '$1 == "amplify-orbs" && ($3 > 9 || $5 == "-" || $4 > 8.6) { print $2 " " $3 " fps" ($5 == "-" ? ", no steps or ms logged" : ", " $4 " steps/s") }' <<< "$fps"
   awk '$1 == "amplify-orbs" && $5 != "-" { f[$2] += int($3 * 5 + 0.5); s[$2] += int($4 * 5 + 0.5); ms[$2] += $5 }
-       END { for (k in f) if (f[k] > s[k] + ms[k] / 1000 + 2) printf "%s %d frames over %.1f s, %d steps (bound %d)\n", k, f[k], ms[k] / 1000, s[k], s[k] + ms[k] / 1000 + 2 }' <<< "$fps")
+       END { for (k in f) if (f[k] > s[k] + 2) printf "%s %d frames over %.1f s, %d steps (bound %d)\n", k, f[k], ms[k] / 1000, s[k], s[k] + 2 }' <<< "$fps")
 over=$(grep . <<< "$over" | head -3 | tr '\n' ';')
 span=$(awk '$1 == "amplify-orbs" { f[$2] += int($3 * 5 + 0.5); s[$2] += int($4 * 5 + 0.5); ms[$2] += $5 }
             END { for (k in f) printf "%s %d frames/%d steps/%.1f s; ", k, f[k], s[k], ms[k] / 1000 }' <<< "$fps")
@@ -518,7 +521,7 @@ echo "  live orbs span: $span"
 spun=$(awk '$1 == "amplify-orbs" && ($4 == "-" || $4 >= 1) { n++ } END { print n + 0 }' <<< "$fps")
 lerr=$(qmlerr "$RUN/live-orbs.log")
 screens3 amplify-orbs "$fps" && [[ -z $over ]] && (( spun > 0 && lerr == 0 )) \
-  && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s; over the span <= steps + 1/s + 2; 3 screens)" \
+  && pass "live orbs spinning: each orbs window draws within its clock (<= 9 fps, <= 8.6 steps/s; over the span <= steps + 2; 3 screens)" \
   || fail "live orbs spinning: an orbs window draws above its clock (${over:-none over}; spinning lines $spun; all 3 screens logged: $(screens3 amplify-orbs "$fps" && echo yes || echo no); $lerr QML errors)"
 for f in idle idle-river shipped live-orbs; do
   grep -aE "TypeError|ReferenceError|is not defined|Unable to assign|binding loop" "$RUN/$f.log" | head -3 | sed "s/^/  $f: /"

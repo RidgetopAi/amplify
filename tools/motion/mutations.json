@@ -1961,28 +1961,6 @@
    ]
   },
   {
-   "id": "OF4-orbs-draw-every-frame-while-easing",
-   "source": "71c4fec7 F1, 85e35a5d",
-   "class": "orbs-clock live",
-   "note": "a FrameAnimation advances the eases' time (stepMs) every frame while one runs, so the orbs window draws every frame between its paced steps (the steps themselves unchanged), with its spec anchor; eases run only in the live-orbs window, so only its frames-against-steps bound can catch it",
-   "edits": [
-    {
-     "file": "plugin/orbs/OrbField.qml",
-     "from": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n",
-     "to": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n  FrameAnimation { running: field.easing; onTriggered: field.stepMs = Date.now() }\n"
-    },
-    {
-     "file": "docs/motion.json",
-     "from": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }],",
-     "to": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }, { \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"FrameAnimation { running\" }],"
-    }
-   ],
-   "gates": [
-    "spec",
-    "headless"
-   ]
-  },
-  {
    "id": "OF2-orb-form-tween-on-driver",
    "source": "118f6917 critic case",
    "class": "orbs-orb form live",
@@ -3194,6 +3172,76 @@
    ],
    "gates": [
     "basin-shot"
+   ]
+  },
+  {
+   "id": "OF4b-orbs-repaint-each-second-between-steps",
+   "source": "0facd40c (replaces OF4, equivalent on the held replay: 4d18a8b5, 70d410ea F3; 5b1ac06d G1)",
+   "class": "orbs-clock live",
+   "note": "while the spin clock steps faster than once a second, a second Timer advances the clock once a second without a step, so each orbs window draws about one frame a second between its paced steps (the spin rate unchanged), with its spec anchor; idle's lost orb steps every 4-6 s, so only the live-orbs span bound can catch it, and only without the old +1/s data-tick allowance (about 20 frames over 20 s)",
+   "edits": [
+    {
+     "file": "plugin/orbs/OrbField.qml",
+     "from": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n",
+     "to": "      field.clockAt = t; field.stepMs = t; field.steps++\n    }\n  }\n  Timer { interval: 1000; repeat: true; running: field.spinning && spinClock.interval < 1000\n    onTriggered: { var t = Date.now(); field.clock += (t - field.clockAt) / 1000; field.clockAt = t } }\n"
+    },
+    {
+     "file": "docs/motion.json",
+     "from": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }],",
+     "to": "\"code\": [{ \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { id: spinClock\" }, { \"file\": \"plugin/orbs/OrbField.qml\", \"line\": \"Timer { interval: 1000; repeat: true; running: field.spinning\" }],"
+    }
+   ],
+   "gates": [
+    "spec",
+    "headless"
+   ]
+  },
+  {
+   "id": "FC1-no-frame-callback-timeout",
+   "source": "0facd40c (5b1ac06d G2; 70d410ea F1)",
+   "class": "gate frame-callback timeout",
+   "note": "headless-shot.sh leaves Qt's default frame-callback timeout: under load its frame checks draw an extra frame on re-expose and flake; the shot-script check makes that deterministic",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "export QT_QPA_PLATFORM=wayland QT_WAYLAND_FRAME_CALLBACK_TIMEOUT=60000\n",
+     "to": "export QT_QPA_PLATFORM=wayland\n"
+    }
+   ],
+   "gates": [
+    "motion"
+   ]
+  },
+  {
+   "id": "KW1-headless-bare-kill-wait",
+   "source": "0facd40c (5b1ac06d G2; 70d410ea F1)",
+   "class": "gate process stop",
+   "note": "headless-shot.sh's fpsrun stops Quickshell with a bare kill then wait instead of shot_stop (task 859896c9: the wait can block until the gate timeout)",
+   "edits": [
+    {
+     "file": "tools/headless-shot.sh",
+     "from": "c1=$(awk '{ print $14 + $15 }' \"/proc/$QS/stat\"); shot_stop \"$QS\"\n",
+     "to": "c1=$(awk '{ print $14 + $15 }' \"/proc/$QS/stat\"); kill \"$QS\"; wait \"$QS\"\n"
+    }
+   ],
+   "gates": [
+    "motion"
+   ]
+  },
+  {
+   "id": "KW2-river-shot-bare-kill-wait",
+   "source": "0facd40c (5b1ac06d G2; 70d410ea F1)",
+   "class": "gate process stop",
+   "note": "plugin/river/test/shot.sh stops each run's Quickshell with a bare kill then wait instead of shot_stop",
+   "edits": [
+    {
+     "file": "plugin/river/test/shot.sh",
+     "from": "  shot_stop \"$QS\"\n",
+     "to": "  kill \"$QS\" 2>/dev/null; wait \"$QS\" 2>/dev/null\n"
+    }
+   ],
+   "gates": [
+    "motion"
    ]
   }
  ]
